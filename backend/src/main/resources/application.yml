@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/devreport}
+    username: ${DATABASE_USERNAME:devreport}
+    password: ${DATABASE_PASSWORD:devreport}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: ${BACKEND_PORT:8080}
+
+management:
+  endpoint:
+    health:
+      show-components: always
+
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
