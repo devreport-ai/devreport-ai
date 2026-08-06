@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "title": "Spring Boot 실습보고서",
+    "author": "김예찬",
+    "course": "SKALA Backend",
+    "date": "2026-08-06"
+  },
+  "sections": [
+    {
+      "id": "overview",
+      "title": "1. 프로젝트 개요",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "본 실습에서는 REST API를 구현하였다."
+        },
+        {
+          "type": "image",
+          "fileId": "sample-image-001",
+          "caption": "그림 1. 애플리케이션 실행 결과"
+        }
+      ]
+    }
+  ]
+}
