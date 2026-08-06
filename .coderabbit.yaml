@@ -12,7 +12,7 @@ reviews:
     enabled: true
     drafts: false
     base_branches:
-      - "develop"
+      - "dev"
 
 chat:
   auto_reply: true
