@@ -1,0 +1,55 @@
+name: 버그 신고
+description: 재현 가능한 오류를 등록합니다.
+title: "[Bug] "
+labels: []
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 발생 영역
+      options:
+        - Backend
+        - Frontend
+        - AI
+        - Contracts
+        - Infra
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제 상황
+      placeholder: 실제로 발생한 현상을 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 절차
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 결과
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 실행 환경
+      placeholder: OS, 브라우저, Java/Python/Node 버전 등
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 및 스크린샷
+      render: shell
