@@ -1,0 +1,177 @@
+openapi: 3.0.3
+
+info:
+  title: DevReport AI API
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8080
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/projects:
+    post:
+      summary: 프로젝트 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["name"]
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: 프로젝트 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required: ["projectId"]
+                properties:
+                  projectId:
+                    type: string
+                    format: uuid
+
+  /api/projects/{projectId}/files:
+    post:
+      summary: 프로젝트 파일 업로드
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: ["file"]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: 파일 업로드 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required: ["fileId"]
+                properties:
+                  fileId:
+                    type: string
+
+  /api/projects/{projectId}/generations:
+    post:
+      summary: 보고서 생성 작업 시작
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "report-document.schema.json"
+      responses:
+        "202":
+          description: 생성 작업 접수
+          content:
+            application/json:
+              schema:
+                type: object
+                required: ["jobId"]
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+
+  /api/generations/{jobId}:
+    get:
+      summary: 생성 작업 상태 조회
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: 생성 작업 상태
+          content:
+            application/json:
+              schema:
+                type: object
+                required: ["jobId", "status"]
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: ["pending", "processing", "completed", "failed"]
+                  reportId:
+                    type: string
+                    format: uuid
+
+  /api/reports/{reportId}:
+    get:
+      summary: 보고서 조회
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: 보고서 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: "report-document.schema.json"
+
+    put:
+      summary: 보고서 수정
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "report-document.schema.json"
+      responses:
+        "200":
+          description: 보고서 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: "report-document.schema.json"
