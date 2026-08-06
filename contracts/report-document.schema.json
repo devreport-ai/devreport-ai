@@ -49,31 +49,63 @@
       }
     },
     "block": {
-      "type": "object",
-      "required": ["type"],
-      "properties": {
-        "type": {
-          "enum": [
-            "paragraph",
-            "bulletList",
-            "image",
-            "code",
-            "table",
-            "callout",
-            "pageBreak"
-          ]
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "text"],
+          "properties": {
+            "type": {
+              "const": "paragraph"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
-        "text": {
-          "type": "string"
+        {
+          "type": "object",
+          "required": ["type", "text"],
+          "properties": {
+            "type": {
+              "const": "code"
+            },
+            "text": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
-        "fileId": {
-          "type": "string"
+        {
+          "type": "object",
+          "required": ["type", "fileId"],
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "fileId": {
+              "type": "string"
+            },
+            "caption": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
-        "caption": {
-          "type": "string"
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["bulletList", "table", "callout", "pageBreak"]
+            }
+          },
+          "additionalProperties": true
         }
-      },
-      "additionalProperties": true
+      ]
     }
   }
 }
