@@ -18,7 +18,7 @@ server:
 management:
   endpoint:
     health:
-      show-components: always
+      show-components: when-authorized
 
 ai:
   service:
