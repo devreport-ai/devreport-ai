@@ -1,4 +1,4 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

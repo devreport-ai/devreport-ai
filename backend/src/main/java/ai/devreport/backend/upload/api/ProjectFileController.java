@@ -1,4 +1,4 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.api;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.upload.application.ProjectFileService;
+import ai.devreport.backend.upload.domain.UploadedFile;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

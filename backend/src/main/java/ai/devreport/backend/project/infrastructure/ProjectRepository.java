@@ -1,4 +1,6 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.infrastructure;
+
+import ai.devreport.backend.project.domain.Project;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,7 +15,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
-interface ProjectRepository extends JpaRepository<Project, UUID> {
+public interface ProjectRepository extends JpaRepository<Project, UUID> {
 	Page<Project> findAllByOwnerIdAndDeletedAtIsNull(UUID ownerId, Pageable pageable);
 
 	Page<Project> findAllByOwnerIdAndDeletedAtIsNotNull(UUID ownerId, Pageable pageable);

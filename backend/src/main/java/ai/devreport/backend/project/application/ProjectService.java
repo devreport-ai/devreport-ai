@@ -1,4 +1,7 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.application;
+
+import ai.devreport.backend.project.domain.Project;
+import ai.devreport.backend.project.infrastructure.ProjectRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -21,24 +24,24 @@ public class ProjectService {
 		this.projects = projects;
 	}
 
-	Project create(UUID ownerId, String name) {
+	public Project create(UUID ownerId, String name) {
 		return projects.save(new Project(ownerId, name));
 	}
 
 	@Transactional(readOnly = true)
-	Page<Project> list(UUID ownerId, int page, int size) {
+	public Page<Project> list(UUID ownerId, int page, int size) {
 		Sort sort = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"));
 		return projects.findAllByOwnerIdAndDeletedAtIsNull(ownerId, PageRequest.of(page, size, sort));
 	}
 
 	@Transactional(readOnly = true)
-	Page<Project> trash(UUID ownerId, int page, int size) {
+	public Page<Project> trash(UUID ownerId, int page, int size) {
 		Sort sort = Sort.by(Sort.Order.desc("deletedAt"), Sort.Order.desc("id"));
 		return projects.findAllByOwnerIdAndDeletedAtIsNotNull(ownerId, PageRequest.of(page, size, sort));
 	}
 
 	@Transactional(readOnly = true)
-	Project get(UUID ownerId, UUID projectId) {
+	public Project get(UUID ownerId, UUID projectId) {
 		return ownedProject(ownerId, projectId);
 	}
 
@@ -59,17 +62,17 @@ public class ProjectService {
 		projects.delete(project);
 	}
 
-	Project update(UUID ownerId, UUID projectId, String name) {
+	public Project update(UUID ownerId, UUID projectId, String name) {
 		Project project = ownedProject(ownerId, projectId);
 		project.rename(name);
 		return project;
 	}
 
-	void delete(UUID ownerId, UUID projectId) {
+	public void delete(UUID ownerId, UUID projectId) {
 		ownedProject(ownerId, projectId).delete();
 	}
 
-	Project restore(UUID ownerId, UUID projectId) {
+	public Project restore(UUID ownerId, UUID projectId) {
 		Project project = projects.findByIdAndOwnerIdAndDeletedAtIsNotNull(projectId, ownerId)
 			.orElseThrow(ProjectNotFoundException::new);
 		project.restore();

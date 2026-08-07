@@ -1,4 +1,4 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.api;
 
 import java.time.Instant;
 import java.util.List;
@@ -11,6 +11,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.project.application.ProjectService;
+import ai.devreport.backend.project.domain.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

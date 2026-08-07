@@ -1,4 +1,4 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.domain;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "uploaded_files")
-class UploadedFile {
+public class UploadedFile {
 
 	@Id
 	private UUID id;
@@ -36,7 +36,7 @@ class UploadedFile {
 	protected UploadedFile() {
 	}
 
-	UploadedFile(UUID projectId, String originalName, String contentType, long size) {
+	public UploadedFile(UUID projectId, String originalName, String contentType, long size) {
 		this.id = UUID.randomUUID();
 		this.projectId = projectId;
 		this.originalName = originalName;
@@ -46,31 +46,31 @@ class UploadedFile {
 		this.createdAt = Instant.now();
 	}
 
-	UUID getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	UUID getProjectId() {
+	public UUID getProjectId() {
 		return projectId;
 	}
 
-	String getOriginalName() {
+	public String getOriginalName() {
 		return originalName;
 	}
 
-	String getStoredName() {
+	public String getStoredName() {
 		return storedName;
 	}
 
-	String getContentType() {
+	public String getContentType() {
 		return contentType;
 	}
 
-	long getSize() {
+	public long getSize() {
 		return size;
 	}
 
-	Instant getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 }

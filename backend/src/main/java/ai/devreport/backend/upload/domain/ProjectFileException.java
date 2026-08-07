@@ -1,4 +1,4 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.domain;
 
 import org.springframework.http.HttpStatus;
 
@@ -7,7 +7,7 @@ public class ProjectFileException extends RuntimeException {
 	private final HttpStatus status;
 	private final String code;
 
-	ProjectFileException(HttpStatus status, String code, String message) {
+	public ProjectFileException(HttpStatus status, String code, String message) {
 		super(message);
 		this.status = status;
 		this.code = code;

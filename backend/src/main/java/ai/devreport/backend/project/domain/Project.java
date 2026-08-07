@@ -1,4 +1,4 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.domain;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -33,7 +33,7 @@ public class Project {
 	protected Project() {
 	}
 
-	Project(UUID ownerId, String name) {
+	public Project(UUID ownerId, String name) {
 		this.id = UUID.randomUUID();
 		this.ownerId = ownerId;
 		this.name = name.trim();
@@ -41,16 +41,16 @@ public class Project {
 		this.updatedAt = createdAt;
 	}
 
-	void rename(String name) {
+	public void rename(String name) {
 		this.name = name.trim();
 		this.updatedAt = Instant.now();
 	}
 
-	void delete() {
+	public void delete() {
 		this.deletedAt = Instant.now();
 	}
 
-	void restore() {
+	public void restore() {
 		this.deletedAt = null;
 		this.updatedAt = Instant.now();
 	}
@@ -59,23 +59,23 @@ public class Project {
 		return id;
 	}
 
-	UUID getOwnerId() {
+	public UUID getOwnerId() {
 		return ownerId;
 	}
 
-	String getName() {
+	public String getName() {
 		return name;
 	}
 
-	Instant getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 
-	Instant getUpdatedAt() {
+	public Instant getUpdatedAt() {
 		return updatedAt;
 	}
 
-	Instant getDeletedAt() {
+	public Instant getDeletedAt() {
 		return deletedAt;
 	}
 }

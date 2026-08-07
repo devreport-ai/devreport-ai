@@ -1,4 +1,6 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.infrastructure;
+
+import ai.devreport.backend.upload.domain.ProjectFileException;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -21,7 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
-class SafeZipExtractor {
+public class SafeZipExtractor {
 
 	private static final long MAX_EXTRACTED_SIZE = 100L * 1024 * 1024;
 	private static final int MAX_FILE_COUNT = 1_000;
@@ -36,7 +38,7 @@ class SafeZipExtractor {
 		"json", "yaml", "yml", "md", "txt", "gradle", "properties", "toml", "go", "rs", "c",
 		"h", "cpp", "hpp", "cs", "php", "rb", "swift", "dart", "vue", "svelte");
 
-	void extract(Path zipPath, Path targetDirectory) throws IOException {
+	public void extract(Path zipPath, Path targetDirectory) throws IOException {
 		Path target = targetDirectory.toAbsolutePath().normalize();
 		Files.createDirectory(target);
 		try {

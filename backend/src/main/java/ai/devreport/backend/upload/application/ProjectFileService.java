@@ -1,4 +1,9 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.application;
+
+import ai.devreport.backend.upload.domain.ProjectFileException;
+import ai.devreport.backend.upload.domain.UploadedFile;
+import ai.devreport.backend.upload.infrastructure.SafeZipExtractor;
+import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -17,7 +22,7 @@ import java.util.UUID;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
-import ai.devreport.backend.project.ProjectService;
+import ai.devreport.backend.project.application.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,7 +62,7 @@ public class ProjectFileService {
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
 	}
 
-	UploadedFile upload(UUID ownerId, UUID projectId, MultipartFile multipartFile) {
+	public UploadedFile upload(UUID ownerId, UUID projectId, MultipartFile multipartFile) {
 		projects.requireOwned(ownerId, projectId);
 		String originalName = originalName(multipartFile);
 		String extension = extension(originalName);
@@ -101,7 +106,7 @@ public class ProjectFileService {
 	}
 
 	@Transactional(readOnly = true)
-	Page<UploadedFile> list(UUID ownerId, UUID projectId, int page, int size) {
+	public Page<UploadedFile> list(UUID ownerId, UUID projectId, int page, int size) {
 		projects.requireOwned(ownerId, projectId);
 		Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 		Page<UploadedFile> uploadedFiles = files.findAllByProjectId(projectId, PageRequest.of(page, size, sort));
@@ -131,7 +136,7 @@ public class ProjectFileService {
 		deleteDirectoryOnCommit(staged, directory);
 	}
 
-	void delete(UUID ownerId, UUID projectId, UUID fileId) {
+	public void delete(UUID ownerId, UUID projectId, UUID fileId) {
 		projects.requireOwned(ownerId, projectId);
 		UploadedFile uploadedFile = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);

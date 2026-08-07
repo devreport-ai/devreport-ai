@@ -1,4 +1,6 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.infrastructure;
+
+import ai.devreport.backend.upload.domain.ProjectFileException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

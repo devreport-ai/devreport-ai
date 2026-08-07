@@ -53,16 +53,16 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ProjectNotFoundException.class)
+	@ExceptionHandler(ai.devreport.backend.project.application.ProjectNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleProjectNotFound(
-		ai.devreport.backend.project.ProjectNotFoundException exception) {
+		ai.devreport.backend.project.application.ProjectNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
 			"PROJECT_NOT_FOUND", exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.upload.ProjectFileException.class)
+	@ExceptionHandler(ai.devreport.backend.upload.domain.ProjectFileException.class)
 	ResponseEntity<ErrorResponse> handleProjectFile(
-		ai.devreport.backend.upload.ProjectFileException exception) {
+		ai.devreport.backend.upload.domain.ProjectFileException exception) {
 		if (exception.status().is5xxServerError()) {
 			log.error("Project file error: {}", exception.code(), exception);
 		}

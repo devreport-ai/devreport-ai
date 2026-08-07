@@ -1,4 +1,6 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.api;
+
+import ai.devreport.backend.upload.application.ProjectTrashService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;

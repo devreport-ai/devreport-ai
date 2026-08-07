@@ -1,4 +1,4 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.application;
 
 public class ProjectNotFoundException extends RuntimeException {
 

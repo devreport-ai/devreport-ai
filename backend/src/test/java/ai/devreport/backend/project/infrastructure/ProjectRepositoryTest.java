@@ -1,4 +1,6 @@
-package ai.devreport.backend.project;
+package ai.devreport.backend.project.infrastructure;
+
+import ai.devreport.backend.project.domain.Project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

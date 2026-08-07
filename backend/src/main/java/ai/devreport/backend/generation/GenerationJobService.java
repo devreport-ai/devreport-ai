@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import ai.devreport.backend.ai.GenerationRequest;
-import ai.devreport.backend.project.ProjectService;
+import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.report.Report;
 import ai.devreport.backend.report.ReportDocument;
 import ai.devreport.backend.report.ReportService;

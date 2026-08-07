@@ -1,9 +1,9 @@
-package ai.devreport.backend.upload;
+package ai.devreport.backend.upload.application;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import ai.devreport.backend.project.ProjectService;
+import ai.devreport.backend.project.application.ProjectService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
