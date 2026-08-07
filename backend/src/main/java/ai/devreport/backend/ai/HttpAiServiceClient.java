@@ -3,6 +3,8 @@ package ai.devreport.backend.ai;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,9 +35,20 @@ class HttpAiServiceClient implements AiServiceClient {
 
 	@Override
 	public AiHealthResponse health() {
+		return execute(() -> client.get().uri("/health").retrieve().body(AiHealthResponse.class),
+			response -> response != null && "UP".equalsIgnoreCase(response.status()));
+	}
+
+	@Override
+	public ReportDocument generate(GenerationRequest request) {
+		return execute(() -> client.post().uri("/internal/ai/reports/generate").body(request)
+			.retrieve().body(ReportDocument.class), response -> response != null);
+	}
+
+	private static <T> T execute(Supplier<T> request, Predicate<T> validResponse) {
 		try {
-			AiHealthResponse response = client.get().uri("/health").retrieve().body(AiHealthResponse.class);
-			if (response == null || !"UP".equalsIgnoreCase(response.status())) {
+			T response = request.get();
+			if (!validResponse.test(response)) {
 				throw failure("AI_SERVICE_INVALID_RESPONSE", "AI 서비스 응답을 확인할 수 없습니다.", null);
 			}
 			return response;

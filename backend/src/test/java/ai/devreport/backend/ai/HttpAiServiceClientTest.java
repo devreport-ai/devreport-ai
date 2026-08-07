@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -38,6 +39,24 @@ class HttpAiServiceClientTest {
 		assertThat(response.status()).isEqualTo("UP");
 		assertThat(response.service()).isEqualTo("devreport-ai-service");
 		assertThat(response.contractsFound()).isTrue();
+	}
+
+	@Test
+	void sendsGenerationRequestAndReadsReportDocument() throws Exception {
+		AtomicReference<String> requestBody = new AtomicReference<>();
+		startServer(exchange -> {
+			assertThat(exchange.getRequestMethod()).isEqualTo("POST");
+			assertThat(exchange.getRequestURI().getPath()).isEqualTo("/internal/ai/reports/generate");
+			requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+			respond(exchange, 200, """
+				{"metadata":{"title":"생성 보고서"},"sections":[]}
+				""");
+		});
+
+		ReportDocument response = client(Duration.ofSeconds(1)).generate(new GenerationRequest(null));
+
+		assertThat(response.metadata().title()).isEqualTo("생성 보고서");
+		assertThat(requestBody.get()).isEqualTo("{\"document\":null}");
 	}
 
 	@Test
@@ -85,7 +104,7 @@ class HttpAiServiceClientTest {
 
 	private void startServer(com.sun.net.httpserver.HttpHandler handler) throws IOException {
 		server = HttpServer.create(new InetSocketAddress(0), 0);
-		server.createContext("/health", handler);
+		server.createContext("/", handler);
 		server.start();
 	}
 

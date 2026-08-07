@@ -39,6 +39,10 @@ class ProjectService {
 		return ownedProject(ownerId, projectId);
 	}
 
+	void lock(UUID ownerId, UUID projectId) {
+		projects.findOwnedForUpdate(projectId, ownerId).orElseThrow(ProjectNotFoundException::new);
+	}
+
 	Project update(UUID ownerId, UUID projectId, String name) {
 		Project project = ownedProject(ownerId, projectId);
 		project.rename(name);
