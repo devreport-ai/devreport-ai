@@ -4,7 +4,7 @@ DevReport AI의 문서·코드·이미지 분석 및 보고서 생성 서비스.
 
 Backend 전용 **내부 서비스**다. Frontend나 외부 사용자가 직접 호출하지 않는다.
 
-```
+```text
 Frontend → Spring Backend → FastAPI AI Service → Gemini API
 ```
 
@@ -88,7 +88,7 @@ uv run ruff format .
 
 ## 디렉터리 구조
 
-```
+```text
 ai/
 ├── app/
 │   ├── main.py          FastAPI 앱 생성

@@ -29,6 +29,36 @@ _STATUS_BY_CODE: dict[ErrorCode, int] = {
 }
 
 
+# Pydantic 오류 메시지는 종류에 따라 입력값을 그대로 담는다.
+# 특히 사용자 정의 validator가 던지는 value_error/assertion_error는 메시지에
+# 입력값을 끼워 넣기 쉬우므로, 외부 응답에는 오류 종류별 고정 문구만 내보낸다.
+_VALIDATION_MESSAGES: dict[str, str] = {
+    "missing": "필수 항목이 누락되었습니다.",
+    "extra_forbidden": "허용되지 않은 항목입니다.",
+    "json_invalid": "JSON 형식이 올바르지 않습니다.",
+    "string_type": "문자열이어야 합니다.",
+    "string_too_short": "길이가 너무 짧습니다.",
+    "string_too_long": "허용된 길이를 초과했습니다.",
+    "int_type": "정수여야 합니다.",
+    "int_parsing": "정수로 변환할 수 없습니다.",
+    "float_type": "실수여야 합니다.",
+    "float_parsing": "실수로 변환할 수 없습니다.",
+    "bool_type": "true 또는 false여야 합니다.",
+    "list_type": "배열이어야 합니다.",
+    "dict_type": "객체여야 합니다.",
+    "model_type": "객체여야 합니다.",
+    "enum": "허용되지 않은 값입니다.",
+    "literal_error": "허용되지 않은 값입니다.",
+    "too_short": "항목 수가 너무 적습니다.",
+    "too_long": "항목 수가 너무 많습니다.",
+    "greater_than": "허용 범위를 벗어났습니다.",
+    "greater_than_equal": "허용 범위를 벗어났습니다.",
+    "less_than": "허용 범위를 벗어났습니다.",
+    "less_than_equal": "허용 범위를 벗어났습니다.",
+}
+_DEFAULT_VALIDATION_MESSAGE = "값이 올바르지 않습니다."
+
+
 def build_error_payload(
     code: ErrorCode, message: str, details: Any | None = None
 ) -> dict[str, Any]:
@@ -80,14 +110,15 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     """요청 본문 검증 실패를 공통 규격으로 변환한다.
 
-    Pydantic 기본 오류에는 입력값 원문(input)이 들어 있어 apiKey가 그대로
-    노출될 수 있다. docs 13번 원칙에 따라 위치와 사유만 남기고 값은 버린다.
+    Pydantic 오류에는 입력값 원문(input)과 값이 섞인 메시지(msg)가 들어 있어
+    apiKey가 그대로 노출될 수 있다. docs 13번 원칙에 따라 위치와 오류 종류만
+    남기고, 문구는 종류별 고정값으로 바꾼다.
     """
     violations = [
         {
             "field": ".".join(str(part) for part in error["loc"]),
             "type": error["type"],
-            "message": error["msg"],
+            "message": _VALIDATION_MESSAGES.get(error["type"], _DEFAULT_VALIDATION_MESSAGE),
         }
         for error in exc.errors()
     ]
