@@ -40,11 +40,11 @@ class GenerationController {
 	}
 
 	record GenerationJobResponse(UUID jobId, GenerationJob.Status status, int progress,
-		GenerationJob.Stage currentStage, String failureCode, String failureMessage,
+		GenerationJob.Stage currentStage, UUID reportId, String failureCode, String failureMessage,
 		Instant createdAt, Instant startedAt, Instant completedAt) {
 		static GenerationJobResponse from(GenerationJob job) {
 			return new GenerationJobResponse(job.getId(), job.getStatus(), job.getProgress(),
-				job.getCurrentStage(), job.getFailureCode(), job.getFailureMessage(), job.getCreatedAt(),
+				job.getCurrentStage(), job.getReportId(), job.getFailureCode(), job.getFailureMessage(), job.getCreatedAt(),
 				job.getStartedAt(), job.getCompletedAt());
 		}
 	}

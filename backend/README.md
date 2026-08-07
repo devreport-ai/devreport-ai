@@ -81,10 +81,18 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 - 진행률: `0` → `10` → `100`(성공 시)
 - 단계: `QUEUED` → `CALLING_AI` → `COMPLETED` 또는 `FAILED`
 - 재시작 시 `PENDING`은 재실행하고 `PROCESSING`은 `GENERATION_INTERRUPTED`로 실패 처리
-- AI 응답 ReportDocument는 GenerationJob에 저장하며 Report 엔티티 생성은 후속 작업에서 처리
+- AI 응답 ReportDocument는 JSON Schema 검증 후 Report에 저장하고 Job의 `reportId`로 연결
 
 `GET /api/generations/{jobId}`에서 상태·진행률·단계와 실패 코드·메시지를 조회한다.
 활성 작업이 이미 있으면 409 `GENERATION_ALREADY_RUNNING`을 반환한다.
+
+## 보고서
+
+- `GET /api/reports/{reportId}`: 소유한 프로젝트의 ReportDocument 조회
+- `PUT /api/reports/{reportId}`: JSON Schema가 유효한 ReportDocument로 수정
+- JSONB 문서와 낙관적 잠금 버전, 생성·수정 시각을 함께 관리
+- 다른 사용자의 보고서는 존재 여부를 노출하지 않고 404 `REPORT_NOT_FOUND` 반환
+- 스키마 불일치는 400 `REPORT_DOCUMENT_INVALID` 반환
 
 ## 파일 업로드
 
