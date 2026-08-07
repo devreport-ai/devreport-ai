@@ -50,6 +50,13 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
+	@ExceptionHandler(ai.devreport.backend.project.ProjectNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleProjectNotFound(
+		ai.devreport.backend.project.ProjectNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
+			"PROJECT_NOT_FOUND", exception.getMessage(), null));
+	}
+
 	@ExceptionHandler(Exception.class)
 	ResponseEntity<ErrorResponse> handleUnexpected(Exception exception) {
 		log.error("Unhandled exception", exception);
