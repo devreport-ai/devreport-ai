@@ -84,6 +84,7 @@ class GenerationIntegrationTest {
 			.andExpect(jsonPath("$.progress").value(100))
 			.andExpect(jsonPath("$.currentStage").value("COMPLETED"));
 		GenerationJob completed = jobs.findById(UUID.fromString(firstJobId)).orElseThrow();
+		assertThat(completed.getReportId()).isNotNull();
 		ReportDocument requestDocument = completed.getRequestDocument().document();
 		assertThat(requestDocument.metadata()).isEqualTo(
 			new ReportDocument.Metadata("요청 보고서", "김예찬", "소프트웨어공학", "2026-08-07"));
@@ -91,6 +92,10 @@ class GenerationIntegrationTest {
 			new ReportDocument.Section("intro", "서론",
 				List.of(Map.of("type", "paragraph", "text", "요청 본문"))));
 		assertThat(completed.getResultDocument().metadata().title()).isEqualTo("Spring Boot 실습보고서");
+		mvc.perform(get("/api/reports/{reportId}", completed.getReportId())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.metadata.title").value("Spring Boot 실습보고서"));
 
 		aiService.prepare(true);
 		String failedJobId = createGeneration(token, projectId);

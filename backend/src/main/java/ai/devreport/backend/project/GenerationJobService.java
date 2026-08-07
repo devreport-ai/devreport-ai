@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.exception.ConstraintViolationException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional
@@ -24,11 +25,16 @@ class GenerationJobService {
 	private final GenerationJobRepository jobs;
 	private final ProjectService projects;
 	private final ApplicationEventPublisher events;
+	private final ReportService reports;
+	private final ObjectMapper objectMapper;
 
-	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events) {
+	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events,
+		ReportService reports, ObjectMapper objectMapper) {
 		this.jobs = jobs;
 		this.projects = projects;
 		this.events = events;
+		this.reports = reports;
+		this.objectMapper = objectMapper;
 	}
 
 	GenerationJob create(UUID ownerId, UUID projectId, GenerationRequest request) {
@@ -65,7 +71,10 @@ class GenerationJobService {
 	}
 
 	void complete(UUID jobId, ReportDocument result) {
-		jobs.findById(jobId).ifPresent(job -> job.complete(result));
+		jobs.findById(jobId).filter(job -> job.getStatus() == GenerationJob.Status.PROCESSING).ifPresent(job -> {
+			Report report = reports.create(job.getProjectId(), objectMapper.valueToTree(result));
+			job.complete(result, report.getId());
+		});
 	}
 
 	void fail(UUID jobId, String code, String message) {

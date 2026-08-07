@@ -35,6 +35,8 @@ class GenerationJobWorker {
 			jobs.complete(event.jobId(), result);
 		} catch (AiServiceException exception) {
 			jobs.fail(event.jobId(), exception.code(), exception.getMessage());
+		} catch (ReportException exception) {
+			jobs.fail(event.jobId(), exception.code(), exception.getMessage());
 		} catch (RuntimeException exception) {
 			log.error("Unexpected generation failure: jobId={}", event.jobId(), exception);
 			jobs.fail(event.jobId(), "GENERATION_FAILED", "보고서 생성에 실패했습니다.");

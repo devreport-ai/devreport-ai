@@ -50,6 +50,9 @@ class GenerationJob {
 	@Column(name = "failure_message", length = 500)
 	private String failureMessage;
 
+	@Column(name = "report_id")
+	private UUID reportId;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -87,7 +90,7 @@ class GenerationJob {
 		updatedAt = startedAt;
 	}
 
-	void complete(ReportDocument result) {
+	void complete(ReportDocument result, UUID reportId) {
 		if (status != Status.PROCESSING) {
 			return;
 		}
@@ -95,6 +98,7 @@ class GenerationJob {
 		progress = 100;
 		currentStage = Stage.COMPLETED;
 		resultDocument = result;
+		this.reportId = reportId;
 		completedAt = Instant.now();
 		updatedAt = completedAt;
 	}
@@ -145,6 +149,10 @@ class GenerationJob {
 
 	String getFailureMessage() {
 		return failureMessage;
+	}
+
+	UUID getReportId() {
+		return reportId;
 	}
 
 	Instant getCreatedAt() {
