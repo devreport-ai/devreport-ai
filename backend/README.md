@@ -32,6 +32,8 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AI_SERVICE_RESPONSE_TIMEOUT` | `300s` |
 | `AI_SERVICE_MOCK` | `false` |
 | `UPLOAD_PATH` | `./uploads` |
+| `EXPORT_PATH` | `./generated-reports` |
+| `EXPORT_TTL` | `24h` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
@@ -93,6 +95,15 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 - JSONB 문서와 낙관적 잠금 버전, 생성·수정 시각을 함께 관리
 - 다른 사용자의 보고서는 존재 여부를 노출하지 않고 404 `REPORT_NOT_FOUND` 반환
 - 스키마 불일치는 400 `REPORT_DOCUMENT_INVALID` 반환
+
+## PDF 내보내기
+
+- `POST /api/reports/{reportId}/exports`: PDF 생성 작업 접수
+- `GET /api/report-exports/{exportId}`: 생성 상태·실패 원인·만료 시각 조회
+- `GET /api/report-exports/{exportId}/download`: 소유자만 완성된 PDF 다운로드
+- PDF는 `EXPORT_PATH/{exportId}.pdf`에 저장하고 `EXPORT_TTL` 후 만료 처리
+- 서버 재시작 시 대기 작업은 재실행하고 처리 중 작업은 `EXPORT_INTERRUPTED`로 실패 처리
+- 다른 사용자의 작업은 404, 준비 전·실패 작업은 409, 만료는 410으로 응답
 
 ## 파일 업로드
 
