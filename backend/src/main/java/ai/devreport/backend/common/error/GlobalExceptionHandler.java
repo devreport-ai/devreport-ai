@@ -70,16 +70,16 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.ai.AiServiceException.class)
-	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.ai.AiServiceException exception) {
+	@ExceptionHandler(ai.devreport.backend.integration.ai.AiServiceException.class)
+	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.integration.ai.AiServiceException exception) {
 		log.error("AI service request failed", exception);
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.generation.GenerationException.class)
+	@ExceptionHandler(ai.devreport.backend.generation.domain.GenerationException.class)
 	ResponseEntity<ErrorResponse> handleGeneration(
-		ai.devreport.backend.generation.GenerationException exception) {
+		ai.devreport.backend.generation.domain.GenerationException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}

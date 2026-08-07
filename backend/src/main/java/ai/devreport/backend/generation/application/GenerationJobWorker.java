@@ -1,10 +1,11 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.application;
 
 import java.util.Optional;
 
-import ai.devreport.backend.ai.AiServiceClient;
-import ai.devreport.backend.ai.AiServiceException;
-import ai.devreport.backend.ai.GenerationRequest;
+import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
+import ai.devreport.backend.integration.ai.AiServiceClient;
+import ai.devreport.backend.integration.ai.AiServiceException;
+import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.report.ReportDocument;
 import ai.devreport.backend.report.ReportException;
 import org.slf4j.Logger;

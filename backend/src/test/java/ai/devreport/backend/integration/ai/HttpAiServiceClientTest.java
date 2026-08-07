@@ -1,4 +1,4 @@
-package ai.devreport.backend.ai;
+package ai.devreport.backend.integration.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

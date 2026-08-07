@@ -1,4 +1,6 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.infrastructure;
+
+import ai.devreport.backend.generation.domain.GenerationJob;
 
 import java.util.Collection;
 import java.util.List;
@@ -11,7 +13,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
-interface GenerationJobRepository extends JpaRepository<GenerationJob, UUID> {
+public interface GenerationJobRepository extends JpaRepository<GenerationJob, UUID> {
 
 	boolean existsByProjectIdAndStatusIn(UUID projectId, Collection<GenerationJob.Status> statuses);
 

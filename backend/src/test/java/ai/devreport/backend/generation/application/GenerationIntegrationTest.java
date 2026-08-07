@@ -1,4 +1,7 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.application;
+
+import ai.devreport.backend.generation.domain.GenerationJob;
+import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,10 +15,10 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import ai.devreport.backend.ai.AiHealthResponse;
-import ai.devreport.backend.ai.AiServiceClient;
-import ai.devreport.backend.ai.GenerationRequest;
-import ai.devreport.backend.ai.MockAiServiceClient;
+import ai.devreport.backend.integration.ai.AiHealthResponse;
+import ai.devreport.backend.integration.ai.AiServiceClient;
+import ai.devreport.backend.integration.ai.GenerationRequest;
+import ai.devreport.backend.integration.ai.MockAiServiceClient;
 import ai.devreport.backend.report.ReportDocument;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;

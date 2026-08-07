@@ -1,11 +1,16 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.application;
+
+import ai.devreport.backend.generation.domain.GenerationException;
+import ai.devreport.backend.generation.domain.GenerationJob;
+import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
+import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import ai.devreport.backend.ai.GenerationRequest;
+import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.report.Report;
 import ai.devreport.backend.report.ReportDocument;
@@ -20,7 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional
-class GenerationJobService {
+public class GenerationJobService {
 
 	private static final EnumSet<GenerationJob.Status> ACTIVE_STATUSES =
 		EnumSet.of(GenerationJob.Status.PENDING, GenerationJob.Status.PROCESSING);
@@ -40,7 +45,7 @@ class GenerationJobService {
 		this.objectMapper = objectMapper;
 	}
 
-	GenerationJob create(UUID ownerId, UUID projectId, GenerationRequest request) {
+	public GenerationJob create(UUID ownerId, UUID projectId, GenerationRequest request) {
 		projects.lock(ownerId, projectId);
 		if (jobs.existsByProjectIdAndStatusIn(projectId, ACTIVE_STATUSES)) {
 			throw alreadyRunning();
@@ -59,7 +64,7 @@ class GenerationJobService {
 	}
 
 	@Transactional(readOnly = true)
-	GenerationJob get(UUID ownerId, UUID jobId) {
+	public GenerationJob get(UUID ownerId, UUID jobId) {
 		GenerationJob job = jobs.findById(jobId).orElseThrow(GenerationJobService::notFound);
 		projects.requireOwned(ownerId, job.getProjectId());
 		return job;

@@ -1,4 +1,6 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.application;
+
+import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;

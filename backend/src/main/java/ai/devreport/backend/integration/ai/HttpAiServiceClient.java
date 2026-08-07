@@ -1,4 +1,4 @@
-package ai.devreport.backend.ai;
+package ai.devreport.backend.integration.ai;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;

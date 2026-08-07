@@ -1,14 +1,14 @@
-package ai.devreport.backend.ai;
+package ai.devreport.backend.generation.domain;
 
 import org.springframework.http.HttpStatus;
 
-public class AiServiceException extends RuntimeException {
+public class GenerationException extends RuntimeException {
 
 	private final HttpStatus status;
 	private final String code;
 
-	AiServiceException(HttpStatus status, String code, String message, Throwable cause) {
-		super(message, cause);
+	public GenerationException(HttpStatus status, String code, String message) {
+		super(message);
 		this.status = status;
 		this.code = code;
 	}

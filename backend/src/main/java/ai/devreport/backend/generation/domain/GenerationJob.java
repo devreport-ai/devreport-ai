@@ -1,4 +1,4 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.domain;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,14 +10,14 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import ai.devreport.backend.ai.GenerationRequest;
+import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.report.ReportDocument;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "generation_jobs")
-class GenerationJob {
+public class GenerationJob {
 
 	@Id
 	private UUID id;
@@ -68,7 +68,7 @@ class GenerationJob {
 	protected GenerationJob() {
 	}
 
-	GenerationJob(UUID projectId, GenerationRequest requestDocument) {
+	public GenerationJob(UUID projectId, GenerationRequest requestDocument) {
 		this.id = UUID.randomUUID();
 		this.projectId = projectId;
 		this.status = Status.PENDING;
@@ -79,7 +79,7 @@ class GenerationJob {
 		this.updatedAt = createdAt;
 	}
 
-	void start() {
+	public void start() {
 		if (status != Status.PENDING) {
 			return;
 		}
@@ -90,7 +90,7 @@ class GenerationJob {
 		updatedAt = startedAt;
 	}
 
-	void complete(ReportDocument result, UUID reportId) {
+	public void complete(ReportDocument result, UUID reportId) {
 		if (status != Status.PROCESSING) {
 			return;
 		}
@@ -103,7 +103,7 @@ class GenerationJob {
 		updatedAt = completedAt;
 	}
 
-	void fail(String code, String message) {
+	public void fail(String code, String message) {
 		if (status != Status.PENDING && status != Status.PROCESSING) {
 			return;
 		}
@@ -115,63 +115,63 @@ class GenerationJob {
 		updatedAt = completedAt;
 	}
 
-	UUID getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	UUID getProjectId() {
+	public UUID getProjectId() {
 		return projectId;
 	}
 
-	Status getStatus() {
+	public Status getStatus() {
 		return status;
 	}
 
-	int getProgress() {
+	public int getProgress() {
 		return progress;
 	}
 
-	Stage getCurrentStage() {
+	public Stage getCurrentStage() {
 		return currentStage;
 	}
 
-	GenerationRequest getRequestDocument() {
+	public GenerationRequest getRequestDocument() {
 		return requestDocument;
 	}
 
-	ReportDocument getResultDocument() {
+	public ReportDocument getResultDocument() {
 		return resultDocument;
 	}
 
-	String getFailureCode() {
+	public String getFailureCode() {
 		return failureCode;
 	}
 
-	String getFailureMessage() {
+	public String getFailureMessage() {
 		return failureMessage;
 	}
 
-	UUID getReportId() {
+	public UUID getReportId() {
 		return reportId;
 	}
 
-	Instant getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 
-	Instant getStartedAt() {
+	public Instant getStartedAt() {
 		return startedAt;
 	}
 
-	Instant getCompletedAt() {
+	public Instant getCompletedAt() {
 		return completedAt;
 	}
 
-	enum Status {
+	public enum Status {
 		PENDING, PROCESSING, COMPLETED, FAILED
 	}
 
-	enum Stage {
+	public enum Stage {
 		QUEUED, CALLING_AI, COMPLETED, FAILED
 	}
 }

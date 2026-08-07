@@ -1,4 +1,4 @@
-package ai.devreport.backend.ai;
+package ai.devreport.backend.integration.ai;
 
 public record AiHealthResponse(
 	String status,

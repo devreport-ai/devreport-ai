@@ -1,10 +1,12 @@
-package ai.devreport.backend.generation;
+package ai.devreport.backend.generation.api;
 
 import java.time.Instant;
 import java.util.UUID;
 
-import ai.devreport.backend.ai.GenerationRequest;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.generation.application.GenerationJobService;
+import ai.devreport.backend.generation.domain.GenerationJob;
+import ai.devreport.backend.integration.ai.GenerationRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
