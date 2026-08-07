@@ -49,6 +49,13 @@ class ProjectController {
 		return ProjectPageResponse.from(projectService.list(ownerId(jwt), page, size));
 	}
 
+	@GetMapping("/trash")
+	TrashedProjectPageResponse trash(@AuthenticationPrincipal Jwt jwt,
+		@RequestParam(defaultValue = "0") @Min(0) int page,
+		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+		return TrashedProjectPageResponse.from(projectService.trash(ownerId(jwt), page, size));
+	}
+
 	@GetMapping("/{projectId}")
 	ProjectResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId) {
 		return ProjectResponse.from(projectService.get(ownerId(jwt), projectId));
@@ -66,7 +73,12 @@ class ProjectController {
 		projectService.delete(ownerId(jwt), projectId);
 	}
 
-	private static UUID ownerId(Jwt jwt) {
+	@PostMapping("/{projectId}/restore")
+	ProjectResponse restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId) {
+		return ProjectResponse.from(projectService.restore(ownerId(jwt), projectId));
+	}
+
+	static UUID ownerId(Jwt jwt) {
 		if (jwt == null || jwt.getSubject() == null) {
 			throw unauthorized();
 		}
@@ -98,6 +110,21 @@ class ProjectController {
 		int totalPages) {
 		static ProjectPageResponse from(Page<Project> projects) {
 			return new ProjectPageResponse(projects.getContent().stream().map(ProjectResponse::from).toList(),
+				projects.getNumber(), projects.getSize(), projects.getTotalElements(), projects.getTotalPages());
+		}
+	}
+
+	record TrashedProjectResponse(UUID id, String name, Instant deletedAt) {
+		static TrashedProjectResponse from(Project project) {
+			return new TrashedProjectResponse(project.getId(), project.getName(), project.getDeletedAt());
+		}
+	}
+
+	record TrashedProjectPageResponse(List<TrashedProjectResponse> items, int page, int size,
+		long totalElements, int totalPages) {
+		static TrashedProjectPageResponse from(Page<Project> projects) {
+			return new TrashedProjectPageResponse(
+				projects.getContent().stream().map(TrashedProjectResponse::from).toList(),
 				projects.getNumber(), projects.getSize(), projects.getTotalElements(), projects.getTotalPages());
 		}
 	}

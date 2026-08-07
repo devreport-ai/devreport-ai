@@ -81,6 +81,23 @@ class ProjectIntegrationTest {
 		mvc.perform(get("/api/projects/{projectId}", projectId)
 				.header("Authorization", bearer(ownerToken)))
 			.andExpect(status().isNotFound());
+		mvc.perform(get("/api/projects/trash").header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[0].id").value(projectId))
+			.andExpect(jsonPath("$.items[0].deletedAt").exists());
+		mvc.perform(post("/api/projects/{projectId}/restore", projectId)
+				.header("Authorization", bearer(otherToken)))
+			.andExpect(status().isNotFound());
+		mvc.perform(post("/api/projects/{projectId}/restore", projectId)
+				.header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(projectId));
+		mvc.perform(get("/api/projects/{projectId}", projectId)
+				.header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isOk());
+		mvc.perform(delete("/api/projects/{projectId}", projectId)
+				.header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isNoContent());
 
 		mvc.perform(post("/api/projects")
 				.header("Authorization", bearer(ownerToken))

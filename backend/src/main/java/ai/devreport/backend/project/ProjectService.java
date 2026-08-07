@@ -25,7 +25,13 @@ class ProjectService {
 	@Transactional(readOnly = true)
 	Page<Project> list(UUID ownerId, int page, int size) {
 		Sort sort = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"));
-		return projects.findAllByOwnerId(ownerId, PageRequest.of(page, size, sort));
+		return projects.findAllByOwnerIdAndDeletedAtIsNull(ownerId, PageRequest.of(page, size, sort));
+	}
+
+	@Transactional(readOnly = true)
+	Page<Project> trash(UUID ownerId, int page, int size) {
+		Sort sort = Sort.by(Sort.Order.desc("deletedAt"), Sort.Order.desc("id"));
+		return projects.findAllByOwnerIdAndDeletedAtIsNotNull(ownerId, PageRequest.of(page, size, sort));
 	}
 
 	@Transactional(readOnly = true)
@@ -40,11 +46,18 @@ class ProjectService {
 	}
 
 	void delete(UUID ownerId, UUID projectId) {
-		projects.delete(ownedProject(ownerId, projectId));
+		ownedProject(ownerId, projectId).delete();
+	}
+
+	Project restore(UUID ownerId, UUID projectId) {
+		Project project = projects.findByIdAndOwnerIdAndDeletedAtIsNotNull(projectId, ownerId)
+			.orElseThrow(ProjectNotFoundException::new);
+		project.restore();
+		return project;
 	}
 
 	private Project ownedProject(UUID ownerId, UUID projectId) {
-		return projects.findByIdAndOwnerId(projectId, ownerId)
+		return projects.findByIdAndOwnerIdAndDeletedAtIsNull(projectId, ownerId)
 			.orElseThrow(ProjectNotFoundException::new);
 	}
 }
