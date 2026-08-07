@@ -70,6 +70,13 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
+	@ExceptionHandler(ai.devreport.backend.ai.AiServiceException.class)
+	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.ai.AiServiceException exception) {
+		log.error("AI service request failed", exception);
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	ResponseEntity<ErrorResponse> handleFileTooLarge(MaxUploadSizeExceededException exception) {
 		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(ErrorResponse.of(

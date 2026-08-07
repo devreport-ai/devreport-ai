@@ -28,6 +28,9 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `DATABASE_PASSWORD` | `devreport` |
 | `POSTGRES_PORT` | `5432` |
 | `AI_SERVICE_URL` | `http://localhost:8000` |
+| `AI_SERVICE_CONNECT_TIMEOUT` | `3s` |
+| `AI_SERVICE_RESPONSE_TIMEOUT` | `300s` |
+| `AI_SERVICE_MOCK` | `false` |
 | `UPLOAD_PATH` | `./uploads` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
 
@@ -55,6 +58,19 @@ cd backend
 export JWT_SECRET="$(openssl rand -base64 48)"
 ./gradlew bootRun
 ```
+
+## AI Service Client
+
+Client는 `AI_SERVICE_URL`의 `GET /health`를 호출한다. 연결 실패와 5xx 응답은 502,
+응답 시간 초과는 504로 변환한다. 로컬에서 FastAPI 없이 확인하려면
+`AI_SERVICE_MOCK=true`를 설정하며, Mock Client는 공통 계약의 샘플 ReportDocument를 반환한다.
+
+| 코드 | HTTP 상태 | 설명 |
+| --- | --- | --- |
+| `AI_SERVICE_ERROR` | 502 | AI Service가 오류 응답 반환 |
+| `AI_SERVICE_UNAVAILABLE` | 502 | AI Service 연결 실패 |
+| `AI_SERVICE_INVALID_RESPONSE` | 502 | 비어 있거나 올바르지 않은 응답 |
+| `AI_SERVICE_TIMEOUT` | 504 | AI Service 응답 시간 초과 |
 
 ## 파일 업로드
 
