@@ -39,3 +39,5 @@ auth:
 
 storage:
   upload-path: ${UPLOAD_PATH:./uploads}
+  export-path: ${EXPORT_PATH:./generated-reports}
+  export-ttl: ${EXPORT_TTL:24h}

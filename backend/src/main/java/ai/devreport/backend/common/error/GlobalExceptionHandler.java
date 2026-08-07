@@ -90,6 +90,13 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
+	@ExceptionHandler(ai.devreport.backend.project.ReportExportException.class)
+	ResponseEntity<ErrorResponse> handleReportExport(
+		ai.devreport.backend.project.ReportExportException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	ResponseEntity<ErrorResponse> handleFileTooLarge(MaxUploadSizeExceededException exception) {
 		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(ErrorResponse.of(

@@ -264,6 +264,51 @@ components:
           type: string
           format: date-time
           nullable: true
+    ExportIdResponse:
+      type: object
+      required: [exportId]
+      properties:
+        exportId:
+          type: string
+          format: uuid
+    ReportExportResponse:
+      type: object
+      required: [exportId, reportId, status, createdAt]
+      properties:
+        exportId:
+          type: string
+          format: uuid
+        reportId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED]
+        size:
+          type: integer
+          format: int64
+          nullable: true
+        failureCode:
+          type: string
+          nullable: true
+        failureMessage:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
     ErrorResponse:
       type: object
       required: [code, message, timestamp]
@@ -905,6 +950,113 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/reports/{reportId}/exports:
+    post:
+      summary: 보고서 PDF 생성 요청
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: PDF 생성 작업 접수
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportIdResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/report-exports/{exportId}:
+    get:
+      summary: PDF 생성 상태 조회
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: PDF 생성 상태
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportExportResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 작업이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/report-exports/{exportId}/download:
+    get:
+      summary: 생성된 PDF 다운로드
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: PDF 파일
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 작업·파일이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND, EXPORT_FILE_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PDF가 준비되지 않았거나 생성 실패 (EXPORT_NOT_READY, EXPORT_FAILED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: PDF 다운로드 기간 만료 (EXPORT_EXPIRED)
           content:
             application/json:
               schema:
