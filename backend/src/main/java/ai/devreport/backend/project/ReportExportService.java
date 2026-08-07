@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -11,7 +12,10 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,8 +50,8 @@ class ReportExportService {
 
 	ReportExport get(UUID ownerId, UUID exportId) {
 		ReportExport export = exports.findOwned(exportId, ownerId).orElseThrow(ReportExportService::notFound);
-		if (export.isExpired()) {
-			renderer.delete(exportId);
+		if (export.isExpired() && renderer.delete(exportId)) {
+			export.expire();
 		}
 		return export;
 	}
@@ -94,9 +98,23 @@ class ReportExportService {
 		exports.findById(exportId).ifPresent(export -> export.fail(code, message));
 	}
 
+	@Scheduled(fixedDelayString = "${storage.export-purge-delay:1h}")
+	void purgeExpired() {
+		// ponytail: 시간당 100개 정리하며, 적체가 관측되면 배치 크기나 실행 주기를 조정한다.
+		Sort sort = Sort.by(Sort.Order.asc("expiresAt"), Sort.Order.asc("id"));
+		exports.findAllByStatusAndExpiresAtBefore(ReportExport.Status.COMPLETED, Instant.now(),
+			PageRequest.of(0, 100, sort)).forEach(export -> {
+				if (renderer.delete(export.getId())) {
+					export.expire();
+				}
+			});
+	}
+
 	List<UUID> recover() {
-		exports.findAllByStatus(ReportExport.Status.PROCESSING).forEach(export ->
-			export.fail("EXPORT_INTERRUPTED", "서버 재시작으로 PDF 생성이 중단되었습니다."));
+		exports.findAllByStatus(ReportExport.Status.PROCESSING).forEach(export -> {
+			renderer.delete(export.getId());
+			export.fail("EXPORT_INTERRUPTED", "서버 재시작으로 PDF 생성이 중단되었습니다.");
+		});
 		return exports.findAllByStatus(ReportExport.Status.PENDING).stream().map(ReportExport::getId).toList();
 	}
 

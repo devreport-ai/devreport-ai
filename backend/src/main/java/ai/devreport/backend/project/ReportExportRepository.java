@@ -1,11 +1,13 @@
 package ai.devreport.backend.project;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.persistence.LockModeType;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -22,4 +24,7 @@ interface ReportExportRepository extends JpaRepository<ReportExport, UUID> {
 	Optional<ReportExport> findForUpdateById(UUID id);
 
 	List<ReportExport> findAllByStatus(ReportExport.Status status);
+
+	List<ReportExport> findAllByStatusAndExpiresAtBefore(ReportExport.Status status, Instant expiresAt,
+		Pageable pageable);
 }

@@ -17,6 +17,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,11 +54,26 @@ class ReportExportIntegrationTest {
 	ReportExportRepository exports;
 
 	@Autowired
+	ReportExportService exportService;
+
+	@Autowired
+	PdfReportRenderer renderer;
+
+	@Autowired
 	ObjectMapper objectMapper;
 
 	@DynamicPropertySource
 	static void storageProperties(DynamicPropertyRegistry registry) {
 		registry.add("storage.export-path", () -> exportRoot.resolve("pdfs").toString());
+	}
+
+	@AfterEach
+	void restoreStorageDirectory() throws Exception {
+		Path storage = exportRoot.resolve("pdfs");
+		if (Files.isRegularFile(storage)) {
+			Files.delete(storage);
+		}
+		Files.createDirectories(storage);
 	}
 
 	@Test
@@ -144,6 +160,36 @@ class ReportExportIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isGone())
 			.andExpect(jsonPath("$.code").value("EXPORT_EXPIRED"));
+	}
+
+	@Test
+	void purgesExpiredAndInterruptedPdfFiles() throws Exception {
+		String token = signupAndLogin("export-cleanup@example.com");
+		UUID projectId = createProject(token);
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"정리 대상"},"sections":[]}
+			"""));
+		ReportExport expired = new ReportExport(report.getId());
+		expired.start();
+		expired.complete(1, Duration.ofSeconds(-1));
+		exports.save(expired);
+		ReportExport interrupted = new ReportExport(report.getId());
+		interrupted.start();
+		exports.save(interrupted);
+		Files.createDirectories(exportRoot.resolve("pdfs"));
+		Files.writeString(renderer.path(expired.getId()), "expired");
+		Files.writeString(renderer.path(interrupted.getId()), "interrupted");
+
+		exportService.purgeExpired();
+		assertThat(renderer.path(expired.getId())).doesNotExist();
+		assertThat(exports.findById(expired.getId()).orElseThrow().getStatus())
+			.isEqualTo(ReportExport.Status.EXPIRED);
+
+		exportService.recover();
+		assertThat(renderer.path(interrupted.getId())).doesNotExist();
+		ReportExport recovered = exports.findById(interrupted.getId()).orElseThrow();
+		assertThat(recovered.getStatus()).isEqualTo(ReportExport.Status.FAILED);
+		assertThat(recovered.getFailureCode()).isEqualTo("EXPORT_INTERRUPTED");
 	}
 
 	private void awaitStatus(String token, String exportId, String expected) throws Exception {

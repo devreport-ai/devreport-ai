@@ -16,12 +16,16 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
 class PdfReportRenderer {
+
+	private static final Logger log = LoggerFactory.getLogger(PdfReportRenderer.class);
 
 	private final Path exportRoot;
 
@@ -61,11 +65,13 @@ class PdfReportRenderer {
 		return exportRoot.resolve(exportId + ".pdf");
 	}
 
-	void delete(UUID exportId) {
+	boolean delete(UUID exportId) {
 		try {
 			Files.deleteIfExists(path(exportId));
-		} catch (IOException ignored) {
-			// A later expiry cleanup or operator action can retry this best-effort deletion.
+			return true;
+		} catch (IOException exception) {
+			log.error("PDF deletion failed: exportId={}", exportId, exception);
+			return false;
 		}
 	}
 

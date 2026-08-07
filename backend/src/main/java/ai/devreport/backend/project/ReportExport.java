@@ -81,6 +81,12 @@ class ReportExport {
 		}
 	}
 
+	void expire() {
+		if (status == Status.COMPLETED && isExpired()) {
+			status = Status.EXPIRED;
+		}
+	}
+
 	boolean isExpired() {
 		return expiresAt != null && !Instant.now().isBefore(expiresAt);
 	}
@@ -126,6 +132,6 @@ class ReportExport {
 	}
 
 	enum Status {
-		PENDING, PROCESSING, COMPLETED, FAILED
+		PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED
 	}
 }
