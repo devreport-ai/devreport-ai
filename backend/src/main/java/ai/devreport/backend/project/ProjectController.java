@@ -5,10 +5,13 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import ai.devreport.backend.auth.AuthException;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,8 +43,10 @@ class ProjectController {
 	}
 
 	@GetMapping
-	List<ProjectResponse> list(@AuthenticationPrincipal Jwt jwt) {
-		return projectService.list(ownerId(jwt)).stream().map(ProjectResponse::from).toList();
+	ProjectPageResponse list(@AuthenticationPrincipal Jwt jwt,
+		@RequestParam(defaultValue = "0") @Min(0) int page,
+		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+		return ProjectPageResponse.from(projectService.list(ownerId(jwt), page, size));
 	}
 
 	@GetMapping("/{projectId}")
@@ -85,6 +91,14 @@ class ProjectController {
 		static ProjectResponse from(Project project) {
 			return new ProjectResponse(project.getId(), project.getName(), project.getOwnerId(),
 				project.getCreatedAt(), project.getUpdatedAt());
+		}
+	}
+
+	record ProjectPageResponse(List<ProjectResponse> items, int page, int size, long totalElements,
+		int totalPages) {
+		static ProjectPageResponse from(Page<Project> projects) {
+			return new ProjectPageResponse(projects.getContent().stream().map(ProjectResponse::from).toList(),
+				projects.getNumber(), projects.getSize(), projects.getTotalElements(), projects.getTotalPages());
 		}
 	}
 }

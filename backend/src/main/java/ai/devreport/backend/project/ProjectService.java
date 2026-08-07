@@ -1,8 +1,10 @@
 package ai.devreport.backend.project;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +23,9 @@ class ProjectService {
 	}
 
 	@Transactional(readOnly = true)
-	List<Project> list(UUID ownerId) {
-		return projects.findAllByOwnerIdOrderByUpdatedAtDesc(ownerId);
+	Page<Project> list(UUID ownerId, int page, int size) {
+		Sort sort = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"));
+		return projects.findAllByOwnerId(ownerId, PageRequest.of(page, size, sort));
 	}
 
 	@Transactional(readOnly = true)

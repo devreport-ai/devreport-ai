@@ -43,11 +43,19 @@ class ProjectIntegrationTest {
 
 		mvc.perform(get("/api/projects").header("Authorization", bearer(ownerToken)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$[0].id").value(projectId))
-			.andExpect(jsonPath("$[0].name").value("첫 프로젝트"));
+			.andExpect(jsonPath("$.items[0].id").value(projectId))
+			.andExpect(jsonPath("$.items[0].name").value("첫 프로젝트"))
+			.andExpect(jsonPath("$.page").value(0))
+			.andExpect(jsonPath("$.size").value(20))
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.totalPages").value(1));
 		mvc.perform(get("/api/projects").header("Authorization", bearer(otherToken)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$").isEmpty());
+			.andExpect(jsonPath("$.items").isEmpty())
+			.andExpect(jsonPath("$.totalElements").value(0));
+		mvc.perform(get("/api/projects").param("size", "101")
+				.header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isBadRequest());
 
 		mvc.perform(get("/api/projects/{projectId}", projectId)
 				.header("Authorization", bearer(ownerToken)))

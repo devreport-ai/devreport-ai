@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +36,8 @@ class ProjectRepositoryTest {
 		Project owned = projects.save(new Project(ownerId, "내 프로젝트"));
 		Project other = projects.save(new Project(otherId, "다른 프로젝트"));
 
-		assertThat(projects.findAllByOwnerIdOrderByUpdatedAtDesc(ownerId))
+		assertThat(projects.findAllByOwnerId(ownerId,
+			PageRequest.of(0, 20, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id")))).getContent())
 			.extracting(Project::getId)
 			.containsExactly(owned.getId());
 		assertThat(projects.findByIdAndOwnerId(owned.getId(), ownerId)).contains(owned);
