@@ -28,6 +28,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `DATABASE_PASSWORD` | `devreport` |
 | `POSTGRES_PORT` | `5432` |
 | `AI_SERVICE_URL` | `http://localhost:8000` |
+| `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
 
@@ -50,6 +51,7 @@ Backend를 실행한다.
 
 ```bash
 cd backend
+export JWT_SECRET='32바이트-이상의-안전한-임의-문자열'
 ./gradlew bootRun
 ```
 

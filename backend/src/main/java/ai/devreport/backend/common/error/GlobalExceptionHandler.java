@@ -44,6 +44,12 @@ public class GlobalExceptionHandler {
 		));
 	}
 
+	@ExceptionHandler(ai.devreport.backend.auth.AuthException.class)
+	ResponseEntity<ErrorResponse> handleAuth(ai.devreport.backend.auth.AuthException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
 	@ExceptionHandler(Exception.class)
 	ResponseEntity<ErrorResponse> handleUnexpected(Exception exception) {
 		log.error("Unhandled exception", exception);
