@@ -573,6 +573,8 @@ paths:
         파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG만 허용하며
         확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다. GIF와 WEBP는 MVP의
         보고서·AI 처리 호환 범위에서 제외되어 FILE_TYPE_NOT_ALLOWED로 거부된다.
+        ZIP은 해제 용량 100 MiB와 내부 엔트리 1,000개로 제한하며 ZIP Slip, 환경변수,
+        인증서·키, 실행 파일을 차단한다. 분석 대상 확장자만 별도 디렉터리에 해제한다.
       requestBody:
         required: true
         content:
@@ -592,7 +594,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/FileIdResponse"
         "400":
-          description: 빈 파일 또는 잘못된 파일 이름
+          description: 빈 파일, 잘못된 파일 이름, 손상된 ZIP 또는 ZIP Slip 위험 경로
           content:
             application/json:
               schema:
@@ -610,13 +612,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "413":
-          description: 파일 크기 20 MiB 초과 (FILE_TOO_LARGE)
+          description: 파일 크기 또는 ZIP 해제 제한 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "415":
           description: 지원하지 않는 형식 또는 형식 불일치 (FILE_TYPE_NOT_ALLOWED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT)
           content:
             application/json:
               schema:
