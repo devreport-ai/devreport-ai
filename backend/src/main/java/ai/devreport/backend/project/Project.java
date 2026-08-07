@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "projects")
-class Project {
+public class Project {
 
 	@Id
 	private UUID id;
@@ -55,7 +55,7 @@ class Project {
 		this.updatedAt = Instant.now();
 	}
 
-	UUID getId() {
+	public UUID getId() {
 		return id;
 	}
 

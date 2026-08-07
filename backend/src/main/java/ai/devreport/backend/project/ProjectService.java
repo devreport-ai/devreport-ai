@@ -1,8 +1,11 @@
 package ai.devreport.backend.project;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -10,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-class ProjectService {
+public class ProjectService {
 
 	private final ProjectRepository projects;
 
@@ -39,8 +42,21 @@ class ProjectService {
 		return ownedProject(ownerId, projectId);
 	}
 
-	void lock(UUID ownerId, UUID projectId) {
+	@Transactional(readOnly = true)
+	public void requireOwned(UUID ownerId, UUID projectId) {
+		ownedProject(ownerId, projectId);
+	}
+
+	public void lock(UUID ownerId, UUID projectId) {
 		projects.findOwnedForUpdate(projectId, ownerId).orElseThrow(ProjectNotFoundException::new);
+	}
+
+	public List<Project> findExpired(Instant deletedBefore, Pageable pageable) {
+		return projects.findAllByDeletedAtBefore(deletedBefore, pageable);
+	}
+
+	public void purge(Project project) {
+		projects.delete(project);
 	}
 
 	Project update(UUID ownerId, UUID projectId, String name) {

@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import ai.devreport.backend.auth.AuthException;
+import ai.devreport.backend.auth.AuthenticatedUser;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,58 +39,43 @@ class ProjectController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	ProjectIdResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProjectRequest request) {
-		return new ProjectIdResponse(projectService.create(ownerId(jwt), request.name()).getId());
+		return new ProjectIdResponse(projectService.create(AuthenticatedUser.id(jwt), request.name()).getId());
 	}
 
 	@GetMapping
 	ProjectPageResponse list(@AuthenticationPrincipal Jwt jwt,
 		@RequestParam(defaultValue = "0") @Min(0) int page,
 		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-		return ProjectPageResponse.from(projectService.list(ownerId(jwt), page, size));
+		return ProjectPageResponse.from(projectService.list(AuthenticatedUser.id(jwt), page, size));
 	}
 
 	@GetMapping("/trash")
 	TrashedProjectPageResponse trash(@AuthenticationPrincipal Jwt jwt,
 		@RequestParam(defaultValue = "0") @Min(0) int page,
 		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-		return TrashedProjectPageResponse.from(projectService.trash(ownerId(jwt), page, size));
+		return TrashedProjectPageResponse.from(projectService.trash(AuthenticatedUser.id(jwt), page, size));
 	}
 
 	@GetMapping("/{projectId}")
 	ProjectResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId) {
-		return ProjectResponse.from(projectService.get(ownerId(jwt), projectId));
+		return ProjectResponse.from(projectService.get(AuthenticatedUser.id(jwt), projectId));
 	}
 
 	@PutMapping("/{projectId}")
 	ProjectResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@Valid @RequestBody ProjectRequest request) {
-		return ProjectResponse.from(projectService.update(ownerId(jwt), projectId, request.name()));
+		return ProjectResponse.from(projectService.update(AuthenticatedUser.id(jwt), projectId, request.name()));
 	}
 
 	@DeleteMapping("/{projectId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId) {
-		projectService.delete(ownerId(jwt), projectId);
+		projectService.delete(AuthenticatedUser.id(jwt), projectId);
 	}
 
 	@PostMapping("/{projectId}/restore")
 	ProjectResponse restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId) {
-		return ProjectResponse.from(projectService.restore(ownerId(jwt), projectId));
-	}
-
-	static UUID ownerId(Jwt jwt) {
-		if (jwt == null || jwt.getSubject() == null) {
-			throw unauthorized();
-		}
-		try {
-			return UUID.fromString(jwt.getSubject());
-		} catch (IllegalArgumentException exception) {
-			throw unauthorized();
-		}
-	}
-
-	private static AuthException unauthorized() {
-		return new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다.");
+		return ProjectResponse.from(projectService.restore(AuthenticatedUser.id(jwt), projectId));
 	}
 
 	record ProjectRequest(@NotBlank @Size(max = 100) String name) {

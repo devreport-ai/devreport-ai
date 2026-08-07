@@ -60,9 +60,9 @@ public class GlobalExceptionHandler {
 			"PROJECT_NOT_FOUND", exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ProjectFileException.class)
+	@ExceptionHandler(ai.devreport.backend.upload.ProjectFileException.class)
 	ResponseEntity<ErrorResponse> handleProjectFile(
-		ai.devreport.backend.project.ProjectFileException exception) {
+		ai.devreport.backend.upload.ProjectFileException exception) {
 		if (exception.status().is5xxServerError()) {
 			log.error("Project file error: {}", exception.code(), exception);
 		}
@@ -77,22 +77,22 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.GenerationException.class)
+	@ExceptionHandler(ai.devreport.backend.generation.GenerationException.class)
 	ResponseEntity<ErrorResponse> handleGeneration(
-		ai.devreport.backend.project.GenerationException exception) {
+		ai.devreport.backend.generation.GenerationException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ReportException.class)
-	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.project.ReportException exception) {
+	@ExceptionHandler(ai.devreport.backend.report.ReportException.class)
+	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.ReportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ReportExportException.class)
+	@ExceptionHandler(ai.devreport.backend.export.ReportExportException.class)
 	ResponseEntity<ErrorResponse> handleReportExport(
-		ai.devreport.backend.project.ReportExportException exception) {
+		ai.devreport.backend.export.ReportExportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
