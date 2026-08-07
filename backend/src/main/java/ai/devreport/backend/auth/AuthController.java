@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -52,11 +53,18 @@ class AuthController {
 
 	@GetMapping("/me")
 	UserResponse me(@AuthenticationPrincipal Jwt jwt) {
+		if (jwt == null || jwt.getSubject() == null) {
+			throw unauthorized();
+		}
 		try {
 			return UserResponse.from(authService.getUser(UUID.fromString(jwt.getSubject())));
 		} catch (IllegalArgumentException exception) {
-			throw new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다.");
+			throw unauthorized();
 		}
+	}
+
+	private static AuthException unauthorized() {
+		return new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다.");
 	}
 
 	record SignupRequest(
@@ -64,9 +72,17 @@ class AuthController {
 		@NotBlank @Size(min = 8, max = 72) String password,
 		@NotBlank @Size(max = 100) String name
 	) {
+		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+		public boolean isPasswordWithinByteLimit() {
+			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
+		}
 	}
 
 	record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
+		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+		public boolean isPasswordWithinByteLimit() {
+			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
+		}
 	}
 
 	record RefreshRequest(@NotBlank String refreshToken) {

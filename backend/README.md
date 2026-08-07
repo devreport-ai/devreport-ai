@@ -18,7 +18,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 
 ## 환경변수
 
-기본값으로 바로 실행할 수 있으며 필요한 경우 다음 값을 설정한다.
+`JWT_SECRET`을 먼저 설정해야 실행할 수 있다. 나머지 환경변수는 기본값을 사용하거나 필요한 경우 변경한다.
 
 | 변수 | 기본값 |
 | --- | --- |
@@ -51,7 +51,7 @@ Backend를 실행한다.
 
 ```bash
 cd backend
-export JWT_SECRET='32바이트-이상의-안전한-임의-문자열'
+export JWT_SECRET="$(openssl rand -base64 48)"
 ./gradlew bootRun
 ```
 

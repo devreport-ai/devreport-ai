@@ -1,5 +1,7 @@
 package ai.devreport.backend.auth;
 
+import static ai.devreport.backend.config.SecurityConfig.JWT_ISSUER;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,6 +11,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 class AuthService {
 
 	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final String DUMMY_PASSWORD_HASH =
+		"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 	private final UserRepository users;
 	private final RefreshTokenRepository refreshTokens;
@@ -66,10 +71,13 @@ class AuthService {
 		if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
 			throw invalidCredentials();
 		}
-		User user = users.findByEmail(normalizeEmail(email))
-			.filter(found -> passwordEncoder.matches(password, found.getPasswordHash()))
-			.orElseThrow(AuthService::invalidCredentials);
-		return issueTokens(user);
+		Optional<User> user = users.findByEmail(normalizeEmail(email));
+		boolean matches = passwordEncoder.matches(password,
+			user.map(User::getPasswordHash).orElse(DUMMY_PASSWORD_HASH));
+		if (user.isEmpty() || !matches) {
+			throw invalidCredentials();
+		}
+		return issueTokens(user.get());
 	}
 
 	TokenPair refresh(String rawToken) {
@@ -98,7 +106,7 @@ class AuthService {
 		String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(
 			JwsHeader.with(MacAlgorithm.HS256).build(),
 			JwtClaimsSet.builder()
-				.issuer("devreport-ai")
+				.issuer(JWT_ISSUER)
 				.subject(user.getId().toString())
 				.issuedAt(now)
 				.expiresAt(now.plus(accessTokenTtl))
