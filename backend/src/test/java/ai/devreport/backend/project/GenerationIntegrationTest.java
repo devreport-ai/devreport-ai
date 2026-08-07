@@ -78,12 +78,13 @@ class GenerationIntegrationTest {
 
 		aiService.release();
 		awaitStatus(token, firstJobId, "COMPLETED");
+		GenerationJob completed = jobs.findById(UUID.fromString(firstJobId)).orElseThrow();
 		mvc.perform(get("/api/generations/{jobId}", firstJobId)
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.progress").value(100))
-			.andExpect(jsonPath("$.currentStage").value("COMPLETED"));
-		GenerationJob completed = jobs.findById(UUID.fromString(firstJobId)).orElseThrow();
+			.andExpect(jsonPath("$.currentStage").value("COMPLETED"))
+			.andExpect(jsonPath("$.reportId").value(completed.getReportId().toString()));
 		assertThat(completed.getReportId()).isNotNull();
 		ReportDocument requestDocument = completed.getRequestDocument().document();
 		assertThat(requestDocument.metadata()).isEqualTo(
