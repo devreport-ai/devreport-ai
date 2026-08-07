@@ -788,6 +788,48 @@ paths:
         schema:
           type: string
           format: uuid
+    get:
+      summary: 프로젝트 파일 내용 조회
+      description: |
+        기존 Bearer Token으로 파일을 조회한다. PNG, JPG/JPEG, PDF는 inline으로 응답하고
+        나머지 허용 파일은 attachment로 응답한다. Frontend는 인증 요청으로 받은 Blob URL을
+        편집기와 출력 페이지에서 사용하며, 파일 URL 자체는 공개하지 않는다.
+      responses:
+        "200":
+          description: 파일 내용 조회 성공
+          headers:
+            Content-Disposition:
+              description: 미리보기 형식은 inline, 그 외 형식은 attachment와 UTF-8 원본 파일명
+              schema:
+                type: string
+            Cache-Control:
+              description: 인증 파일의 저장을 막는 no-store 정책
+              schema:
+                type: string
+                example: no-store
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 프로젝트 또는 파일이 없거나 프로젝트 소유자가 아님
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 저장 파일이 누락·변조되었거나 파일 저장소 처리 실패 (FILE_STORAGE_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       summary: 프로젝트 파일 삭제
       responses:

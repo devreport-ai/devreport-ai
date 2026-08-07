@@ -145,6 +145,11 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 
 파일 목록은 `page`(기본 0)와 `size`(기본 20, 최대 100)로 나눠 조회한다.
 
+`GET /api/projects/{projectId}/files/{fileId}`는 기존 Bearer Token으로 파일 내용을 조회한다.
+PNG·JPG/JPEG·PDF는 브라우저 미리보기를 위해 `inline`, 나머지는 `attachment`로 응답하며
+모든 응답에 `Cache-Control: no-store`를 적용한다. Frontend는 인증 요청으로 받은 Blob URL을
+편집기와 출력 페이지에서 사용한다.
+
 ### ZIP 보안 검사
 
 ZIP은 업로드 중 안전한 임시 경로에 해제한 뒤 분석 대상 파일만
