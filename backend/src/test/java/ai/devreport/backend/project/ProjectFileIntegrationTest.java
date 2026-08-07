@@ -83,6 +83,7 @@ class ProjectFileIntegrationTest {
 		);
 
 		String firstFileId = null;
+		String zipFileId = null;
 		for (TestFile file : allowed) {
 			String body = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
 					.file(file.multipartFile())
@@ -91,6 +92,9 @@ class ProjectFileIntegrationTest {
 				.andReturn().getResponse().getContentAsString();
 			if (firstFileId == null) {
 				firstFileId = JsonPath.read(body, "$.fileId");
+			}
+			if (file.name().endsWith(".zip")) {
+				zipFileId = JsonPath.read(body, "$.fileId");
 			}
 		}
 
@@ -108,11 +112,18 @@ class ProjectFileIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isBadRequest());
 		assertThat(storedFileCount(projectId)).isEqualTo(allowed.size());
+		assertThat(uploadRoot.resolve(projectId).resolve(zipFileId + ".extracted/Main.java"))
+			.hasContent("class Main {}");
+
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, zipFileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		assertThat(uploadRoot.resolve(projectId).resolve(zipFileId + ".extracted")).doesNotExist();
 
 		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, firstFileId)
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isNoContent());
-		assertThat(storedFileCount(projectId)).isEqualTo(allowed.size() - 1);
+		assertThat(storedFileCount(projectId)).isEqualTo(allowed.size() - 2);
 	}
 
 	@Test
@@ -133,6 +144,13 @@ class ProjectFileIntegrationTest {
 				.andExpect(status().isUnsupportedMediaType())
 				.andExpect(jsonPath("$.code").value("FILE_TYPE_NOT_ALLOWED"));
 		}
+
+		mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(new TestFile("malicious.zip", "application/zip", zip("../outside.java", "malicious"))
+					.multipartFile())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("ZIP_PATH_INVALID"));
 
 		MockMultipartFile tooLarge = new MockMultipartFile("file", "large.zip", "application/zip",
 			new byte[20 * 1024 * 1024 + 1]);

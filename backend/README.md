@@ -78,6 +78,27 @@ export JWT_SECRET="$(openssl rand -base64 48)"
 
 파일 목록은 `page`(기본 0)와 `size`(기본 20, 최대 100)로 나눠 조회한다.
 
+### ZIP 보안 검사
+
+ZIP은 업로드 중 안전한 임시 경로에 해제한 뒤 분석 대상 파일만
+`UPLOAD_PATH/{projectId}/{fileId}.extracted`에 저장한다.
+
+- 압축 해제 총용량 최대 100 MiB, 내부 엔트리 최대 1,000개
+- `..`, 절대 경로, Windows 드라이브 경로를 차단해 ZIP Slip 방지
+- `.env*`, 인증서·키, 실행 파일 확장자와 실행 바이너리 헤더가 있으면 전체 업로드 거부
+- `.git`, `node_modules`, `build`, `.gradle` 경로는 해제하지 않음
+- 분석 확장자: `java`, `kt`, `py`, `js`, `jsx`, `ts`, `tsx`, `html`, `css`, `scss`,
+  `sql`, `xml`, `json`, `yaml`, `yml`, `md`, `txt`, `gradle`, `properties`, `toml`, `go`,
+  `rs`, `c`, `h`, `cpp`, `hpp`, `cs`, `php`, `rb`, `swift`, `dart`, `vue`, `svelte`
+- 실패 시 임시 해제 파일을 삭제하며, 원본 ZIP 삭제 시 해제 디렉터리도 함께 삭제
+
+| 코드 | HTTP 상태 | 설명 |
+| --- | --- | --- |
+| `ZIP_INVALID` | 400 | 손상되었거나 중복 경로가 있는 ZIP |
+| `ZIP_PATH_INVALID` | 400 | ZIP Slip 위험 경로 |
+| `ZIP_LIMIT_EXCEEDED` | 413 | 해제 용량 또는 엔트리 개수 초과 |
+| `ZIP_BLOCKED_CONTENT` | 422 | 환경변수·인증서·키·실행 파일 포함 |
+
 ## 프로젝트 휴지통
 
 프로젝트 삭제 API는 프로젝트와 업로드 파일을 즉시 지우지 않고 휴지통으로 이동한다.

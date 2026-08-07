@@ -45,12 +45,14 @@ class ProjectFileService {
 
 	private final UploadedFileRepository files;
 	private final ProjectService projects;
+	private final SafeZipExtractor zipExtractor;
 	private final Path uploadRoot;
 
-	ProjectFileService(UploadedFileRepository files, ProjectService projects,
+	ProjectFileService(UploadedFileRepository files, ProjectService projects, SafeZipExtractor zipExtractor,
 		@Value("${storage.upload-path}") String uploadPath) {
 		this.files = files;
 		this.projects = projects;
+		this.zipExtractor = zipExtractor;
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
 	}
 
@@ -62,6 +64,7 @@ class ProjectFileService {
 		validateMetadata(multipartFile, extension, contentType);
 
 		Path temporary = null;
+		Path extractionTemporary = null;
 		try {
 			Path projectDirectory = projectDirectory(projectId);
 			Files.createDirectories(projectDirectory);
@@ -73,9 +76,18 @@ class ProjectFileService {
 				throw storageError(null);
 			}
 			UploadedFile uploadedFile = new UploadedFile(projectId, originalName, contentType, storedSize);
+			if (extension.equals("zip")) {
+				extractionTemporary = projectDirectory.resolve("." + uploadedFile.getStoredName() + ".extracting");
+				zipExtractor.extract(temporary, extractionTemporary);
+			}
 			Path stored = move(temporary, projectDirectory.resolve(uploadedFile.getStoredName()));
 			temporary = null;
 			deleteOnRollback(stored);
+			if (extractionTemporary != null) {
+				Path extracted = move(extractionTemporary, extractedPath(uploadedFile));
+				extractionTemporary = null;
+				deleteDirectoryOnRollback(extracted);
+			}
 			return files.save(uploadedFile);
 		} catch (ProjectFileException exception) {
 			throw exception;
@@ -83,6 +95,7 @@ class ProjectFileService {
 			throw storageError(exception);
 		} finally {
 			deleteQuietly(temporary);
+			deleteDirectoryQuietly(extractionTemporary);
 		}
 	}
 
@@ -124,6 +137,7 @@ class ProjectFileService {
 		Path stored = storedPath(uploadedFile);
 		if (Files.notExists(stored)) {
 			log.error("Stored file is missing; deleting metadata: projectId={}, fileId={}", projectId, fileId);
+			stageExtractedDeletion(uploadedFile);
 			files.delete(uploadedFile);
 			return;
 		}
@@ -138,6 +152,7 @@ class ProjectFileService {
 			throw storageError(exception);
 		}
 		restoreOnRollback(staged, stored);
+		stageExtractedDeletion(uploadedFile);
 		files.delete(uploadedFile);
 	}
 
@@ -255,6 +270,27 @@ class ProjectFileService {
 		return projectDirectory(file.getProjectId()).resolve(file.getStoredName());
 	}
 
+	private Path extractedPath(UploadedFile file) {
+		return projectDirectory(file.getProjectId()).resolve(file.getStoredName() + ".extracted");
+	}
+
+	private void stageExtractedDeletion(UploadedFile file) {
+		Path extracted = extractedPath(file);
+		if (Files.notExists(extracted)) {
+			return;
+		}
+		if (!Files.isDirectory(extracted)) {
+			throw storageError(null);
+		}
+		Path staged = extracted.resolveSibling("." + extracted.getFileName() + ".deleting");
+		try {
+			move(extracted, staged);
+		} catch (IOException exception) {
+			throw storageError(exception);
+		}
+		deleteDirectoryOnCommit(staged, extracted);
+	}
+
 	private boolean isStoredFileConsistent(UploadedFile file) {
 		Path path = storedPath(file);
 		try {
@@ -317,7 +353,21 @@ class ProjectFileService {
 		});
 	}
 
+	private static void deleteDirectoryOnRollback(Path directory) {
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCompletion(int status) {
+				if (status != STATUS_COMMITTED) {
+					deleteDirectoryQuietly(directory);
+				}
+			}
+		});
+	}
+
 	private static void deleteRecursively(Path directory) throws IOException {
+		if (Files.notExists(directory)) {
+			return;
+		}
 		try (var paths = Files.walk(directory)) {
 			for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
 				Files.deleteIfExists(path);
@@ -333,6 +383,17 @@ class ProjectFileService {
 			Files.deleteIfExists(path);
 		} catch (IOException exception) {
 			log.warn("Failed to clean up uploaded file: {}", path, exception);
+		}
+	}
+
+	private static void deleteDirectoryQuietly(Path directory) {
+		if (directory == null) {
+			return;
+		}
+		try {
+			deleteRecursively(directory);
+		} catch (IOException exception) {
+			log.warn("Failed to clean up extracted files: {}", directory, exception);
 		}
 	}
 
