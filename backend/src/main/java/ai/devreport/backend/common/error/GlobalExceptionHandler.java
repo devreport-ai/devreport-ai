@@ -47,22 +47,22 @@ public class GlobalExceptionHandler {
 		));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.auth.AuthException.class)
-	ResponseEntity<ErrorResponse> handleAuth(ai.devreport.backend.auth.AuthException exception) {
+	@ExceptionHandler(ai.devreport.backend.auth.application.AuthException.class)
+	ResponseEntity<ErrorResponse> handleAuth(ai.devreport.backend.auth.application.AuthException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ProjectNotFoundException.class)
+	@ExceptionHandler(ai.devreport.backend.project.application.ProjectNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleProjectNotFound(
-		ai.devreport.backend.project.ProjectNotFoundException exception) {
+		ai.devreport.backend.project.application.ProjectNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
 			"PROJECT_NOT_FOUND", exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ProjectFileException.class)
+	@ExceptionHandler(ai.devreport.backend.upload.domain.ProjectFileException.class)
 	ResponseEntity<ErrorResponse> handleProjectFile(
-		ai.devreport.backend.project.ProjectFileException exception) {
+		ai.devreport.backend.upload.domain.ProjectFileException exception) {
 		if (exception.status().is5xxServerError()) {
 			log.error("Project file error: {}", exception.code(), exception);
 		}
@@ -70,29 +70,29 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.ai.AiServiceException.class)
-	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.ai.AiServiceException exception) {
+	@ExceptionHandler(ai.devreport.backend.integration.ai.AiServiceException.class)
+	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.integration.ai.AiServiceException exception) {
 		log.error("AI service request failed", exception);
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.GenerationException.class)
+	@ExceptionHandler(ai.devreport.backend.generation.domain.GenerationException.class)
 	ResponseEntity<ErrorResponse> handleGeneration(
-		ai.devreport.backend.project.GenerationException exception) {
+		ai.devreport.backend.generation.domain.GenerationException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ReportException.class)
-	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.project.ReportException exception) {
+	@ExceptionHandler(ai.devreport.backend.report.domain.ReportException.class)
+	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.domain.ReportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.project.ReportExportException.class)
+	@ExceptionHandler(ai.devreport.backend.export.domain.ReportExportException.class)
 	ResponseEntity<ErrorResponse> handleReportExport(
-		ai.devreport.backend.project.ReportExportException exception) {
+		ai.devreport.backend.export.domain.ReportExportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}

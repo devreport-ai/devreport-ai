@@ -2,6 +2,24 @@
 
 DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관리하는 Spring Boot 서비스이다.
 
+## 패키지 구조
+
+| 패키지 | 역할 |
+| --- | --- |
+| `auth` | 사용자·Refresh Token·JWT 인증 기능 |
+| `project` | 프로젝트 CRUD 기능 |
+| `upload` | 파일 저장·검증·ZIP 해제·프로젝트 휴지통 정리 기능 |
+| `generation` | 비동기 AI 보고서 생성 작업 기능 |
+| `report` | ReportDocument 검증·보고서 저장·수정 기능 |
+| `export` | PDF 생성 작업·다운로드·만료 처리 기능 |
+| `integration.ai` | FastAPI AI Service 연동 |
+| `common.error` | 공통 API 오류 응답 |
+| `config` | 보안·비동기 실행 설정 |
+
+각 기능 패키지는 필요한 범위에서 `api`, `application`, `domain`, `infrastructure`로 나눈다.
+각각 HTTP 입출력, 유스케이스 조정, 핵심 상태, DB·파일·외부 연동 구현을 담당한다.
+단순 계층화를 위한 모델이나 인터페이스는 중복 생성하지 않는다.
+
 ## 요구사항
 
 - Java 21
