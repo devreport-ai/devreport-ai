@@ -93,7 +93,8 @@ class ProjectFileService {
 		Page<UploadedFile> uploadedFiles = files.findAllByProjectId(projectId, PageRequest.of(page, size, sort));
 		uploadedFiles.getContent().forEach(file -> {
 			if (!isStoredFileConsistent(file)) {
-				throw storageError(null);
+				log.error("Stored file is inconsistent with metadata: projectId={}, fileId={}",
+					projectId, file.getId());
 			}
 		});
 		return uploadedFiles;
@@ -121,6 +122,11 @@ class ProjectFileService {
 		UploadedFile uploadedFile = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);
 		Path stored = storedPath(uploadedFile);
+		if (Files.notExists(stored)) {
+			log.error("Stored file is missing; deleting metadata: projectId={}, fileId={}", projectId, fileId);
+			files.delete(uploadedFile);
+			return;
+		}
 		if (!Files.isRegularFile(stored)) {
 			throw storageError(null);
 		}
@@ -199,9 +205,8 @@ class ProjectFileService {
 	}
 
 	private static boolean startsWith(Path path, byte[] signature) throws IOException {
-		byte[] actual = new byte[signature.length];
 		try (var input = Files.newInputStream(path)) {
-			return input.read(actual) == signature.length && Arrays.equals(actual, signature);
+			return Arrays.equals(input.readNBytes(signature.length), signature);
 		}
 	}
 

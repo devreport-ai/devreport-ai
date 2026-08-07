@@ -63,6 +63,9 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ai.devreport.backend.project.ProjectFileException.class)
 	ResponseEntity<ErrorResponse> handleProjectFile(
 		ai.devreport.backend.project.ProjectFileException exception) {
+		if (exception.status().is5xxServerError()) {
+			log.error("Project file error: {}", exception.code(), exception);
+		}
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}

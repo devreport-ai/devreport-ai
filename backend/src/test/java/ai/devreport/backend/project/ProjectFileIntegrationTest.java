@@ -158,6 +158,31 @@ class ProjectFileIntegrationTest {
 	}
 
 	@Test
+	void listsAndDeletesMetadataWhenStoredFileIsMissing() throws Exception {
+		String token = signupAndLogin("missing-file@example.com");
+		String projectId = createProject(token);
+		String body = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(new TestFile("notes.txt", "text/plain", new byte[] {1}).multipartFile())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		String fileId = JsonPath.read(body, "$.fileId");
+		Files.delete(uploadRoot.resolve(projectId).resolve(fileId));
+
+		mvc.perform(get("/api/projects/{projectId}/files", projectId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(1));
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		mvc.perform(get("/api/projects/{projectId}/files", projectId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(0));
+	}
+
+	@Test
 	void restoresFilesFromTrashAndPurgesThemAfterThirtyDays() throws Exception {
 		String token = signupAndLogin("file-trash-owner@example.com");
 		String projectId = createProject(token);

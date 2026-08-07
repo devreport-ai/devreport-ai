@@ -670,13 +670,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: 파일 메타데이터와 실제 저장 파일 불일치 (FILE_STORAGE_ERROR)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /api/projects/{projectId}/files/{fileId}:
     parameters:
       - name: projectId

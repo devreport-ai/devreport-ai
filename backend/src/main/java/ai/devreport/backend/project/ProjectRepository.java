@@ -22,5 +22,6 @@ interface ProjectRepository extends JpaRepository<Project, UUID> {
 
 	Optional<Project> findByIdAndOwnerIdAndDeletedAtIsNull(UUID id, UUID ownerId);
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Project> findByIdAndOwnerIdAndDeletedAtIsNotNull(UUID id, UUID ownerId);
 }
