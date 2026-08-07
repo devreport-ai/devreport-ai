@@ -2,11 +2,7 @@ from fastapi import FastAPI
 
 from app.api import health
 from app.core.config import APP_VERSION, get_settings
-from app.core.errors import (
-    AIServiceError,
-    ai_service_error_handler,
-    unhandled_error_handler,
-)
+from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 
 
@@ -23,9 +19,7 @@ def create_app() -> FastAPI:
         version=APP_VERSION,
     )
 
-    app.add_exception_handler(AIServiceError, ai_service_error_handler)
-    app.add_exception_handler(Exception, unhandled_error_handler)
-
+    register_exception_handlers(app)
     app.include_router(health.router)
     return app
 
