@@ -17,6 +17,6 @@ class MockAiServiceClientTest {
 			Path.of("../contracts/examples/sample-report.json").toFile(), ReportDocument.class);
 
 		assertThat(client.health().status()).isEqualTo("UP");
-		assertThat(client.sampleReport()).isEqualTo(contractSample);
+		assertThat(client.generate(new GenerationRequest(null))).isEqualTo(contractSample);
 	}
 }

@@ -215,6 +215,51 @@ components:
         totalPages:
           type: integer
           minimum: 0
+    GenerationRequest:
+      type: object
+      properties:
+        document:
+          $ref: "report-document.schema.json"
+    JobIdResponse:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+    GenerationJobResponse:
+      type: object
+      required: [jobId, status, progress, currentStage, createdAt]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        progress:
+          type: integer
+          enum: [0, 10, 100]
+        currentStage:
+          type: string
+          enum: [QUEUED, CALLING_AI, COMPLETED, FAILED]
+        failureCode:
+          type: string
+          nullable: true
+        failureMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
     ErrorResponse:
       type: object
       required: [code, message, timestamp]
@@ -729,23 +774,36 @@ paths:
             type: string
             format: uuid
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: "report-document.schema.json"
+              $ref: "#/components/schemas/GenerationRequest"
       responses:
         "202":
           description: 생성 작업 접수
           content:
             application/json:
               schema:
-                type: object
-                required: ["jobId"]
-                properties:
-                  jobId:
-                    type: string
-                    format: uuid
+                $ref: "#/components/schemas/JobIdResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 프로젝트가 없거나 소유자가 아님 (PROJECT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 프로젝트에 활성 생성 작업이 있음 (GENERATION_ALREADY_RUNNING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/generations/{jobId}:
     get:
@@ -763,18 +821,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: ["jobId", "status"]
-                properties:
-                  jobId:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum: ["pending", "processing", "completed", "failed"]
-                  reportId:
-                    type: string
-                    format: uuid
+                $ref: "#/components/schemas/GenerationJobResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/reports/{reportId}:
     get:
