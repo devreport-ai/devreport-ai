@@ -6,7 +6,9 @@ import ai.devreport.backend.upload.infrastructure.SafeZipExtractor;
 import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
+import java.nio.channels.Channels;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -127,11 +129,18 @@ public class ProjectFileService {
 		UploadedFile file = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);
 		Path path = storedPath(file);
-		if (!isStoredFileConsistent(file)) {
-			log.error("Stored file is inconsistent with metadata: projectId={}, fileId={}", projectId, fileId);
-			throw storageError(null);
+		try {
+			var channel = Files.newByteChannel(path, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS));
+			if (channel.size() != file.getSize()) {
+				channel.close();
+				log.error("Stored file is inconsistent with metadata: projectId={}, fileId={}", projectId, fileId);
+				throw storageError(null);
+			}
+			return new FileContent(file, Channels.newInputStream(channel));
+		} catch (IOException exception) {
+			log.error("Failed to open stored file: projectId={}, fileId={}", projectId, fileId, exception);
+			throw storageError(exception);
 		}
-		return new FileContent(file, path);
 	}
 
 	public void stageProjectPurge(UUID projectId) {
@@ -323,7 +332,7 @@ public class ProjectFileService {
 		}
 	}
 
-	public record FileContent(UploadedFile file, Path path) {
+	public record FileContent(UploadedFile file, InputStream inputStream) {
 	}
 
 	private static Path move(Path source, Path target) throws IOException {

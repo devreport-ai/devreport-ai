@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Min;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.upload.domain.UploadedFile;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -57,7 +57,7 @@ class ProjectFileController {
 	}
 
 	@GetMapping("/{fileId}")
-	ResponseEntity<FileSystemResource> content(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
+	ResponseEntity<InputStreamResource> content(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@PathVariable UUID fileId) {
 		ProjectFileService.FileContent content = fileService.content(AuthenticatedUser.id(jwt), projectId, fileId);
 		UploadedFile file = content.file();
@@ -69,7 +69,7 @@ class ProjectFileController {
 			.contentLength(file.getSize())
 			.cacheControl(CacheControl.noStore())
 			.header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-			.body(new FileSystemResource(content.path()));
+			.body(new InputStreamResource(content.inputStream()));
 	}
 
 	@DeleteMapping("/{fileId}")

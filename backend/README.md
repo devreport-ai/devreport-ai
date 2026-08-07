@@ -141,7 +141,7 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 | `FILE_TOO_LARGE` | 413 | 20 MiB 초과 |
 | `FILE_TYPE_NOT_ALLOWED` | 415 | 지원하지 않는 형식 또는 확장자·MIME·실제 형식 불일치 |
 | `FILE_NOT_FOUND` | 404 | 프로젝트에 해당 파일이 없음 |
-| `FILE_STORAGE_ERROR` | 500 | 업로드·삭제·완전 삭제 중 저장소 처리 실패 |
+| `FILE_STORAGE_ERROR` | 500 | 업로드·조회·삭제·완전 삭제 중 저장소 처리 또는 정합성 검증 실패 |
 
 파일 목록은 `page`(기본 0)와 `size`(기본 20, 최대 100)로 나눠 조회한다.
 

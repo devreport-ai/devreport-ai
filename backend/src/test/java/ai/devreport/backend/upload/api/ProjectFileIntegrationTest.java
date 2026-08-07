@@ -271,6 +271,23 @@ class ProjectFileIntegrationTest {
 	}
 
 	@Test
+	void rejectsStoredFileReplacedWithSymbolicLink() throws Exception {
+		String token = signupAndLogin("symbolic-link-file@example.com");
+		String projectId = createProject(token);
+		String fileId = upload(token, projectId,
+			new TestFile("notes.txt", "text/plain", "original".getBytes(StandardCharsets.UTF_8)));
+		Path stored = uploadRoot.resolve(projectId).resolve(fileId);
+		Path target = Files.writeString(uploadRoot.resolve("link-target.txt"), "outside");
+		Files.delete(stored);
+		Files.createSymbolicLink(stored, target);
+
+		mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isInternalServerError())
+			.andExpect(jsonPath("$.code").value("FILE_STORAGE_ERROR"));
+	}
+
+	@Test
 	void restoresFilesFromTrashAndPurgesThemAfterThirtyDays() throws Exception {
 		String token = signupAndLogin("file-trash-owner@example.com");
 		String projectId = createProject(token);

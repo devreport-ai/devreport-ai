@@ -807,6 +807,11 @@ paths:
               schema:
                 type: string
                 example: no-store
+            Content-Length:
+              description: 저장된 파일 크기
+              schema:
+                type: integer
+                format: int64
           content:
             "*/*":
               schema:
