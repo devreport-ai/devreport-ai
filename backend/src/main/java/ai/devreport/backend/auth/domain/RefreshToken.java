@@ -1,4 +1,4 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.domain;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -37,7 +37,7 @@ public class RefreshToken {
 	protected RefreshToken() {
 	}
 
-	RefreshToken(User user, String tokenHash, Instant expiresAt) {
+	public RefreshToken(User user, String tokenHash, Instant expiresAt) {
 		this.id = UUID.randomUUID();
 		this.user = user;
 		this.tokenHash = tokenHash;
@@ -45,15 +45,15 @@ public class RefreshToken {
 		this.createdAt = Instant.now();
 	}
 
-	User getUser() {
+	public User getUser() {
 		return user;
 	}
 
-	boolean isUsable(Instant now) {
+	public boolean isUsable(Instant now) {
 		return revokedAt == null && expiresAt.isAfter(now);
 	}
 
-	void revoke(Instant now) {
+	public void revoke(Instant now) {
 		this.revokedAt = now;
 	}
 }

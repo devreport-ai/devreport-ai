@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
 
-import ai.devreport.backend.auth.AuthenticatedUser;
+import ai.devreport.backend.auth.application.AuthenticatedUser;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;

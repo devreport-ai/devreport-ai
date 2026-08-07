@@ -1,4 +1,4 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.application;
 
 import java.util.UUID;
 

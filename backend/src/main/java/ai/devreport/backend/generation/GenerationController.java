@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import ai.devreport.backend.ai.GenerationRequest;
-import ai.devreport.backend.auth.AuthenticatedUser;
+import ai.devreport.backend.auth.application.AuthenticatedUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;

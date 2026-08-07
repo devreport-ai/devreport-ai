@@ -1,4 +1,8 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.api;
+
+import ai.devreport.backend.auth.application.AuthException;
+import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.domain.User;
 
 import java.time.Instant;
 import java.util.UUID;

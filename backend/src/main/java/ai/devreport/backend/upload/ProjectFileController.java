@@ -7,7 +7,7 @@ import java.util.UUID;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
-import ai.devreport.backend.auth.AuthenticatedUser;
+import ai.devreport.backend.auth.application.AuthenticatedUser;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

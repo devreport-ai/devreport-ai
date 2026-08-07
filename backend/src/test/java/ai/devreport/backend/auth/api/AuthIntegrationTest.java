@@ -1,4 +1,11 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.api;
+
+import ai.devreport.backend.auth.application.AuthException;
+import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.domain.RefreshToken;
+import ai.devreport.backend.auth.domain.User;
+import ai.devreport.backend.auth.infrastructure.RefreshTokenRepository;
+import ai.devreport.backend.auth.infrastructure.UserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;

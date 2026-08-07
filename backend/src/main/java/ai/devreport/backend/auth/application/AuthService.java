@@ -1,6 +1,11 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.application;
 
 import static ai.devreport.backend.config.SecurityConfig.JWT_ISSUER;
+
+import ai.devreport.backend.auth.domain.RefreshToken;
+import ai.devreport.backend.auth.domain.User;
+import ai.devreport.backend.auth.infrastructure.RefreshTokenRepository;
+import ai.devreport.backend.auth.infrastructure.UserRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -28,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-class AuthService {
+public class AuthService {
 
 	private static final SecureRandom RANDOM = new SecureRandom();
 	private static final String DUMMY_PASSWORD_HASH =
@@ -52,7 +57,7 @@ class AuthService {
 		this.refreshTokenTtl = refreshTokenTtl;
 	}
 
-	User signup(String email, String password, String name) {
+	public User signup(String email, String password, String name) {
 		String normalizedEmail = normalizeEmail(email);
 		if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
 			throw new AuthException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.");
@@ -67,7 +72,7 @@ class AuthService {
 		}
 	}
 
-	TokenPair login(String email, String password) {
+	public TokenPair login(String email, String password) {
 		if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
 			throw invalidCredentials();
 		}
@@ -80,7 +85,7 @@ class AuthService {
 		return issueTokens(user.get());
 	}
 
-	TokenPair refresh(String rawToken) {
+	public TokenPair refresh(String rawToken) {
 		Instant now = Instant.now();
 		RefreshToken refreshToken = refreshTokens.findByTokenHash(hash(rawToken))
 			.filter(token -> token.isUsable(now))
@@ -89,14 +94,14 @@ class AuthService {
 		return issueTokens(refreshToken.getUser());
 	}
 
-	void logout(String rawToken) {
+	public void logout(String rawToken) {
 		refreshTokens.findByTokenHash(hash(rawToken))
 			.filter(token -> token.isUsable(Instant.now()))
 			.ifPresent(token -> token.revoke(Instant.now()));
 	}
 
 	@Transactional(readOnly = true)
-	User getUser(UUID id) {
+	public User getUser(UUID id) {
 		return users.findById(id)
 			.orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다."));
 	}
@@ -125,7 +130,7 @@ class AuthService {
 		return email.trim().toLowerCase(Locale.ROOT);
 	}
 
-	static String hash(String token) {
+	public static String hash(String token) {
 		try {
 			return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
 				.digest(token.getBytes(StandardCharsets.UTF_8)));
@@ -142,6 +147,6 @@ class AuthService {
 		return new AuthException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh Token이 유효하지 않습니다.");
 	}
 
-	record TokenPair(String accessToken, String refreshToken, long expiresIn) {
+	public record TokenPair(String accessToken, String refreshToken, long expiresIn) {
 	}
 }

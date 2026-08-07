@@ -1,4 +1,4 @@
-package ai.devreport.backend.auth;
+package ai.devreport.backend.auth.domain;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -30,7 +30,7 @@ public class User {
 	protected User() {
 	}
 
-	User(String email, String passwordHash, String name) {
+	public User(String email, String passwordHash, String name) {
 		this.id = UUID.randomUUID();
 		this.email = email;
 		this.passwordHash = passwordHash;
@@ -46,7 +46,7 @@ public class User {
 		return email;
 	}
 
-	String getPasswordHash() {
+	public String getPasswordHash() {
 		return passwordHash;
 	}
 
