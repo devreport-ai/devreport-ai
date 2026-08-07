@@ -27,6 +27,9 @@ class Project {
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
 
+	@Column(name = "deleted_at")
+	private Instant deletedAt;
+
 	protected Project() {
 	}
 
@@ -40,6 +43,15 @@ class Project {
 
 	void rename(String name) {
 		this.name = name.trim();
+		this.updatedAt = Instant.now();
+	}
+
+	void delete() {
+		this.deletedAt = Instant.now();
+	}
+
+	void restore() {
+		this.deletedAt = null;
 		this.updatedAt = Instant.now();
 	}
 
@@ -61,5 +73,9 @@ class Project {
 
 	Instant getUpdatedAt() {
 		return updatedAt;
+	}
+
+	Instant getDeletedAt() {
+		return deletedAt;
 	}
 }

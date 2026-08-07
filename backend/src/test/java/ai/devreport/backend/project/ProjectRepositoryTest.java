@@ -36,12 +36,12 @@ class ProjectRepositoryTest {
 		Project owned = projects.save(new Project(ownerId, "내 프로젝트"));
 		Project other = projects.save(new Project(otherId, "다른 프로젝트"));
 
-		assertThat(projects.findAllByOwnerId(ownerId,
+		assertThat(projects.findAllByOwnerIdAndDeletedAtIsNull(ownerId,
 			PageRequest.of(0, 20, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id")))).getContent())
 			.extracting(Project::getId)
 			.containsExactly(owned.getId());
-		assertThat(projects.findByIdAndOwnerId(owned.getId(), ownerId)).contains(owned);
-		assertThat(projects.findByIdAndOwnerId(other.getId(), ownerId)).isEmpty();
+		assertThat(projects.findByIdAndOwnerIdAndDeletedAtIsNull(owned.getId(), ownerId)).contains(owned);
+		assertThat(projects.findByIdAndOwnerIdAndDeletedAtIsNull(other.getId(), ownerId)).isEmpty();
 	}
 
 	private UUID insertUser(String email) {

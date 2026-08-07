@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -33,6 +35,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler({
 		HttpMessageNotReadableException.class,
 		MissingServletRequestParameterException.class,
+		MissingServletRequestPartException.class,
 		MethodArgumentTypeMismatchException.class,
 		HandlerMethodValidationException.class
 	})
@@ -55,6 +58,19 @@ public class GlobalExceptionHandler {
 		ai.devreport.backend.project.ProjectNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
 			"PROJECT_NOT_FOUND", exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.project.ProjectFileException.class)
+	ResponseEntity<ErrorResponse> handleProjectFile(
+		ai.devreport.backend.project.ProjectFileException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ResponseEntity<ErrorResponse> handleFileTooLarge(MaxUploadSizeExceededException exception) {
+		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(ErrorResponse.of(
+			"FILE_TOO_LARGE", "파일 크기는 20 MiB 이하여야 합니다.", null));
 	}
 
 	@ExceptionHandler(Exception.class)
