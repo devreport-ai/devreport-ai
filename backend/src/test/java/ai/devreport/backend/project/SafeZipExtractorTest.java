@@ -3,11 +3,13 @@ package ai.devreport.backend.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -73,10 +75,12 @@ class SafeZipExtractorTest {
 	@Test
 	void rejectsBlockedFilesAndExecutableContent() throws Exception {
 		Map<String, byte[]> blockedFiles = new LinkedHashMap<>();
-		blockedFiles.put(".env.local", "SECRET=value".getBytes(StandardCharsets.UTF_8));
+		blockedFiles.put(".envrc", "SECRET=value".getBytes(StandardCharsets.UTF_8));
 		blockedFiles.put("certificate.pem", "certificate".getBytes(StandardCharsets.UTF_8));
 		blockedFiles.put("run.exe", new byte[] {'M', 'Z', 0, 0});
 		blockedFiles.put("renamed.txt", new byte[] {0x7f, 'E', 'L', 'F'});
+		blockedFiles.put("renamed-class.txt",
+			new byte[] {(byte) 0xca, (byte) 0xfe, (byte) 0xba, (byte) 0xbe});
 		blockedFiles.put("secret.txt", (" ".repeat(10_000) + "-----BEGIN PRIVATE KEY-----")
 			.getBytes(StandardCharsets.US_ASCII));
 
@@ -89,6 +93,38 @@ class SafeZipExtractorTest {
 					exception -> assertThat(exception.code()).isEqualTo("ZIP_BLOCKED_CONTENT"));
 			assertThat(target).doesNotExist();
 		}
+	}
+
+	@Test
+	void rejectsTruncatedDeflateZip() throws Exception {
+		Path complete = zip("complete.zip", Map.of(
+			"Main.java", ("class Main {\n" + "String value = \"content\";\n".repeat(1_000) + "}")
+				.getBytes(StandardCharsets.UTF_8)));
+		byte[] archive = Files.readAllBytes(complete);
+		int centralDirectory = indexOf(archive, new byte[] {'P', 'K', 1, 2});
+		Path truncated = Files.write(temporaryDirectory.resolve("truncated.zip"),
+			Arrays.copyOf(archive, centralDirectory - 24));
+		Path target = temporaryDirectory.resolve("truncated-target");
+
+		assertThatThrownBy(() -> extractor.extract(truncated, target))
+			.isInstanceOfSatisfying(ProjectFileException.class,
+				exception -> assertThat(exception.code()).isEqualTo("ZIP_INVALID"))
+			.hasRootCauseInstanceOf(EOFException.class);
+		assertThat(target).doesNotExist();
+	}
+
+	@Test
+	void rejectsDuplicateNormalizedPathsIncludingSkippedFiles() throws Exception {
+		Path zip = zip("duplicate.zip", Map.of(
+			"assets/../logo.png", new byte[] {1},
+			"logo.png", new byte[] {2}
+		));
+		Path target = temporaryDirectory.resolve("duplicate-target");
+
+		assertThatThrownBy(() -> extractor.extract(zip, target))
+			.isInstanceOfSatisfying(ProjectFileException.class,
+				exception -> assertThat(exception.code()).isEqualTo("ZIP_INVALID"));
+		assertThat(target).doesNotExist();
 	}
 
 	@Test
@@ -134,5 +170,14 @@ class SafeZipExtractorTest {
 			}
 		}
 		return path;
+	}
+
+	private static int indexOf(byte[] bytes, byte[] pattern) {
+		for (int index = 0; index <= bytes.length - pattern.length; index++) {
+			if (Arrays.equals(bytes, index, index + pattern.length, pattern, 0, pattern.length)) {
+				return index;
+			}
+		}
+		throw new IllegalArgumentException("ZIP central directory not found");
 	}
 }

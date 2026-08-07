@@ -1,5 +1,6 @@
 package ai.devreport.backend.project;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -9,6 +10,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -53,10 +55,14 @@ class SafeZipExtractor {
 		long totalSize = 0;
 		int fileCount = 0;
 		byte[] buffer = new byte[8192];
+		Set<Path> entryPaths = new HashSet<>();
 		try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(zipPath))) {
 			ZipEntry entry;
 			while ((entry = zip.getNextEntry()) != null) {
 				Path output = safeOutputPath(target, entry.getName());
+				if (!entryPaths.add(output)) {
+					throw invalidZip(new ZipException("Duplicate ZIP entry path"));
+				}
 				if (++fileCount > MAX_FILE_COUNT) {
 					throw limitExceeded();
 				}
@@ -100,7 +106,7 @@ class SafeZipExtractor {
 					}
 				}
 			}
-		} catch (ZipException | FileAlreadyExistsException exception) {
+		} catch (EOFException | ZipException | FileAlreadyExistsException exception) {
 			throw invalidZip(exception);
 		}
 	}
@@ -134,7 +140,7 @@ class SafeZipExtractor {
 	}
 
 	private static boolean isBlocked(String filename, String extension) {
-		return filename.equals(".env") || filename.startsWith(".env.")
+		return filename.startsWith(".env")
 			|| CERTIFICATE_EXTENSIONS.contains(extension) || EXECUTABLE_EXTENSIONS.contains(extension);
 	}
 
@@ -159,7 +165,9 @@ class SafeZipExtractor {
 			int magic = (header[0] & 0xff) << 24 | (header[1] & 0xff) << 16
 				| (header[2] & 0xff) << 8 | header[3] & 0xff;
 			if (magic == 0x7f454c46 || magic == 0xfeedface || magic == 0xfeedfacf
-				|| magic == 0xcefaedfe || magic == 0xcffaedfe) {
+				|| magic == 0xcefaedfe || magic == 0xcffaedfe
+				|| magic == 0xcafebabe || magic == 0xbebafeca
+				|| magic == 0xcafebabf || magic == 0xbfbafeca) {
 				return true;
 			}
 		}
