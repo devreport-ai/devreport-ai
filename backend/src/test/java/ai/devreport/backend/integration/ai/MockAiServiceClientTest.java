@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 

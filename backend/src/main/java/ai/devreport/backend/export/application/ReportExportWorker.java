@@ -1,4 +1,7 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.application;
+
+import ai.devreport.backend.export.domain.ReportExportQueuedEvent;
+import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

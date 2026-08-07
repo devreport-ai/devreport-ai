@@ -1,4 +1,6 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.application;
+
+import ai.devreport.backend.export.domain.ReportExportQueuedEvent;
 
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Component;

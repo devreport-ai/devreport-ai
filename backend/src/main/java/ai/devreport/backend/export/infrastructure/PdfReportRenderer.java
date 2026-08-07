@@ -1,4 +1,4 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.infrastructure;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +23,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
-class PdfReportRenderer {
+public class PdfReportRenderer {
 
 	private static final Logger log = LoggerFactory.getLogger(PdfReportRenderer.class);
 
@@ -33,7 +33,7 @@ class PdfReportRenderer {
 		this.exportRoot = Path.of(exportPath).toAbsolutePath().normalize();
 	}
 
-	Path render(UUID exportId, Map<String, Object> document) throws IOException {
+	public Path render(UUID exportId, Map<String, Object> document) throws IOException {
 		Files.createDirectories(exportRoot);
 		Path target = path(exportId);
 		Path temporary = Files.createTempFile(exportRoot, ".export-", ".tmp");
@@ -61,11 +61,11 @@ class PdfReportRenderer {
 		}
 	}
 
-	Path path(UUID exportId) {
+	public Path path(UUID exportId) {
 		return exportRoot.resolve(exportId + ".pdf");
 	}
 
-	boolean delete(UUID exportId) {
+	public boolean delete(UUID exportId) {
 		try {
 			Files.deleteIfExists(path(exportId));
 			return true;

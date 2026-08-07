@@ -1,4 +1,4 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.domain;
 
 import java.util.List;
 import java.util.Map;

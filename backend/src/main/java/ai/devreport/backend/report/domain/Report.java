@@ -1,4 +1,4 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.domain;
 
 import java.time.Instant;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class Report {
 	protected Report() {
 	}
 
-	Report(UUID projectId, Map<String, Object> document) {
+	public Report(UUID projectId, Map<String, Object> document) {
 		this.id = UUID.randomUUID();
 		this.projectId = projectId;
 		this.document = document;
@@ -48,7 +48,7 @@ public class Report {
 		this.updatedAt = createdAt;
 	}
 
-	void update(Map<String, Object> document) {
+	public void update(Map<String, Object> document) {
 		this.document = document;
 		this.updatedAt = Instant.now();
 	}
@@ -57,7 +57,7 @@ public class Report {
 		return id;
 	}
 
-	UUID getProjectId() {
+	public UUID getProjectId() {
 		return projectId;
 	}
 
@@ -65,15 +65,15 @@ public class Report {
 		return document;
 	}
 
-	long getVersion() {
+	public long getVersion() {
 		return version;
 	}
 
-	Instant getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 
-	Instant getUpdatedAt() {
+	public Instant getUpdatedAt() {
 		return updatedAt;
 	}
 }

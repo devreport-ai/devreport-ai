@@ -1,4 +1,10 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.application;
+
+import ai.devreport.backend.export.domain.ReportExport;
+import ai.devreport.backend.export.domain.ReportExportException;
+import ai.devreport.backend.export.domain.ReportExportQueuedEvent;
+import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
+import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -10,7 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import ai.devreport.backend.report.ReportService;
+import ai.devreport.backend.report.application.ReportService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -22,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-class ReportExportService {
+public class ReportExportService {
 
 	private final ReportExportRepository exports;
 	private final ReportService reports;
@@ -40,14 +46,14 @@ class ReportExportService {
 		this.ttl = ttl;
 	}
 
-	ReportExport create(UUID ownerId, UUID reportId) {
+	public ReportExport create(UUID ownerId, UUID reportId) {
 		reports.get(ownerId, reportId);
 		ReportExport export = exports.save(new ReportExport(reportId));
 		events.publishEvent(new ReportExportQueuedEvent(export.getId()));
 		return export;
 	}
 
-	ReportExport get(UUID ownerId, UUID exportId) {
+	public ReportExport get(UUID ownerId, UUID exportId) {
 		ReportExport export = exports.findOwned(exportId, ownerId).orElseThrow(ReportExportService::notFound);
 		if (export.isExpired() && renderer.delete(exportId)) {
 			export.expire();
@@ -55,7 +61,7 @@ class ReportExportService {
 		return export;
 	}
 
-	Path download(UUID ownerId, UUID exportId) {
+	public Path download(UUID ownerId, UUID exportId) {
 		ReportExport export = get(ownerId, exportId);
 		if (export.isExpired()) {
 			throw new ReportExportException(HttpStatus.GONE, "EXPORT_EXPIRED", "PDF 다운로드 기간이 만료되었습니다.");

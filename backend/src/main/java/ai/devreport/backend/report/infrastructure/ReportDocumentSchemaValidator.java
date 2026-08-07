@@ -1,4 +1,4 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.infrastructure;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

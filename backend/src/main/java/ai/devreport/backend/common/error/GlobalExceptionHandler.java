@@ -84,15 +84,15 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.report.ReportException.class)
-	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.ReportException exception) {
+	@ExceptionHandler(ai.devreport.backend.report.domain.ReportException.class)
+	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.domain.ReportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}
 
-	@ExceptionHandler(ai.devreport.backend.export.ReportExportException.class)
+	@ExceptionHandler(ai.devreport.backend.export.domain.ReportExportException.class)
 	ResponseEntity<ErrorResponse> handleReportExport(
-		ai.devreport.backend.export.ReportExportException exception) {
+		ai.devreport.backend.export.domain.ReportExportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
 			exception.code(), exception.getMessage(), null));
 	}

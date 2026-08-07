@@ -11,7 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import ai.devreport.backend.integration.ai.GenerationRequest;
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 

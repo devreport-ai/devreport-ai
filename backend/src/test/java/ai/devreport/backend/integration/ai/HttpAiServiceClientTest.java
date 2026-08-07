@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;

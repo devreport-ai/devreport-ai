@@ -1,4 +1,8 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.application;
+
+import ai.devreport.backend.report.domain.Report;
+import ai.devreport.backend.report.domain.ReportException;
+import ai.devreport.backend.report.infrastructure.ReportRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -1,4 +1,9 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.application;
+
+import ai.devreport.backend.report.domain.Report;
+import ai.devreport.backend.report.domain.ReportException;
+import ai.devreport.backend.report.infrastructure.ReportDocumentSchemaValidator;
+import ai.devreport.backend.report.infrastructure.ReportRepository;
 
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +35,7 @@ public class ReportService {
 		return reports.findOwned(reportId, ownerId).orElseThrow(ReportService::notFound);
 	}
 
-	Report update(UUID ownerId, UUID reportId, JsonNode document) {
+	public Report update(UUID ownerId, UUID reportId, JsonNode document) {
 		Report report = get(ownerId, reportId);
 		requireValid(document);
 		report.update(toMap(document));

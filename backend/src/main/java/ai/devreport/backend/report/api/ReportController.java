@@ -1,9 +1,10 @@
-package ai.devreport.backend.report;
+package ai.devreport.backend.report.api;
 
 import java.util.Map;
 import java.util.UUID;
 
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.report.application.ReportService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;

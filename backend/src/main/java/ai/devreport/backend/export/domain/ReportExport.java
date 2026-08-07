@@ -1,4 +1,4 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.domain;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "report_exports")
-class ReportExport {
+public class ReportExport {
 
 	@Id
 	private UUID id;
@@ -49,21 +49,21 @@ class ReportExport {
 	protected ReportExport() {
 	}
 
-	ReportExport(UUID reportId) {
+	public ReportExport(UUID reportId) {
 		this.id = UUID.randomUUID();
 		this.reportId = reportId;
 		this.status = Status.PENDING;
 		this.createdAt = Instant.now();
 	}
 
-	void start() {
+	public void start() {
 		if (status == Status.PENDING) {
 			status = Status.PROCESSING;
 			startedAt = Instant.now();
 		}
 	}
 
-	void complete(long size, Duration ttl) {
+	public void complete(long size, Duration ttl) {
 		if (status == Status.PROCESSING) {
 			status = Status.COMPLETED;
 			this.size = size;
@@ -72,7 +72,7 @@ class ReportExport {
 		}
 	}
 
-	void fail(String code, String message) {
+	public void fail(String code, String message) {
 		if (status == Status.PENDING || status == Status.PROCESSING) {
 			status = Status.FAILED;
 			failureCode = code;
@@ -81,57 +81,57 @@ class ReportExport {
 		}
 	}
 
-	void expire() {
+	public void expire() {
 		if (status == Status.COMPLETED && isExpired()) {
 			status = Status.EXPIRED;
 		}
 	}
 
-	boolean isExpired() {
+	public boolean isExpired() {
 		return expiresAt != null && !Instant.now().isBefore(expiresAt);
 	}
 
-	UUID getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	UUID getReportId() {
+	public UUID getReportId() {
 		return reportId;
 	}
 
-	Status getStatus() {
+	public Status getStatus() {
 		return status;
 	}
 
-	Long getSize() {
+	public Long getSize() {
 		return size;
 	}
 
-	String getFailureCode() {
+	public String getFailureCode() {
 		return failureCode;
 	}
 
-	String getFailureMessage() {
+	public String getFailureMessage() {
 		return failureMessage;
 	}
 
-	Instant getExpiresAt() {
+	public Instant getExpiresAt() {
 		return expiresAt;
 	}
 
-	Instant getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 
-	Instant getStartedAt() {
+	public Instant getStartedAt() {
 		return startedAt;
 	}
 
-	Instant getCompletedAt() {
+	public Instant getCompletedAt() {
 		return completedAt;
 	}
 
-	enum Status {
+	public enum Status {
 		PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED
 	}
 }

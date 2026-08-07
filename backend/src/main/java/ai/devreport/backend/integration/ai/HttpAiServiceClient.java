@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;

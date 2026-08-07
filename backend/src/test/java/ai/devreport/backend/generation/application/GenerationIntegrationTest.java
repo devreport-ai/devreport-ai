@@ -19,7 +19,7 @@ import ai.devreport.backend.integration.ai.AiHealthResponse;
 import ai.devreport.backend.integration.ai.AiServiceClient;
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.integration.ai.MockAiServiceClient;
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

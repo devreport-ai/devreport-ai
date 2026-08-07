@@ -1,10 +1,12 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.api;
 
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
 
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.export.application.ReportExportService;
+import ai.devreport.backend.export.domain.ReportExport;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;

@@ -1,4 +1,8 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.application;
+
+import ai.devreport.backend.export.domain.ReportExport;
+import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
+import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,8 +17,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.UUID;
 
-import ai.devreport.backend.report.Report;
-import ai.devreport.backend.report.ReportService;
+import ai.devreport.backend.report.domain.Report;
+import ai.devreport.backend.report.application.ReportService;
 import com.jayway.jsonpath.JsonPath;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;

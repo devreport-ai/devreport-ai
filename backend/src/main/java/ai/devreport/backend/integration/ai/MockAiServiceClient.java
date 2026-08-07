@@ -3,7 +3,7 @@ package ai.devreport.backend.integration.ai;
 import java.util.List;
 import java.util.Map;
 
-import ai.devreport.backend.report.ReportDocument;
+import ai.devreport.backend.report.domain.ReportDocument;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 

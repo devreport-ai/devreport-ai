@@ -12,9 +12,9 @@ import java.util.UUID;
 
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.project.application.ProjectService;
-import ai.devreport.backend.report.Report;
-import ai.devreport.backend.report.ReportDocument;
-import ai.devreport.backend.report.ReportService;
+import ai.devreport.backend.report.domain.Report;
+import ai.devreport.backend.report.domain.ReportDocument;
+import ai.devreport.backend.report.application.ReportService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;

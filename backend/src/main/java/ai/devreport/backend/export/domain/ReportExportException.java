@@ -1,4 +1,4 @@
-package ai.devreport.backend.export;
+package ai.devreport.backend.export.domain;
 
 import org.springframework.http.HttpStatus;
 
@@ -7,7 +7,7 @@ public class ReportExportException extends RuntimeException {
 	private final HttpStatus status;
 	private final String code;
 
-	ReportExportException(HttpStatus status, String code, String message) {
+	public ReportExportException(HttpStatus status, String code, String message) {
 		super(message);
 		this.status = status;
 		this.code = code;
