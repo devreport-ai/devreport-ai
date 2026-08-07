@@ -27,6 +27,9 @@ management:
 ai:
   service:
     url: ${AI_SERVICE_URL:http://localhost:8000}
+    connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3s}
+    response-timeout: ${AI_SERVICE_RESPONSE_TIMEOUT:300s}
+    mock: ${AI_SERVICE_MOCK:false}
 
 auth:
   jwt-secret: ${JWT_SECRET:}
