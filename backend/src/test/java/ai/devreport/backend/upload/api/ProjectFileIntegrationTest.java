@@ -162,6 +162,48 @@ class ProjectFileIntegrationTest {
 	}
 
 	@Test
+	void servesPreviewableFilesInlineAndOtherFilesAsAttachments() throws Exception {
+		String token = signupAndLogin("file-content@example.com");
+		String projectId = createProject(token);
+		byte[] png = new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+		String imageId = upload(token, projectId, new TestFile("화면.png", "image/png", png));
+		byte[] text = "보고서 메모".getBytes(StandardCharsets.UTF_8);
+		String textId = upload(token, projectId, new TestFile("notes.txt", "text/plain", text));
+
+		var imageResponse = mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andReturn().getResponse();
+		assertThat(imageResponse.getContentAsByteArray()).containsExactly(png);
+		assertThat(imageResponse.getContentType()).isEqualTo("image/png");
+		assertThat(imageResponse.getContentLength()).isEqualTo(png.length);
+		assertThat(imageResponse.getHeader("Cache-Control")).isEqualTo("no-store");
+		assertThat(imageResponse.getHeader("Content-Disposition"))
+			.startsWith("inline;")
+			.contains("filename*=UTF-8''");
+
+		var textResponse = mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, textId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andReturn().getResponse();
+		assertThat(textResponse.getContentAsByteArray()).containsExactly(text);
+		assertThat(textResponse.getContentType()).isEqualTo("text/plain");
+		assertThat(textResponse.getHeader("Content-Disposition")).startsWith("attachment;");
+
+		for (TestFile preview : List.of(
+			new TestFile("screen.jpg", "image/jpeg",
+				new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xe0}),
+			new TestFile("document.pdf", "application/pdf",
+				"%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII)))) {
+			String fileId = upload(token, projectId, preview);
+			assertThat(mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getHeader("Content-Disposition")).startsWith("inline;");
+		}
+	}
+
+	@Test
 	void protectsFilesWithProjectOwnership() throws Exception {
 		String ownerToken = signupAndLogin("file-project-owner@example.com");
 		String otherToken = signupAndLogin("file-project-other@example.com");
@@ -172,6 +214,17 @@ class ProjectFileIntegrationTest {
 				.header("Authorization", bearer(otherToken)))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+
+		String fileId = upload(ownerToken, projectId,
+			new TestFile("notes.txt", "text/plain", "owner".getBytes(StandardCharsets.UTF_8)));
+		mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(otherToken)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+		mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, UUID.randomUUID())
+				.header("Authorization", bearer(ownerToken)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
 	}
 
 	@Test
@@ -185,6 +238,10 @@ class ProjectFileIntegrationTest {
 			.andReturn().getResponse().getContentAsString();
 		String fileId = JsonPath.read(body, "$.fileId");
 		Files.delete(uploadRoot.resolve(projectId).resolve(fileId));
+		mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isInternalServerError())
+			.andExpect(jsonPath("$.code").value("FILE_STORAGE_ERROR"));
 
 		mvc.perform(get("/api/projects/{projectId}/files", projectId)
 				.header("Authorization", bearer(token)))
@@ -197,6 +254,20 @@ class ProjectFileIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.totalElements").value(0));
+	}
+
+	@Test
+	void rejectsStoredFileWhenItsSizeDoesNotMatchMetadata() throws Exception {
+		String token = signupAndLogin("mismatched-file@example.com");
+		String projectId = createProject(token);
+		String fileId = upload(token, projectId,
+			new TestFile("notes.txt", "text/plain", "original".getBytes(StandardCharsets.UTF_8)));
+		Files.writeString(uploadRoot.resolve(projectId).resolve(fileId), "tampered-content");
+
+		mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isInternalServerError())
+			.andExpect(jsonPath("$.code").value("FILE_STORAGE_ERROR"));
 	}
 
 	@Test
@@ -240,6 +311,15 @@ class ProjectFileIntegrationTest {
 			.andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.projectId");
+	}
+
+	private String upload(String token, String projectId, TestFile file) throws Exception {
+		String body = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(file.multipartFile())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(body, "$.fileId");
 	}
 
 	private String signupAndLogin(String email) throws Exception {
