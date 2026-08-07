@@ -10,8 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 class GenerationJobWorker {
@@ -27,7 +25,6 @@ class GenerationJobWorker {
 	}
 
 	@Async("generationExecutor")
-	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	void process(GenerationQueuedEvent event) {
 		Optional<GenerationRequest> request = jobs.start(event.jobId());
 		if (request.isEmpty()) {

@@ -16,7 +16,7 @@ class GenerationAsyncConfig {
 		executor.setMaxPoolSize(4);
 		executor.setQueueCapacity(100);
 		executor.setThreadNamePrefix("generation-");
-		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
 		return executor;
 	}
 }
