@@ -26,7 +26,7 @@ class GenerationJobWorker {
 		this.aiService = aiService;
 	}
 
-	@Async
+	@Async("generationExecutor")
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	void process(GenerationQueuedEvent event) {
 		Optional<GenerationRequest> request = jobs.start(event.jobId());

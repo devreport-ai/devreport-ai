@@ -46,6 +46,7 @@ class HttpAiServiceClientTest {
 		AtomicReference<String> requestBody = new AtomicReference<>();
 		startServer(exchange -> {
 			assertThat(exchange.getRequestMethod()).isEqualTo("POST");
+			assertThat(exchange.getRequestURI().getPath()).isEqualTo("/internal/ai/reports/generate");
 			requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
 			respond(exchange, 200, """
 				{"metadata":{"title":"생성 보고서"},"sections":[]}

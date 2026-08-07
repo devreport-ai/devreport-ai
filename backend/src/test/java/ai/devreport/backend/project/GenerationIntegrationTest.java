@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +62,11 @@ class GenerationIntegrationTest {
 		String projectId = createProject(token, "생성 프로젝트");
 
 		aiService.prepare(false);
-		String firstJobId = createGeneration(token, projectId);
+		String firstJobId = createGeneration(token, projectId, """
+			{"document":{"metadata":{"title":"요청 보고서","author":"김예찬","course":"소프트웨어공학",
+			"date":"2026-08-07"},"sections":[{"id":"intro","title":"서론",
+			"blocks":[{"type":"paragraph","text":"요청 본문"}]}]}}
+			""");
 		assertThat(aiService.awaitStarted()).isTrue();
 
 		mvc.perform(post("/api/projects/{projectId}/generations", projectId)
@@ -78,7 +84,12 @@ class GenerationIntegrationTest {
 			.andExpect(jsonPath("$.progress").value(100))
 			.andExpect(jsonPath("$.currentStage").value("COMPLETED"));
 		GenerationJob completed = jobs.findById(UUID.fromString(firstJobId)).orElseThrow();
-		assertThat(completed.getRequestDocument().document()).isNull();
+		ReportDocument requestDocument = completed.getRequestDocument().document();
+		assertThat(requestDocument.metadata()).isEqualTo(
+			new ReportDocument.Metadata("요청 보고서", "김예찬", "소프트웨어공학", "2026-08-07"));
+		assertThat(requestDocument.sections()).containsExactly(
+			new ReportDocument.Section("intro", "서론",
+				List.of(Map.of("type", "paragraph", "text", "요청 본문"))));
 		assertThat(completed.getResultDocument().metadata().title()).isEqualTo("Spring Boot 실습보고서");
 
 		aiService.prepare(true);
@@ -125,8 +136,16 @@ class GenerationIntegrationTest {
 	}
 
 	private String createGeneration(String token, String projectId) throws Exception {
-		String body = mvc.perform(post("/api/projects/{projectId}/generations", projectId)
-				.header("Authorization", bearer(token)))
+		return createGeneration(token, projectId, null);
+	}
+
+	private String createGeneration(String token, String projectId, String requestBody) throws Exception {
+		var request = post("/api/projects/{projectId}/generations", projectId)
+			.header("Authorization", bearer(token));
+		if (requestBody != null) {
+			request.contentType(MediaType.APPLICATION_JSON).content(requestBody);
+		}
+		String body = mvc.perform(request)
 			.andExpect(status().isAccepted())
 			.andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.jobId");
