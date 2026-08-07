@@ -51,13 +51,17 @@ class SafeZipExtractorTest {
 
 	@Test
 	void rejectsZipSlipAndCleansExtractionDirectory() throws Exception {
-		Path zip = zip("zip-slip.zip", Map.of("../outside.java", new byte[] {1}));
-		Path target = temporaryDirectory.resolve("zip-slip-target");
+		int index = 0;
+		for (String entry : new String[] {"../outside.java", "/outside.java", "C:/outside.java",
+			"C:\\outside.java"}) {
+			Path zip = zip("invalid-path-" + index + ".zip", Map.of(entry, new byte[] {1}));
+			Path target = temporaryDirectory.resolve("invalid-path-target-" + index++);
 
-		assertThatThrownBy(() -> extractor.extract(zip, target))
-			.isInstanceOfSatisfying(ProjectFileException.class,
-				exception -> assertThat(exception.code()).isEqualTo("ZIP_PATH_INVALID"));
-		assertThat(target).doesNotExist();
+			assertThatThrownBy(() -> extractor.extract(zip, target))
+				.isInstanceOfSatisfying(ProjectFileException.class,
+					exception -> assertThat(exception.code()).isEqualTo("ZIP_PATH_INVALID"));
+			assertThat(target).doesNotExist();
+		}
 		assertThat(temporaryDirectory.resolve("outside.java")).doesNotExist();
 	}
 
