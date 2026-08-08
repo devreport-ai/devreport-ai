@@ -1,5 +1,6 @@
 package ai.devreport.backend.upload.api;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -60,16 +61,25 @@ class ProjectFileController {
 	ResponseEntity<InputStreamResource> content(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@PathVariable UUID fileId) {
 		ProjectFileService.FileContent content = fileService.content(AuthenticatedUser.id(jwt), projectId, fileId);
-		UploadedFile file = content.file();
-		ContentDisposition disposition = isPreviewable(file)
-			? ContentDisposition.inline().filename(file.getOriginalName(), StandardCharsets.UTF_8).build()
-			: ContentDisposition.attachment().filename(file.getOriginalName(), StandardCharsets.UTF_8).build();
-		return ResponseEntity.ok()
-			.contentType(MediaType.parseMediaType(file.getContentType()))
-			.contentLength(file.getSize())
-			.cacheControl(CacheControl.noStore())
-			.header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-			.body(new InputStreamResource(content.inputStream()));
+		try {
+			UploadedFile file = content.file();
+			ContentDisposition disposition = isPreviewable(file)
+				? ContentDisposition.inline().filename(file.getOriginalName(), StandardCharsets.UTF_8).build()
+				: ContentDisposition.attachment().filename(file.getOriginalName(), StandardCharsets.UTF_8).build();
+			return ResponseEntity.ok()
+				.contentType(MediaType.parseMediaType(file.getContentType()))
+				.contentLength(file.getSize())
+				.cacheControl(CacheControl.noStore())
+				.header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+				.body(new InputStreamResource(content.inputStream()));
+		} catch (RuntimeException exception) {
+			try {
+				content.inputStream().close();
+			} catch (IOException closeException) {
+				exception.addSuppressed(closeException);
+			}
+			throw exception;
+		}
 	}
 
 	@DeleteMapping("/{fileId}")

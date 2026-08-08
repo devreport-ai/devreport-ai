@@ -1,8 +1,14 @@
 package ai.devreport.backend.upload.api;
 
+import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.upload.application.ProjectTrashService;
+import ai.devreport.backend.upload.domain.UploadedFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -12,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -277,7 +285,7 @@ class ProjectFileIntegrationTest {
 		String fileId = upload(token, projectId,
 			new TestFile("notes.txt", "text/plain", "original".getBytes(StandardCharsets.UTF_8)));
 		Path stored = uploadRoot.resolve(projectId).resolve(fileId);
-		Path target = Files.writeString(uploadRoot.resolve("link-target.txt"), "outside");
+		Path target = Files.writeString(uploadRoot.resolve("link-target.txt"), "external");
 		Files.delete(stored);
 		Files.createSymbolicLink(stored, target);
 
@@ -285,6 +293,24 @@ class ProjectFileIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isInternalServerError())
 			.andExpect(jsonPath("$.code").value("FILE_STORAGE_ERROR"));
+	}
+
+	@Test
+	void closesOpenedFileWhenResponseHeadersCannotBeBuilt() throws Exception {
+		ProjectFileService service = mock(ProjectFileService.class);
+		ProjectFileController controller = new ProjectFileController(service);
+		UUID ownerId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		UUID fileId = UUID.randomUUID();
+		var jwt = mock(org.springframework.security.oauth2.jwt.Jwt.class);
+		when(jwt.getSubject()).thenReturn(ownerId.toString());
+		UploadedFile file = new UploadedFile(projectId, "notes.txt", "invalid content type", 1);
+		InputStream inputStream = mock(InputStream.class);
+		when(service.content(ownerId, projectId, fileId))
+			.thenReturn(new ProjectFileService.FileContent(file, inputStream));
+
+		assertThrows(InvalidMediaTypeException.class, () -> controller.content(jwt, projectId, fileId));
+		verify(inputStream).close();
 	}
 
 	@Test
