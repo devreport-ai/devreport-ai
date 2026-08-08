@@ -6,14 +6,18 @@ import ai.devreport.backend.upload.infrastructure.SafeZipExtractor;
 import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
+import java.nio.channels.Channels;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
@@ -117,6 +121,26 @@ public class ProjectFileService {
 			}
 		});
 		return uploadedFiles;
+	}
+
+	@Transactional(readOnly = true)
+	public FileContent content(UUID ownerId, UUID projectId, UUID fileId) {
+		projects.requireOwned(ownerId, projectId);
+		UploadedFile file = files.findByIdAndProjectId(fileId, projectId)
+			.orElseThrow(ProjectFileService::fileNotFound);
+		Path path = storedPath(file);
+		try {
+			var channel = Files.newByteChannel(path, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS));
+			if (channel.size() != file.getSize()) {
+				channel.close();
+				log.error("Stored file is inconsistent with metadata: projectId={}, fileId={}", projectId, fileId);
+				throw storageError(null);
+			}
+			return new FileContent(file, Channels.newInputStream(channel));
+		} catch (IOException exception) {
+			log.error("Failed to open stored file: projectId={}, fileId={}", projectId, fileId, exception);
+			throw storageError(exception);
+		}
 	}
 
 	public void stageProjectPurge(UUID projectId) {
@@ -300,10 +324,15 @@ public class ProjectFileService {
 	private boolean isStoredFileConsistent(UploadedFile file) {
 		Path path = storedPath(file);
 		try {
-			return Files.isRegularFile(path) && Files.size(path) == file.getSize();
+			BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class,
+				LinkOption.NOFOLLOW_LINKS);
+			return attributes.isRegularFile() && attributes.size() == file.getSize();
 		} catch (IOException exception) {
 			return false;
 		}
+	}
+
+	public record FileContent(UploadedFile file, InputStream inputStream) {
 	}
 
 	private static Path move(Path source, Path target) throws IOException {
