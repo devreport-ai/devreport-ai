@@ -11,21 +11,23 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class ErrorCode(StrEnum):
-    """docs 19번 공통 에러 코드 중 AI Service가 반환할 수 있는 항목."""
+    """Backend-AI 내부 생성 계약에서 사용하는 오류 코드."""
 
-    INVALID_REQUEST = "INVALID_REQUEST"
-    INVALID_API_KEY = "INVALID_API_KEY"
-    AI_REQUEST_TIMEOUT = "AI_REQUEST_TIMEOUT"
-    AI_RESPONSE_INVALID = "AI_RESPONSE_INVALID"
-    GENERATION_FAILED = "GENERATION_FAILED"
+    AI_INVALID_REQUEST = "AI_INVALID_REQUEST"
+    AI_FILE_PROCESSING_FAILED = "AI_FILE_PROCESSING_FAILED"
+    AI_GENERATION_FAILED = "AI_GENERATION_FAILED"
+    AI_INVALID_RESPONSE = "AI_INVALID_RESPONSE"
+    AI_TIMEOUT = "AI_TIMEOUT"
+    AI_UNAVAILABLE = "AI_UNAVAILABLE"
 
 
 _STATUS_BY_CODE: dict[ErrorCode, int] = {
-    ErrorCode.INVALID_REQUEST: 400,
-    ErrorCode.INVALID_API_KEY: 401,
-    ErrorCode.AI_REQUEST_TIMEOUT: 504,
-    ErrorCode.AI_RESPONSE_INVALID: 502,
-    ErrorCode.GENERATION_FAILED: 500,
+    ErrorCode.AI_INVALID_REQUEST: 400,
+    ErrorCode.AI_FILE_PROCESSING_FAILED: 422,
+    ErrorCode.AI_GENERATION_FAILED: 500,
+    ErrorCode.AI_INVALID_RESPONSE: 502,
+    ErrorCode.AI_TIMEOUT: 504,
+    ErrorCode.AI_UNAVAILABLE: 503,
 }
 
 
@@ -96,7 +98,7 @@ async def http_exception_handler(_request: Request, exc: StarletteHTTPException)
     변환하지 않으면 {"detail": "Not Found"} 형태가 그대로 나가서
     Backend가 응답 파싱을 두 갈래로 처리해야 한다.
     """
-    code = ErrorCode.INVALID_REQUEST if exc.status_code < 500 else ErrorCode.GENERATION_FAILED
+    code = ErrorCode.AI_INVALID_REQUEST if exc.status_code < 500 else ErrorCode.AI_GENERATION_FAILED
     return JSONResponse(
         status_code=exc.status_code,
         content=build_error_payload(code, str(exc.detail)),
@@ -125,7 +127,7 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=422,
         content=build_error_payload(
-            ErrorCode.INVALID_REQUEST,
+            ErrorCode.AI_INVALID_REQUEST,
             "요청 형식이 올바르지 않습니다.",
             {"violations": violations},
         ),
@@ -137,7 +139,7 @@ async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResp
     return JSONResponse(
         status_code=500,
         content=build_error_payload(
-            ErrorCode.GENERATION_FAILED,
+            ErrorCode.AI_GENERATION_FAILED,
             "AI Service 내부 오류가 발생했습니다.",
             {"exception": type(exc).__name__},
         ),

@@ -38,7 +38,7 @@ def probe_client() -> TestClient:
 
     @probe.get("/boom")
     def boom() -> None:
-        raise AIServiceError(ErrorCode.AI_RESPONSE_INVALID, "AI 응답 형식이 올바르지 않습니다.")
+        raise AIServiceError(ErrorCode.AI_INVALID_RESPONSE, "AI 응답 형식이 올바르지 않습니다.")
 
     @probe.get("/crash")
     def crash() -> None:
@@ -53,7 +53,7 @@ def test_unknown_path_uses_common_error_payload():
     assert response.status_code == 404
     body = response.json()
     assert set(body) == COMMON_KEYS
-    assert body["code"] == ErrorCode.INVALID_REQUEST
+    assert body["code"] == ErrorCode.AI_INVALID_REQUEST
 
 
 def test_wrong_method_uses_common_error_payload():
@@ -62,7 +62,7 @@ def test_wrong_method_uses_common_error_payload():
     assert response.status_code == 405
     body = response.json()
     assert set(body) == COMMON_KEYS
-    assert body["code"] == ErrorCode.INVALID_REQUEST
+    assert body["code"] == ErrorCode.AI_INVALID_REQUEST
     # Starlette 기본 동작인 Allow 헤더를 잃지 않아야 한다.
     assert "allow" in {k.lower() for k in response.headers}
 
@@ -73,7 +73,7 @@ def test_validation_error_uses_common_error_payload(probe_client: TestClient):
     assert response.status_code == 422
     body = response.json()
     assert set(body) == COMMON_KEYS
-    assert body["code"] == ErrorCode.INVALID_REQUEST
+    assert body["code"] == ErrorCode.AI_INVALID_REQUEST
 
     violations = {v["field"]: v for v in body["details"]["violations"]}
     assert violations["body.project_id"]["message"] == "필수 항목이 누락되었습니다."
@@ -111,7 +111,7 @@ def test_ai_service_error_maps_to_declared_status(probe_client: TestClient):
     assert response.status_code == 502
     body = response.json()
     assert set(body) == COMMON_KEYS
-    assert body["code"] == ErrorCode.AI_RESPONSE_INVALID
+    assert body["code"] == ErrorCode.AI_INVALID_RESPONSE
 
 
 def test_unhandled_error_uses_common_error_payload(probe_client: TestClient):
@@ -120,7 +120,7 @@ def test_unhandled_error_uses_common_error_payload(probe_client: TestClient):
     assert response.status_code == 500
     body = response.json()
     assert set(body) == COMMON_KEYS
-    assert body["code"] == ErrorCode.GENERATION_FAILED
+    assert body["code"] == ErrorCode.AI_GENERATION_FAILED
     # 예외 원문에 키가 섞여 있어도 응답에는 예외 타입만 남아야 한다.
     assert FAKE_KEY not in response.text
     assert body["details"] == {"exception": "RuntimeError"}
