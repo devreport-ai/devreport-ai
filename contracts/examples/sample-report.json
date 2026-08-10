@@ -11,13 +11,48 @@
       "title": "1. 프로젝트 개요",
       "blocks": [
         {
+          "id": "overview-summary",
           "type": "paragraph",
-          "text": "본 실습에서는 REST API를 구현하였다."
+          "content": "본 실습에서는 REST API를 구현하였다."
         },
         {
+          "id": "overview-features",
+          "type": "bulletList",
+          "items": [
+            "**프로젝트 CRUD API**",
+            "JWT 기반 인증"
+          ]
+        },
+        {
+          "id": "overview-code",
+          "type": "code",
+          "language": "java",
+          "code": "@SpringBootApplication\npublic class BackendApplication {}"
+        },
+        {
+          "id": "overview-table",
+          "type": "table",
+          "columns": ["항목", "결과"],
+          "rows": [
+            ["빌드", "성공"],
+            ["테스트", "통과"]
+          ]
+        },
+        {
+          "id": "overview-image",
           "type": "image",
-          "fileId": "sample-image-001",
-          "caption": "그림 1. 애플리케이션 실행 결과"
+          "fileId": "00000000-0000-4000-8000-000000000001",
+          "alt": "애플리케이션 실행 화면"
+        },
+        {
+          "id": "overview-callout",
+          "type": "callout",
+          "title": "검증 결과",
+          "content": "전체 테스트가 통과했다."
+        },
+        {
+          "id": "overview-page-break",
+          "type": "pageBreak"
         }
       ]
     }

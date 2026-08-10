@@ -92,9 +92,13 @@ public class PdfReportRenderer {
 		String type = text(block.get("type"));
 		switch (type) {
 			case "pageBreak" -> writer.pageBreak();
-			case "code" -> writer.write(text(block.get("text")), 9, 14);
-			case "image" -> writer.write("[이미지] " + text(block.get("caption")), 10, 16);
-			case "paragraph" -> writer.write(text(block.get("text")), 11, 18);
+			case "code" -> writer.write(text(block.get("code")), 9, 14);
+			case "image" -> {
+				String caption = text(block.get("caption"));
+				writer.write("[이미지] " + (caption.isBlank() ? text(block.get("alt")) : caption), 10, 16);
+			}
+			case "paragraph" -> writer.write(text(block.get("content")), 11, 18);
+			case "callout" -> writer.write(collectText(block), 11, 18);
 			default -> writer.write(collectText(block), 11, 18);
 		}
 	}
@@ -109,7 +113,8 @@ public class PdfReportRenderer {
 		}
 		if (value instanceof Map<?, ?> values) {
 			return String.join("\n", values.entrySet().stream()
-				.filter(entry -> !entry.getKey().equals("type") && !entry.getKey().equals("fileId"))
+				.filter(entry -> !entry.getKey().equals("id") && !entry.getKey().equals("type")
+					&& !entry.getKey().equals("fileId"))
 				.map(Map.Entry::getValue).map(PdfReportRenderer::collectText)
 				.filter(text -> !text.isBlank()).toList());
 		}

@@ -21,8 +21,8 @@ public class MockAiServiceClient implements AiServiceClient {
 		return new ReportDocument(
 			new ReportDocument.Metadata("Spring Boot 실습보고서", "김예찬", "SKALA Backend", "2026-08-06"),
 			List.of(new ReportDocument.Section("overview", "1. 프로젝트 개요", List.of(
-				Map.of("type", "paragraph", "text", "본 실습에서는 REST API를 구현하였다."),
-				Map.of("type", "image", "fileId", "sample-image-001", "caption", "그림 1. 애플리케이션 실행 결과")
+				Map.of("id", "overview-summary", "type", "paragraph", "content",
+					"본 실습에서는 REST API를 구현하였다.")
 			)))
 		);
 	}
