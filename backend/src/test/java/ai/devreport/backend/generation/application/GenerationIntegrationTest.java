@@ -68,7 +68,7 @@ class GenerationIntegrationTest {
 		String firstJobId = createGeneration(token, projectId, """
 			{"document":{"metadata":{"title":"요청 보고서","author":"김예찬","course":"소프트웨어공학",
 			"date":"2026-08-07"},"sections":[{"id":"intro","title":"서론",
-			"blocks":[{"type":"paragraph","text":"요청 본문"}]}]}}
+			"blocks":[{"id":"intro-summary","type":"paragraph","content":"요청 본문"}]}]}}
 			""");
 		assertThat(aiService.awaitStarted()).isTrue();
 
@@ -94,7 +94,7 @@ class GenerationIntegrationTest {
 			new ReportDocument.Metadata("요청 보고서", "김예찬", "소프트웨어공학", "2026-08-07"));
 		assertThat(requestDocument.sections()).containsExactly(
 			new ReportDocument.Section("intro", "서론",
-				List.of(Map.of("type", "paragraph", "text", "요청 본문"))));
+				List.of(Map.of("id", "intro-summary", "type", "paragraph", "content", "요청 본문"))));
 		assertThat(completed.getResultDocument().metadata().title()).isEqualTo("Spring Boot 실습보고서");
 		mvc.perform(get("/api/reports/{reportId}", completed.getReportId())
 				.header("Authorization", bearer(token)))
