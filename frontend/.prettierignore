@@ -1,0 +1,6 @@
+# 빌드 산출물과 의존성은 우리가 쓴 코드가 아니므로 포맷 대상에서 제외한다.
+dist
+node_modules
+
+# lock 파일은 npm 이 관리한다. 포맷을 건드리면 불필요한 diff 가 생긴다.
+package-lock.json
