@@ -33,6 +33,7 @@ ai:
     url: ${AI_SERVICE_URL:http://localhost:8000}
     connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3s}
     response-timeout: ${AI_SERVICE_RESPONSE_TIMEOUT:300s}
+    internal-token: ${AI_INTERNAL_TOKEN:}
     mock: ${AI_SERVICE_MOCK:false}
 
 auth:

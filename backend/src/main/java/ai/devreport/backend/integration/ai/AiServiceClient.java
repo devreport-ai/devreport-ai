@@ -6,5 +6,5 @@ public interface AiServiceClient {
 
 	AiHealthResponse health();
 
-	ReportDocument generate(GenerationRequest request);
+	ReportDocument generate(GenerationRequest request, GenerationBundle bundle);
 }

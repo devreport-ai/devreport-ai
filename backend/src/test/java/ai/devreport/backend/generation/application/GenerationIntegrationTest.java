@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import ai.devreport.backend.integration.ai.AiHealthResponse;
 import ai.devreport.backend.integration.ai.AiServiceClient;
 import ai.devreport.backend.integration.ai.GenerationRequest;
+import ai.devreport.backend.integration.ai.GenerationBundle;
 import ai.devreport.backend.integration.ai.MockAiServiceClient;
 import ai.devreport.backend.report.domain.ReportDocument;
 import com.jayway.jsonpath.JsonPath;
@@ -103,6 +104,7 @@ class GenerationIntegrationTest {
 
 		aiService.release();
 		awaitStatus(token, firstJobId, "COMPLETED");
+		assertThat(aiService.bundleRoot()).doesNotExist();
 		GenerationJob completed = jobs.findById(UUID.fromString(firstJobId)).orElseThrow();
 		mvc.perform(get("/api/generations/{jobId}", firstJobId)
 				.header("Authorization", bearer(token)))
@@ -128,6 +130,7 @@ class GenerationIntegrationTest {
 		assertThat(aiService.awaitStarted()).isTrue();
 		aiService.release();
 		awaitStatus(token, failedJobId, "FAILED");
+		assertThat(aiService.bundleRoot()).doesNotExist();
 		mvc.perform(get("/api/generations/{jobId}", failedJobId)
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
@@ -185,6 +188,32 @@ class GenerationIntegrationTest {
 					""".formatted(fileId)))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
+	}
+
+	@Test
+	void cancelsRunningJobAndDeletesBundle() throws Exception {
+		String token = signupAndLogin("generation-cancel@example.com");
+		String otherToken = signupAndLogin("generation-cancel-other@example.com");
+		String projectId = createProject(token, "취소 프로젝트");
+		String fileId = upload(token, projectId, "cancel.txt", "취소 자료");
+
+		aiService.prepare(false);
+		String jobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"취소 테스트"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		mvc.perform(delete("/api/generations/{jobId}", jobId)
+				.header("Authorization", bearer(otherToken)))
+			.andExpect(status().isNotFound());
+
+		mvc.perform(delete("/api/generations/{jobId}", jobId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		awaitStatus(token, jobId, "CANCELED");
+		awaitBundleDeleted();
+		GenerationJob canceled = jobs.findById(UUID.fromString(jobId)).orElseThrow();
+		assertThat(canceled.getCurrentStage()).isEqualTo(GenerationJob.Stage.CANCELED);
+		assertThat(canceled.getCompletedAt()).isNotNull();
 	}
 
 	@Test
@@ -258,6 +287,16 @@ class GenerationIntegrationTest {
 		throw new AssertionError("Generation did not reach status " + expected);
 	}
 
+	private void awaitBundleDeleted() throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			if (aiService.bundleRoot() != null && Files.notExists(aiService.bundleRoot())) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("Generation bundle was not deleted");
+	}
+
 	private String createProject(String token, String name) throws Exception {
 		String body = mvc.perform(post("/api/projects")
 				.header("Authorization", bearer(token))
@@ -304,11 +343,13 @@ class GenerationIntegrationTest {
 		private volatile CountDownLatch started = new CountDownLatch(1);
 		private volatile CountDownLatch released = new CountDownLatch(1);
 		private volatile boolean fail;
+		private volatile Path bundleRoot;
 
 		void prepare(boolean shouldFail) {
 			started = new CountDownLatch(1);
 			released = new CountDownLatch(1);
 			fail = shouldFail;
+			bundleRoot = null;
 		}
 
 		boolean awaitStarted() throws InterruptedException {
@@ -319,13 +360,19 @@ class GenerationIntegrationTest {
 			released.countDown();
 		}
 
+		Path bundleRoot() {
+			return bundleRoot;
+		}
+
 		@Override
 		public AiHealthResponse health() {
 			return new AiHealthResponse("UP", "test", "test", "test", true, true);
 		}
 
 		@Override
-		public ReportDocument generate(GenerationRequest request) {
+		public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
+			bundleRoot = bundle.root();
+			assertThat(bundleRoot).exists();
 			started.countDown();
 			try {
 				if (!released.await(2, TimeUnit.SECONDS)) {
@@ -338,7 +385,7 @@ class GenerationIntegrationTest {
 			if (fail) {
 				throw new IllegalStateException("AI failed");
 			}
-			return new MockAiServiceClient().generate(request);
+			return new MockAiServiceClient().generate(request, bundle);
 		}
 	}
 }

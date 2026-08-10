@@ -49,6 +49,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` |
 | `AI_SERVICE_RESPONSE_TIMEOUT` | `300s` |
 | `AI_SERVICE_MOCK` | `false` |
+| `AI_INTERNAL_TOKEN` | 없음 (실제 AI 생성 호출 시 필수) |
 | `UPLOAD_PATH` | `./uploads` |
 | `EXPORT_PATH` | `./generated-reports` |
 | `EXPORT_TTL` | `24h` |
@@ -85,6 +86,9 @@ Client는 `AI_SERVICE_URL`의 `GET /health`를 호출한다. 연결 실패와 5x
 응답 시간 초과는 504로 변환한다. 로컬에서 FastAPI 없이 확인하려면
 `AI_SERVICE_MOCK=true`를 설정하며, Mock Client는 공통 계약의 샘플 ReportDocument를 반환한다.
 
+보고서 생성은 선택 파일을 임시 bundle로 정제한 뒤 `X-Internal-Token` 헤더와
+`multipart/form-data`로 AI Service에 전달한다. bundle은 성공·실패·취소 모두 호출 종료 즉시 삭제한다.
+
 | 코드 | HTTP 상태 | 설명 |
 | --- | --- | --- |
 | `AI_SERVICE_ERROR` | 502 | AI Service가 오류 응답 반환 |
@@ -97,13 +101,14 @@ Client는 `AI_SERVICE_URL`의 `GET /health`를 호출한다. 연결 실패와 5x
 `POST /api/projects/{projectId}/generations`는 생성 작업을 `PENDING`으로 저장한 뒤 즉시
 Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프로젝트당 활성 작업은 하나만 허용한다.
 
-- 상태: `PENDING` → `PROCESSING` → `COMPLETED` 또는 `FAILED`
+- 상태: `PENDING` → `PROCESSING` → `COMPLETED`, `FAILED` 또는 `CANCELED`
 - 진행률: `0` → `10` → `100`(성공 시)
 - 단계: `QUEUED` → `CALLING_AI` → `COMPLETED` 또는 `FAILED`
 - 재시작 시 `PENDING`은 재실행하고 `PROCESSING`은 `GENERATION_INTERRUPTED`로 실패 처리
 - AI 응답 ReportDocument는 JSON Schema 검증 후 Report에 저장하고 Job의 `reportId`로 연결
 
 `GET /api/generations/{jobId}`에서 상태·진행률·단계와 실패 코드·메시지를 조회한다.
+`DELETE /api/generations/{jobId}`는 대기·실행 중인 작업을 취소하고 임시 bundle을 정리한다.
 활성 작업이 이미 있으면 409 `GENERATION_ALREADY_RUNNING`을 반환한다.
 
 ## 보고서

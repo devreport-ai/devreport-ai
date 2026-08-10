@@ -1,5 +1,6 @@
 package ai.devreport.backend.generation.application;
 
+import ai.devreport.backend.generation.domain.GenerationCanceledEvent;
 import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
 
 import org.springframework.core.task.TaskRejectedException;
@@ -26,5 +27,10 @@ class GenerationJobDispatcher {
 			jobs.fail(event.jobId(), "GENERATION_CAPACITY_EXCEEDED",
 				"보고서 생성 요청이 많아 작업을 실행하지 못했습니다.");
 		}
+	}
+
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	void cancel(GenerationCanceledEvent event) {
+		worker.cancel(event.jobId());
 	}
 }
