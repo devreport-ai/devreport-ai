@@ -73,16 +73,14 @@ uv run ruff format .
 | `CONTRACTS_DIR` | 저장소 `contracts/` | 공통 계약 디렉터리 경로 |
 | `MOCK_REPORT` | `true` | true면 Gemini 호출 없이 샘플 보고서를 반환 |
 | `GEMINI_MODEL` | `gemini-2.5-pro` | 사용할 Gemini 모델 |
-| `GEMINI_API_KEY` | 없음 | 로컬 개발용 fallback 키 |
+| `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 |
 | `GEMINI_TIMEOUT_SECONDS` | `300` | Gemini 호출 타임아웃 |
 | `GEMINI_MAX_RETRIES` | `2` | 스키마 검증 실패 시 재시도 횟수 |
 
 ## API Key 취급 원칙
 
-`docs`의 13번 규칙을 그대로 따른다.
-
-- 사용자 Gemini API Key는 **요청 단위**로 Backend에서 전달받는다.
-- 전역 클라이언트에 키를 보관하지 않는다.
+- MVP는 AI Service 서버 환경변수의 `GEMINI_API_KEY`를 사용한다.
+- 사용자별 API Key는 MVP 범위에서 제외하며 필요성이 확인되면 확장한다.
 - 로그와 예외 메시지에 키를 남기지 않는다 (`app/core/logging.py`의 마스킹 필터).
 - 파일이나 DB에 저장하지 않는다.
 

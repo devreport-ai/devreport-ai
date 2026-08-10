@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     mock_report: bool = True
 
     gemini_model: str = "gemini-2.5-pro"
-    # 로컬 개발용 fallback. 운영 흐름에서는 Backend가 요청마다 사용자 키를 전달한다.
+    # AI Service 서버 키. 사용자별 키 전달은 MVP 범위가 아니다.
     gemini_api_key: str | None = None
     gemini_timeout_seconds: float = 300.0
     gemini_max_retries: int = 2
