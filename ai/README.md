@@ -72,6 +72,7 @@ uv run ruff format .
 | `LOG_LEVEL` | `INFO` | 로그 레벨 |
 | `CONTRACTS_DIR` | 저장소 `contracts/` | 공통 계약 디렉터리 경로 |
 | `MOCK_REPORT` | `true` | true면 Gemini 호출 없이 샘플 보고서를 반환 |
+| `AI_INTERNAL_TOKEN` | 없음 | Backend 내부 생성 요청 인증용 공유 Secret |
 | `GEMINI_MODEL` | `gemini-2.5-pro` | 사용할 Gemini 모델 |
 | `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 |
 | `GEMINI_TIMEOUT_SECONDS` | `300` | Gemini 호출 타임아웃 |

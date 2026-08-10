@@ -49,6 +49,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` |
 | `AI_SERVICE_RESPONSE_TIMEOUT` | `300s` |
 | `AI_SERVICE_MOCK` | `false` |
+| `AI_INTERNAL_TOKEN` | 없음 (실제 AI 생성 호출 시 필수) |
 | `UPLOAD_PATH` | `./uploads` |
 | `EXPORT_PATH` | `./generated-reports` |
 | `EXPORT_TTL` | `24h` |
@@ -84,6 +85,9 @@ export JWT_SECRET="$(openssl rand -base64 48)"
 Client는 `AI_SERVICE_URL`의 `GET /health`를 호출한다. 연결 실패와 5xx 응답은 502,
 응답 시간 초과는 504로 변환한다. 로컬에서 FastAPI 없이 확인하려면
 `AI_SERVICE_MOCK=true`를 설정하며, Mock Client는 공통 계약의 샘플 ReportDocument를 반환한다.
+
+보고서 생성은 선택 파일을 임시 bundle로 정제한 뒤 `X-Internal-Token` 헤더와
+`multipart/form-data`로 AI Service에 전달한다. bundle은 성공과 실패 모두 호출 종료 즉시 삭제한다.
 
 | 코드 | HTTP 상태 | 설명 |
 | --- | --- | --- |

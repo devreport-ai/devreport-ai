@@ -1,7 +1,6 @@
 # 프로젝트 파일 기반 AI 생성 계약 결정
 
-이 문서는 Issue #30 구현 전에 합의된 계약 경계를 기록한다. 정확한 JSON Schema, multipart part 이름,
-파일 수·전송 크기·AI 입력량 제한은 Issue #30에서 확정한다.
+이 문서는 프로젝트 파일 기반 AI 보고서 생성의 서비스 간 계약을 기록한다.
 
 > 구현 상태: Frontend → Backend 요청 검증과 JSONB 저장은 #34에서 반영했다. bundle 전달은
 > #43, AI 결과의 파일 참조 검증은 #37에서 구현한다.
@@ -49,6 +48,51 @@ temporary bundle
 - manifest는 각 전달 파일을 원본 `fileId`, 분류, 상대 경로와 연결해야 한다.
 - Base64를 사용하지 않고 `multipart/form-data`로 전달한다.
 - 성공, 실패, 취소 뒤 임시 bundle을 삭제한다.
+
+### Bundle manifest
+
+`manifest.json` 형식은 다음과 같다.
+
+```json
+{
+  "version": 1,
+  "files": [
+    {
+      "fileId": "업로드 파일 UUID",
+      "category": "source",
+      "path": "source/{fileId}/src/main/App.java",
+      "mimeType": "text/plain",
+      "size": 1234
+    }
+  ]
+}
+```
+
+- `category`는 `source`, `documents`, `images` 중 하나다.
+- `path`는 bundle 루트 기준 `/` 구분 상대 경로이며 multipart 파일 이름과 일치한다.
+- 하나의 ZIP에서 나온 모든 파일은 같은 원본 ZIP의 `fileId`를 사용한다.
+- `size`는 multipart로 전달하는 실제 파일의 바이트 크기다.
+- manifest 순서와 반복 `files` part 순서는 같다.
+
+### Multipart
+
+`POST /internal/ai/reports/generate`는 다음 part를 사용한다.
+
+| Part | Content-Type | 내용 |
+| --- | --- | --- |
+| `request` | `application/json` | `fileIds`, `metadata`, `instructions` |
+| `manifest` | `application/json` | `manifest.json` |
+| `files` | 각 파일 MIME | 파일별 반복 part, `filename`은 manifest의 `path` |
+
+요청은 `X-Internal-Token: ${AI_INTERNAL_TOKEN}` 헤더로 인증한다. 토큰이 없으면 Backend는
+AI 호출을 수행하지 않는다.
+
+### 전송 제한
+
+- 업로드 단계의 개별 파일 제한 20 MiB를 그대로 적용한다.
+- bundle 전체 파일은 최대 1,000개, 실제 파일 합계는 최대 100 MiB다.
+- ZIP 원본, ZIP 내부의 비분석 파일·이미지, 별도 업로드된 PDF·DOCX는 manifest와 multipart에서 제외한다.
+- 제한 초과나 bundle 파일 처리 실패는 생성 작업 실패로 기록한다.
 
 AI Service는 같은 서버 또는 Docker private network에서만 접근할 수 있다. MVP 내부 인증은 환경변수
 `AI_INTERNAL_TOKEN`의 공유 Secret을 `X-Internal-Token` 헤더로 전달하는 방식을 우선한다.
