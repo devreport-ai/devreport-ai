@@ -2,6 +2,8 @@ package ai.devreport.backend.report.infrastructure;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
@@ -24,6 +26,35 @@ public class ReportDocumentSchemaValidator {
 	}
 
 	public boolean isValid(JsonNode document) {
-		return document != null && schema.validate(document).isEmpty();
+		return document != null && schema.validate(document).isEmpty() && hasValidIdsAndTables(document);
+	}
+
+	private static boolean hasValidIdsAndTables(JsonNode document) {
+		Set<String> sectionIds = new HashSet<>();
+		Set<String> blockIds = new HashSet<>();
+		for (JsonNode section : document.get("sections")) {
+			if (!sectionIds.add(section.get("id").asText())) {
+				return false;
+			}
+			for (JsonNode block : section.get("blocks")) {
+				if (!blockIds.add(block.get("id").asText()) || !hasRectangularTable(block)) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasRectangularTable(JsonNode block) {
+		if (!"table".equals(block.get("type").asText())) {
+			return true;
+		}
+		int columnCount = block.get("columns").size();
+		for (JsonNode row : block.get("rows")) {
+			if (row.size() != columnCount) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

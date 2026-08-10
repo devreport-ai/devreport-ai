@@ -1,4 +1,5 @@
-openapi: 3.0.3
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 
 info:
   title: DevReport AI API
@@ -244,26 +245,21 @@ components:
           type: string
           enum: [QUEUED, CALLING_AI, COMPLETED, FAILED]
         reportId:
-          type: string
+          type: [string, "null"]
           format: uuid
-          nullable: true
         failureCode:
-          type: string
-          nullable: true
+          type: [string, "null"]
         failureMessage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         createdAt:
           type: string
           format: date-time
         startedAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         completedAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
     ExportIdResponse:
       type: object
       required: [exportId]
@@ -285,30 +281,24 @@ components:
           type: string
           enum: [PENDING, PROCESSING, COMPLETED, FAILED, EXPIRED]
         size:
-          type: integer
+          type: [integer, "null"]
           format: int64
-          nullable: true
         failureCode:
-          type: string
-          nullable: true
+          type: [string, "null"]
         failureMessage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         expiresAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
         startedAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         completedAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
     ErrorResponse:
       type: object
       required: [code, message, timestamp]
@@ -318,8 +308,7 @@ components:
         message:
           type: string
         details:
-          type: object
-          nullable: true
+          type: [object, "null"]
         timestamp:
           type: string
           format: date-time
@@ -947,7 +936,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "report-document.schema.json"
+                $ref: "report.schema.json"
         "401":
           description: 미인증
           content:
@@ -982,7 +971,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "report-document.schema.json"
+                $ref: "report.schema.json"
         "400":
           description: ReportDocument JSON Schema 불일치 (REPORT_DOCUMENT_INVALID)
           content:
