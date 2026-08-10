@@ -8,6 +8,7 @@ import java.util.Set;
 import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SchemaRegistryConfig;
 import com.networknt.schema.SpecificationVersion;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,9 @@ public class ReportDocumentSchemaValidator {
 	ReportDocumentSchemaValidator() throws IOException {
 		String schemaDocument = new ClassPathResource("report-document.schema.json")
 			.getContentAsString(StandardCharsets.UTF_8);
-		this.schema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+		SchemaRegistryConfig config = SchemaRegistryConfig.builder().formatAssertionsEnabled(true).build();
+		this.schema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12,
+			builder -> builder.schemaRegistryConfig(config))
 			.getSchema(schemaDocument, InputFormat.JSON);
 	}
 

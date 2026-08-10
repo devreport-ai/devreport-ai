@@ -932,11 +932,11 @@ paths:
             format: uuid
       responses:
         "200":
-          description: 보고서 조회 성공
+          description: "보고서 조회 성공 (Report envelope 전환은 #32에서 구현)"
           content:
             application/json:
               schema:
-                $ref: "report.schema.json"
+                $ref: "report-document.schema.json"
         "401":
           description: 미인증
           content:
@@ -967,11 +967,11 @@ paths:
               $ref: "report-document.schema.json"
       responses:
         "200":
-          description: 보고서 수정 성공
+          description: "보고서 수정 성공 (Report envelope 전환은 #32에서 구현)"
           content:
             application/json:
               schema:
-                $ref: "report.schema.json"
+                $ref: "report-document.schema.json"
         "400":
           description: ReportDocument JSON Schema 불일치 (REPORT_DOCUMENT_INVALID)
           content:

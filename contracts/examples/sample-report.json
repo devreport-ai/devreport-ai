@@ -42,8 +42,7 @@
           "id": "overview-image",
           "type": "image",
           "fileId": "00000000-0000-4000-8000-000000000001",
-          "alt": "애플리케이션 실행 화면",
-          "caption": "그림 1. 애플리케이션 실행 결과"
+          "alt": "애플리케이션 실행 화면"
         },
         {
           "id": "overview-callout",

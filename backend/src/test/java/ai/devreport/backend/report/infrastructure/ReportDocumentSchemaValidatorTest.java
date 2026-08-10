@@ -28,5 +28,8 @@ class ReportDocumentSchemaValidatorTest {
 			{"metadata":{"title":"표"},"sections":[{"id":"section","title":"섹션","blocks":[
 			{"id":"table","type":"table","columns":["A","B"],"rows":[["1"]]}]}]}
 			"""))).isFalse();
+		assertThat(validator.isValid(objectMapper.readTree("""
+			{"metadata":{"title":"날짜","date":"not-a-date"},"sections":[]}
+			"""))).isFalse();
 	}
 }

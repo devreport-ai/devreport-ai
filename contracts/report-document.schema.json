@@ -189,7 +189,8 @@
           "format": "uuid"
         },
         "alt": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "caption": {
           "type": "string"
