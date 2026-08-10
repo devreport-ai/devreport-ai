@@ -15,6 +15,7 @@ import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.domain.ReportDocument;
 import ai.devreport.backend.report.application.ReportService;
+import ai.devreport.backend.upload.application.ProjectFileService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -34,19 +35,25 @@ public class GenerationJobService {
 	private final ProjectService projects;
 	private final ApplicationEventPublisher events;
 	private final ReportService reports;
+	private final ProjectFileService files;
 	private final ObjectMapper objectMapper;
 
 	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events,
-		ReportService reports, ObjectMapper objectMapper) {
+		ReportService reports, ProjectFileService files, ObjectMapper objectMapper) {
 		this.jobs = jobs;
 		this.projects = projects;
 		this.events = events;
 		this.reports = reports;
+		this.files = files;
 		this.objectMapper = objectMapper;
 	}
 
 	public GenerationJob create(UUID ownerId, UUID projectId, GenerationRequest request) {
 		projects.lock(ownerId, projectId);
+		if (request.fileIds().stream().distinct().count() != request.fileIds().size()) {
+			throw invalidRequest();
+		}
+		files.requireAvailable(projectId, request.fileIds());
 		if (jobs.existsByProjectIdAndStatusIn(projectId, ACTIVE_STATUSES)) {
 			throw alreadyRunning();
 		}
@@ -98,6 +105,11 @@ public class GenerationJobService {
 	private static GenerationException alreadyRunning() {
 		return new GenerationException(HttpStatus.CONFLICT, "GENERATION_ALREADY_RUNNING",
 			"이 프로젝트에서 이미 보고서를 생성하고 있습니다.");
+	}
+
+	private static GenerationException invalidRequest() {
+		return new GenerationException(HttpStatus.BAD_REQUEST, "GENERATION_REQUEST_INVALID",
+			"보고서 생성 요청이 올바르지 않습니다.");
 	}
 
 	private static boolean isActiveJobConstraint(Throwable throwable) {

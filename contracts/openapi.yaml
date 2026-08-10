@@ -218,9 +218,21 @@ components:
           minimum: 0
     GenerationRequest:
       type: object
+      required: [fileIds, metadata, instructions]
       properties:
-        document:
-          $ref: "report-document.schema.json"
+        fileIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        metadata:
+          type: object
+        instructions:
+          type: string
+          minLength: 1
+      additionalProperties: false
     JobIdResponse:
       type: object
       required: [jobId]
@@ -859,7 +871,7 @@ paths:
             type: string
             format: uuid
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -878,7 +890,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: 프로젝트가 없거나 소유자가 아님 (PROJECT_NOT_FOUND)
+          description: 프로젝트가 없거나 소유자가 아니거나 선택 파일이 유효하지 않음 (PROJECT_NOT_FOUND, FILE_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: 생성 요청 필드 누락·빈 파일 목록·중복 파일·잘못된 metadata (VALIDATION_FAILED, GENERATION_REQUEST_INVALID)
           content:
             application/json:
               schema:

@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ai.devreport.backend.report.domain.ReportDocument;
@@ -54,10 +57,13 @@ class HttpAiServiceClientTest {
 				""");
 		});
 
-		ReportDocument response = client(Duration.ofSeconds(1)).generate(new GenerationRequest(null));
+		UUID fileId = UUID.randomUUID();
+		ReportDocument response = client(Duration.ofSeconds(1)).generate(new GenerationRequest(List.of(fileId),
+			Map.of(), "요약해 줘"));
 
 		assertThat(response.metadata().title()).isEqualTo("생성 보고서");
-		assertThat(requestBody.get()).isEqualTo("{\"document\":null}");
+		assertThat(requestBody.get()).isEqualTo("{\"fileIds\":[\"" + fileId
+			+ "\"],\"metadata\":{},\"instructions\":\"요약해 줘\"}");
 	}
 
 	@Test

@@ -3,8 +3,8 @@
 이 문서는 Issue #30 구현 전에 합의된 계약 경계를 기록한다. 정확한 JSON Schema, multipart part 이름,
 파일 수·전송 크기·AI 입력량 제한은 Issue #30에서 확정한다.
 
-> 구현 상태: 이 문서는 목표 계약이다. 현재 Backend의 임시 `GenerationRequest(document)`를
-> 대체하는 요청 검증은 #34, bundle 전달은 #43, 파일 참조 검증은 #37에서 구현한다.
+> 구현 상태: Frontend → Backend 요청 검증과 JSONB 저장은 #34에서 반영했다. bundle 전달은
+> #43, AI 결과의 파일 참조 검증은 #37에서 구현한다.
 
 ## Frontend → Backend
 
@@ -22,10 +22,11 @@
 - 삭제·누락 파일과 다른 프로젝트 파일은 거부한다.
 - 디자인용 `templateId`와 `templateVersion`은 생성 요청에 포함하지 않는다.
 - 요청 원문은 `generation_jobs.request_document` JSONB에 저장한다.
+- 생성 작업이 `PENDING` 또는 `PROCESSING`인 동안에는 같은 프로젝트의 파일 삭제를
+  `409 FILE_IN_USE`로 차단한다. 생성 요청과 삭제는 프로젝트 행 잠금으로 직렬화한다.
 - 콘텐츠 구조 구분이 필요해지면 디자인 템플릿과 별개인 `reportType` 또는 `contentProfile`을 정의한다.
 
-현재 Backend가 허용하는 빈 본문과 `document` 필드는 임시 mock 연동 계약이다. #34에서
-요청 본문과 위 세 필드를 필수로 바꾸고 프로젝트 파일 검증을 함께 적용한다.
+Backend는 요청 본문과 위 세 필드를 필수로 검증하고 프로젝트의 유효한 실파일만 허용한다.
 
 ## Backend → AI Service
 

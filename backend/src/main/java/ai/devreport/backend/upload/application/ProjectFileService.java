@@ -19,7 +19,9 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +29,8 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import ai.devreport.backend.project.application.ProjectService;
+import ai.devreport.backend.generation.domain.GenerationJob;
+import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,13 +58,16 @@ public class ProjectFileService {
 	private static final Set<String> ZIP_MIME_TYPES = Set.of("application/zip", "application/x-zip-compressed");
 
 	private final UploadedFileRepository files;
+	private final GenerationJobRepository generationJobs;
 	private final ProjectService projects;
 	private final SafeZipExtractor zipExtractor;
 	private final Path uploadRoot;
 
-	ProjectFileService(UploadedFileRepository files, ProjectService projects, SafeZipExtractor zipExtractor,
+	ProjectFileService(UploadedFileRepository files, GenerationJobRepository generationJobs, ProjectService projects,
+		SafeZipExtractor zipExtractor,
 		@Value("${storage.upload-path}") String uploadPath) {
 		this.files = files;
+		this.generationJobs = generationJobs;
 		this.projects = projects;
 		this.zipExtractor = zipExtractor;
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
@@ -161,7 +168,12 @@ public class ProjectFileService {
 	}
 
 	public void delete(UUID ownerId, UUID projectId, UUID fileId) {
-		projects.requireOwned(ownerId, projectId);
+		projects.lock(ownerId, projectId);
+		if (generationJobs.existsByProjectIdAndStatusIn(projectId,
+			Set.of(GenerationJob.Status.PENDING, GenerationJob.Status.PROCESSING))) {
+			throw new ProjectFileException(HttpStatus.CONFLICT, "FILE_IN_USE",
+				"보고서 생성 중에는 프로젝트 파일을 삭제할 수 없습니다.");
+		}
 		UploadedFile uploadedFile = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);
 		Path stored = storedPath(uploadedFile);
@@ -184,6 +196,14 @@ public class ProjectFileService {
 		restoreOnRollback(staged, stored);
 		stageExtractedDeletion(uploadedFile);
 		files.delete(uploadedFile);
+	}
+
+	public void requireAvailable(UUID projectId, Collection<UUID> fileIds) {
+		List<UploadedFile> selected = files.findAllById(fileIds);
+		if (selected.size() != fileIds.size() || selected.stream().anyMatch(file ->
+			!file.getProjectId().equals(projectId) || !isStoredFileConsistent(file))) {
+			throw fileNotFound();
+		}
 	}
 
 	private static String originalName(MultipartFile file) {

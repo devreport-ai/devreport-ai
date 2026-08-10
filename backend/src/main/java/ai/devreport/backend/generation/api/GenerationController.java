@@ -3,6 +3,8 @@ package ai.devreport.backend.generation.api;
 import java.time.Instant;
 import java.util.UUID;
 
+import jakarta.validation.Valid;
+
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.generation.application.GenerationJobService;
 import ai.devreport.backend.generation.domain.GenerationJob;
@@ -29,9 +31,8 @@ class GenerationController {
 	@PostMapping("/api/projects/{projectId}/generations")
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	JobIdResponse create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
-		@RequestBody(required = false) GenerationRequest request) {
-		GenerationRequest actualRequest = request == null ? new GenerationRequest(null) : request;
-		return new JobIdResponse(jobs.create(AuthenticatedUser.id(jwt), projectId, actualRequest).getId());
+		@Valid @RequestBody GenerationRequest request) {
+		return new JobIdResponse(jobs.create(AuthenticatedUser.id(jwt), projectId, request).getId());
 	}
 
 	@GetMapping("/api/generations/{jobId}")
