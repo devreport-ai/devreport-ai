@@ -2,6 +2,9 @@
 
 이 문서는 DevReport AI MVP의 사용자 흐름과 서비스별 책임을 정의한다.
 
+> 구현 상태: 이 문서는 목표 흐름이다. 생성 입력은 #34, 파일 참조 검증은 #37,
+> 자동 저장 충돌 처리는 #32, AI 오류 변환은 #30에서 구현한다.
+
 ## 서비스 흐름
 
 ```text
@@ -23,7 +26,10 @@ Frontend는 AI Service나 Gemini를 직접 호출하지 않는다. AI Service의
 7. Backend가 문서 구조와 파일 참조를 검증한 뒤 Report로 저장한다.
 8. Frontend가 선택한 템플릿으로 문서를 렌더링한다.
 9. 사용자가 section과 block을 직접 편집하면 Frontend가 변경 내용을 자동 저장한다.
-10. Backend가 Frontend의 출력 전용 route를 Headless Chromium으로 렌더링해 최종 PDF를 생성한다.
+10. Frontend가 `POST /api/reports/{reportId}/exports`로 PDF 생성을 요청하고 `exportId`를 받는다.
+11. Frontend가 export 상태를 polling하고 실패·만료 상태를 처리한다.
+12. 완료되면 download endpoint에서 PDF를 받는다. Backend는 Frontend의 출력 전용 route를
+    Headless Chromium으로 렌더링한다.
 
 ## 콘텐츠와 표현 분리
 
@@ -117,17 +123,23 @@ AI Service와 Backend는 모두 `ReportDocument`를 검증한다. Backend는 Sch
 - `image.fileId`가 해당 프로젝트에 존재하는 PNG/JPG인지 여부
 - 삭제·누락 파일, 임의 UUID, 다른 프로젝트나 사용자 파일 참조 차단
 
-AI 내부 오류 코드는 `AI_INVALID_REQUEST`, `AI_FILE_PROCESSING_FAILED`,
+이 검증은 AI 결과 생성 저장과 사용자 `PUT /api/reports/{reportId}` 수정 저장에 동일하게
+적용하는 목표 계약이며 프로젝트·소유권·MIME 검증은 #37에서 구현한다.
+
+목표 AI 내부 오류 코드는 `AI_INVALID_REQUEST`, `AI_FILE_PROCESSING_FAILED`,
 `AI_GENERATION_FAILED`, `AI_INVALID_RESPONSE`, `AI_TIMEOUT`, `AI_UNAVAILABLE`의
 최소 집합으로 정의한다. Backend 사용자 API는 기존 오류 규칙에 맞춰
 `GENERATION_FAILED`, `GENERATION_TIMEOUT`, `AI_SERVICE_UNAVAILABLE`로 변환한다.
 
-세부 JSON Schema, API envelope, 오류별 HTTP status는 Issue #30과 #31에서 확정한다.
+현재 Backend의 `AI_SERVICE_ERROR`·`AI_SERVICE_TIMEOUT` 임시 변환은 #30에서 위 단일
+매핑과 HTTP status를 확정한 뒤 #34 구현과 함께 교체한다. 세부 생성 JSON Schema는
+Issue #30, ReportDocument와 Report envelope는 #31에서 확정한다.
 
 ## 저장·편집·PDF 원칙
 
 - Backend는 생성 요청과 Job 상태, 검증된 Report, 선택 템플릿과 표현 설정을 저장한다.
-- Frontend는 block 단위 편집을 자동 저장하고 Backend의 낙관적 잠금 충돌을 처리한다.
+- 자동 저장은 클라이언트의 기대 version 또는 `If-Match`를 전달하고, Backend는 불일치 시
+  저장하지 않고 충돌 정보와 `409 Conflict`를 반환하는 목표 계약이다. 이 API는 #32에서 구현한다.
 - A4 Preview와 출력 전용 route는 같은 템플릿 표현 규칙을 사용한다.
 - 최종 PDF는 사용자 브라우저 print가 아니라 Backend의 고정 Chromium 환경에서 생성한다.
 

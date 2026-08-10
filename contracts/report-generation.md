@@ -3,9 +3,12 @@
 이 문서는 Issue #30 구현 전에 합의된 계약 경계를 기록한다. 정확한 JSON Schema, multipart part 이름,
 파일 수·전송 크기·AI 입력량 제한은 Issue #30에서 확정한다.
 
+> 구현 상태: 이 문서는 목표 계약이다. 현재 Backend의 임시 `GenerationRequest(document)`를
+> 대체하는 요청 검증은 #34, bundle 전달은 #43, 파일 참조 검증은 #37에서 구현한다.
+
 ## Frontend → Backend
 
-생성 요청에는 최소 다음 필드가 필요하다.
+목표 생성 요청에는 최소 다음 필드가 필요하다.
 
 ```json
 {
@@ -20,6 +23,9 @@
 - 디자인용 `templateId`와 `templateVersion`은 생성 요청에 포함하지 않는다.
 - 요청 원문은 `generation_jobs.request_document` JSONB에 저장한다.
 - 콘텐츠 구조 구분이 필요해지면 디자인 템플릿과 별개인 `reportType` 또는 `contentProfile`을 정의한다.
+
+현재 Backend가 허용하는 빈 본문과 `document` 필드는 임시 mock 연동 계약이다. #34에서
+요청 본문과 위 세 필드를 필수로 바꾸고 프로젝트 파일 검증을 함께 적용한다.
 
 ## Backend → AI Service
 
@@ -57,7 +63,11 @@ AI Service가 JSON Schema를 검증한 뒤 반환하고 Backend가 다시 다음
 - `image.fileId`가 요청 프로젝트에 존재하는 PNG/JPG인지 여부
 - 삭제·누락 파일, 임의 UUID, 다른 프로젝트나 사용자 파일 참조 여부
 
-## 오류 변환
+이 의미 검증은 AI 생성 결과 저장과 사용자 `PUT /api/reports/{reportId}` 수정 저장에
+동일하게 적용해야 한다. 현재는 JSON Schema만 검증하므로 프로젝트·소유권·MIME 검증은
+Issue #37에서 모든 Report 저장 경로에 추가한다.
+
+## 목표 오류 변환
 
 | AI Service | Backend 사용자 API |
 | --- | --- |
@@ -68,4 +78,6 @@ AI Service가 JSON Schema를 검증한 뒤 반환하고 Backend가 다시 다음
 | `AI_TIMEOUT` | `GENERATION_TIMEOUT` |
 | `AI_UNAVAILABLE` | `AI_SERVICE_UNAVAILABLE` |
 
-오류 응답 모양과 HTTP status는 기존 공통 오류 규칙을 재사용해 Issue #30에서 확정한다.
+현재 `HttpAiServiceClient`는 연결·5xx를 `AI_SERVICE_ERROR`, timeout을
+`AI_SERVICE_TIMEOUT`으로 변환하는 임시 구현이다. 위 표의 단일 매핑과 오류 응답 모양,
+HTTP status는 #30에서 확정하고 #34 구현·테스트와 함께 교체한다.
