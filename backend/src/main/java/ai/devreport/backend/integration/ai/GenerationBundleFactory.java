@@ -107,13 +107,16 @@ public class GenerationBundleFactory {
 		}
 		Path target = root.resolve(relativePath);
 		Files.createDirectories(target.getParent());
-		try (InputStream input = Files.newInputStream(source, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)) {
-			Files.copy(input, target);
-		}
-		long size = Files.size(target);
+		long size = Files.size(source);
 		long totalSize = manifestFiles.stream().mapToLong(ManifestFile::size).sum() + size;
 		if (totalSize > MAX_TOTAL_SIZE) {
 			throw new IllegalStateException("Generation bundle exceeds 100 MiB");
+		}
+		try (InputStream input = Files.newInputStream(source, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)) {
+			Files.copy(input, target);
+		}
+		if (Files.size(target) != size) {
+			throw new IllegalStateException("Generation bundle source changed while copying");
 		}
 		parts.add(new GenerationBundle.FilePart(target, relativePath, contentType));
 		manifestFiles.add(new ManifestFile(uploadedFile.getId(), relativePath.substring(0,

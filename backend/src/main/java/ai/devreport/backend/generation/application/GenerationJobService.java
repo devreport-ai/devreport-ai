@@ -1,6 +1,7 @@
 package ai.devreport.backend.generation.application;
 
 import ai.devreport.backend.generation.domain.GenerationException;
+import ai.devreport.backend.generation.domain.GenerationCanceledEvent;
 import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
 import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
@@ -75,6 +76,14 @@ public class GenerationJobService {
 		GenerationJob job = jobs.findById(jobId).orElseThrow(GenerationJobService::notFound);
 		projects.requireOwned(ownerId, job.getProjectId());
 		return job;
+	}
+
+	public void cancel(UUID ownerId, UUID jobId) {
+		GenerationJob job = jobs.findForUpdateById(jobId).orElseThrow(GenerationJobService::notFound);
+		projects.requireOwned(ownerId, job.getProjectId());
+		if (job.cancel()) {
+			events.publishEvent(new GenerationCanceledEvent(jobId));
+		}
 	}
 
 	Optional<GenerationRequest> start(UUID jobId) {

@@ -249,13 +249,13 @@ components:
           format: uuid
         status:
           type: string
-          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELED]
         progress:
           type: integer
           enum: [0, 10, 100]
         currentStage:
           type: string
-          enum: [QUEUED, CALLING_AI, COMPLETED, FAILED]
+          enum: [QUEUED, CALLING_AI, COMPLETED, FAILED, CANCELED]
         reportId:
           type: [string, "null"]
           format: uuid
@@ -925,6 +925,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationJobResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      summary: 생성 작업 취소
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: 생성 작업 취소 완료
         "401":
           description: 미인증
           content:

@@ -191,6 +191,32 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void cancelsRunningJobAndDeletesBundle() throws Exception {
+		String token = signupAndLogin("generation-cancel@example.com");
+		String otherToken = signupAndLogin("generation-cancel-other@example.com");
+		String projectId = createProject(token, "취소 프로젝트");
+		String fileId = upload(token, projectId, "cancel.txt", "취소 자료");
+
+		aiService.prepare(false);
+		String jobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"취소 테스트"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		mvc.perform(delete("/api/generations/{jobId}", jobId)
+				.header("Authorization", bearer(otherToken)))
+			.andExpect(status().isNotFound());
+
+		mvc.perform(delete("/api/generations/{jobId}", jobId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		awaitStatus(token, jobId, "CANCELED");
+		awaitBundleDeleted();
+		GenerationJob canceled = jobs.findById(UUID.fromString(jobId)).orElseThrow();
+		assertThat(canceled.getCurrentStage()).isEqualTo(GenerationJob.Stage.CANCELED);
+		assertThat(canceled.getCompletedAt()).isNotNull();
+	}
+
+	@Test
 	void recoversPendingAndInterruptsProcessingJobs() throws Exception {
 		String token = signupAndLogin("generation-recovery@example.com");
 		UUID pendingProjectId = UUID.fromString(createProject(token, "대기 프로젝트"));
@@ -259,6 +285,16 @@ class GenerationIntegrationTest {
 			Thread.sleep(20);
 		}
 		throw new AssertionError("Generation did not reach status " + expected);
+	}
+
+	private void awaitBundleDeleted() throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			if (aiService.bundleRoot() != null && Files.notExists(aiService.bundleRoot())) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("Generation bundle was not deleted");
 	}
 
 	private String createProject(String token, String name) throws Exception {

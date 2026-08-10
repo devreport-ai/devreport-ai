@@ -115,6 +115,17 @@ public class GenerationJob {
 		updatedAt = completedAt;
 	}
 
+	public boolean cancel() {
+		if (status != Status.PENDING && status != Status.PROCESSING) {
+			return false;
+		}
+		status = Status.CANCELED;
+		currentStage = Stage.CANCELED;
+		completedAt = Instant.now();
+		updatedAt = completedAt;
+		return true;
+	}
+
 	public UUID getId() {
 		return id;
 	}
@@ -168,10 +179,10 @@ public class GenerationJob {
 	}
 
 	public enum Status {
-		PENDING, PROCESSING, COMPLETED, FAILED
+		PENDING, PROCESSING, COMPLETED, FAILED, CANCELED
 	}
 
 	public enum Stage {
-		QUEUED, CALLING_AI, COMPLETED, FAILED
+		QUEUED, CALLING_AI, COMPLETED, FAILED, CANCELED
 	}
 }

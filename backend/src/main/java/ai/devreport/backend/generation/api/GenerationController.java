@@ -12,6 +12,7 @@ import ai.devreport.backend.integration.ai.GenerationRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +39,12 @@ class GenerationController {
 	@GetMapping("/api/generations/{jobId}")
 	GenerationJobResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID jobId) {
 		return GenerationJobResponse.from(jobs.get(AuthenticatedUser.id(jwt), jobId));
+	}
+
+	@DeleteMapping("/api/generations/{jobId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID jobId) {
+		jobs.cancel(AuthenticatedUser.id(jwt), jobId);
 	}
 
 	record JobIdResponse(UUID jobId) {

@@ -1,5 +1,6 @@
 package ai.devreport.backend.generation.application;
 
+import ai.devreport.backend.generation.domain.GenerationCanceledEvent;
 import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
 
 import static org.mockito.Mockito.doThrow;
@@ -25,5 +26,16 @@ class GenerationJobDispatcherTest {
 
 		verify(jobs).fail(event.jobId(), "GENERATION_CAPACITY_EXCEEDED",
 			"보고서 생성 요청이 많아 작업을 실행하지 못했습니다.");
+	}
+
+	@Test
+	void interruptsCanceledJob() {
+		GenerationJobWorker worker = mock(GenerationJobWorker.class);
+		GenerationJobDispatcher dispatcher = new GenerationJobDispatcher(worker, mock(GenerationJobService.class));
+		GenerationCanceledEvent event = new GenerationCanceledEvent(UUID.randomUUID());
+
+		dispatcher.cancel(event);
+
+		verify(worker).cancel(event.jobId());
 	}
 }
