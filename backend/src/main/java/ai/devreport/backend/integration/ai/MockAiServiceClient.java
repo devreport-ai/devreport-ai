@@ -17,7 +17,7 @@ public class MockAiServiceClient implements AiServiceClient {
 	}
 
 	@Override
-	public ReportDocument generate(GenerationRequest request) {
+	public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
 		return new ReportDocument(
 			new ReportDocument.Metadata("Spring Boot 실습보고서", "김예찬", "SKALA Backend", "2026-08-06"),
 			List.of(new ReportDocument.Section("overview", "1. 프로젝트 개요", List.of(

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +20,12 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.HttpStatus;
 
 class HttpAiServiceClientTest {
+	@TempDir
+	Path temporaryDirectory;
 
 	private HttpServer server;
 
@@ -51,6 +56,8 @@ class HttpAiServiceClientTest {
 		startServer(exchange -> {
 			assertThat(exchange.getRequestMethod()).isEqualTo("POST");
 			assertThat(exchange.getRequestURI().getPath()).isEqualTo("/internal/ai/reports/generate");
+			assertThat(exchange.getRequestHeaders().getFirst("X-Internal-Token"))
+				.isEqualTo("test-internal-token");
 			requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
 			respond(exchange, 200, """
 				{"metadata":{"title":"생성 보고서"},"sections":[]}
@@ -58,19 +65,40 @@ class HttpAiServiceClientTest {
 		});
 
 		UUID fileId = UUID.randomUUID();
+		Path manifest = temporaryDirectory.resolve("manifest.json");
+		Path document = temporaryDirectory.resolve("notes.txt");
+		Files.writeString(manifest, "{\"version\":1,\"files\":[]}");
+		Files.writeString(document, "분석 자료");
+		var bundle = new GenerationBundle(temporaryDirectory, manifest,
+			List.of(new GenerationBundle.FilePart(document, "documents/" + fileId + "/notes.txt", "text/plain")));
 		ReportDocument response = client(Duration.ofSeconds(1)).generate(new GenerationRequest(List.of(fileId),
-			Map.of(), "요약해 줘"));
+			Map.of(), "요약해 줘"), bundle);
 
 		assertThat(response.metadata().title()).isEqualTo("생성 보고서");
-		assertThat(requestBody.get()).isEqualTo("{\"fileIds\":[\"" + fileId
-			+ "\"],\"metadata\":{},\"instructions\":\"요약해 줘\"}");
+		assertThat(requestBody.get()).contains("name=\"request\"")
+			.contains("name=\"manifest\"; filename=\"manifest.json\"")
+			.contains("name=\"files\"; filename=\"documents/" + fileId + "/notes.txt\"")
+			.contains("\"instructions\":\"요약해 줘\"").contains("분석 자료");
+	}
+
+	@Test
+	void rejectsGenerationWithoutInternalToken() {
+		var client = new HttpAiServiceClient("http://127.0.0.1", Duration.ofSeconds(1),
+			Duration.ofSeconds(1), " ");
+		var bundle = new GenerationBundle(temporaryDirectory, temporaryDirectory.resolve("manifest.json"),
+			List.of());
+
+		assertThatThrownBy(() -> client.generate(
+			new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약"), bundle))
+			.isInstanceOfSatisfying(AiServiceException.class,
+				exception -> assertThat(exception.code()).isEqualTo("AI_SERVICE_UNAVAILABLE"));
 	}
 
 	@Test
 	@EnabledIfEnvironmentVariable(named = "AI_SERVICE_INTEGRATION_URL", matches = ".+")
 	void connectsToRunningFastApi() {
 		var client = new HttpAiServiceClient(System.getenv("AI_SERVICE_INTEGRATION_URL"),
-			Duration.ofSeconds(3), Duration.ofSeconds(3));
+			Duration.ofSeconds(3), Duration.ofSeconds(3), "integration-test-token");
 
 		assertThat(client.health().service()).isEqualTo("devreport-ai-service");
 	}
@@ -106,7 +134,7 @@ class HttpAiServiceClientTest {
 
 	private HttpAiServiceClient client(Duration responseTimeout) {
 		return new HttpAiServiceClient("http://127.0.0.1:" + server.getAddress().getPort(),
-			Duration.ofSeconds(1), responseTimeout);
+			Duration.ofSeconds(1), responseTimeout, "test-internal-token");
 	}
 
 	private void startServer(com.sun.net.httpserver.HttpHandler handler) throws IOException {

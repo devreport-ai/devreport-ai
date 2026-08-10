@@ -5,6 +5,8 @@ import java.util.Optional;
 import ai.devreport.backend.generation.domain.GenerationQueuedEvent;
 import ai.devreport.backend.integration.ai.AiServiceClient;
 import ai.devreport.backend.integration.ai.AiServiceException;
+import ai.devreport.backend.integration.ai.GenerationBundle;
+import ai.devreport.backend.integration.ai.GenerationBundleFactory;
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.report.domain.ReportDocument;
 import ai.devreport.backend.report.domain.ReportException;
@@ -20,10 +22,12 @@ class GenerationJobWorker {
 
 	private final GenerationJobService jobs;
 	private final AiServiceClient aiService;
+	private final GenerationBundleFactory bundles;
 
-	GenerationJobWorker(GenerationJobService jobs, AiServiceClient aiService) {
+	GenerationJobWorker(GenerationJobService jobs, AiServiceClient aiService, GenerationBundleFactory bundles) {
 		this.jobs = jobs;
 		this.aiService = aiService;
+		this.bundles = bundles;
 	}
 
 	@Async("generationExecutor")
@@ -33,7 +37,10 @@ class GenerationJobWorker {
 			return;
 		}
 		try {
-			ReportDocument result = aiService.generate(request.get());
+			ReportDocument result;
+			try (GenerationBundle bundle = bundles.create(request.get())) {
+				result = aiService.generate(request.get(), bundle);
+			}
 			jobs.complete(event.jobId(), result);
 		} catch (AiServiceException exception) {
 			jobs.fail(event.jobId(), exception.code(), exception.getMessage());
