@@ -116,7 +116,7 @@ class ReportExportIntegrationTest {
 		try (PDDocument document = Loader.loadPDF(pdf)) {
 			assertThat(new PDFTextStripper().getText(document))
 				.contains("Spring Boot 실습보고서", "본 실습에서는 REST API를 구현하였다.",
-					"애플리케이션 실행 화면")
+					"애플리케이션 실행 화면", "검증 결과", "전체 테스트가 통과했다.")
 				.doesNotContain("overview-features");
 		}
 

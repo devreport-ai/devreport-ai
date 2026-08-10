@@ -97,7 +97,8 @@ public class PdfReportRenderer {
 				String caption = text(block.get("caption"));
 				writer.write("[이미지] " + (caption.isBlank() ? text(block.get("alt")) : caption), 10, 16);
 			}
-			case "paragraph", "callout" -> writer.write(text(block.get("content")), 11, 18);
+			case "paragraph" -> writer.write(text(block.get("content")), 11, 18);
+			case "callout" -> writer.write(collectText(block), 11, 18);
 			default -> writer.write(collectText(block), 11, 18);
 		}
 	}

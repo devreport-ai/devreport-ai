@@ -17,13 +17,13 @@ JSON Schema는 ID 형식을 검증한다. 속성 기준 배열 유일성은 JSON
 
 | type | 필수 필드 | 선택 필드 |
 | --- | --- | --- |
-| `paragraph` | `id`, `content` | 없음 |
-| `bulletList` | `id`, `items` | 없음 |
-| `code` | `id`, `code` | `language` |
-| `table` | `id`, `columns`, `rows` | 없음 |
-| `image` | `id`, `fileId`, `alt` | `caption` |
-| `callout` | `id`, `content` | `title` |
-| `pageBreak` | `id` | 없음 |
+| `paragraph` | `id`, `type`, `content` | 없음 |
+| `bulletList` | `id`, `type`, `items` | 없음 |
+| `code` | `id`, `type`, `code` | `language` |
+| `table` | `id`, `type`, `columns`, `rows` | 없음 |
+| `image` | `id`, `type`, `fileId`, `alt` | `caption` |
+| `callout` | `id`, `type`, `content` | `title` |
+| `pageBreak` | `id`, `type` | 없음 |
 
 table의 각 row는 `columns`와 같은 수의 cell을 가져야 한다. `image.fileId`는 해당
 프로젝트에 존재하는 PNG/JPG 파일 UUID여야 한다. 파일 소유권·상태·MIME 검증은

@@ -84,8 +84,8 @@ class ReportIntegrationTest {
 				.header("Authorization", bearer(owner.token()))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"metadata\":{\"title\":\"오류\"},\"sections\":[{\"id\":\"intro\","
-					+ "\"title\":\"서론\",\"blocks\":[{\"id\":\"intro-summary\","
-					+ "\"type\":\"paragraph\"}]}]}"))
+					+ "\"title\":\"서론\",\"blocks\":[{\"type\":\"paragraph\","
+					+ "\"content\":\"본문\"}]}]}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("REPORT_DOCUMENT_INVALID"));
 		assertThat(objectMapper.valueToTree(reports.findById(report.getId()).orElseThrow().getDocument())
