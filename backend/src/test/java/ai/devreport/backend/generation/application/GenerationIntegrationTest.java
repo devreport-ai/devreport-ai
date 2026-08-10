@@ -4,11 +4,16 @@ import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +28,7 @@ import ai.devreport.backend.report.domain.ReportDocument;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -30,6 +36,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
@@ -41,6 +50,8 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 @AutoConfigureMockMvc
 class GenerationIntegrationTest {
+	@TempDir
+	static Path uploadRoot;
 
 	@Autowired
 	MockMvc mvc;
@@ -54,6 +65,11 @@ class GenerationIntegrationTest {
 	@Autowired
 	GenerationRecovery recovery;
 
+	@DynamicPropertySource
+	static void storageProperties(DynamicPropertyRegistry registry) {
+		registry.add("storage.upload-path", () -> uploadRoot.toString());
+	}
+
 	@AfterEach
 	void releaseWorker() {
 		aiService.release();
@@ -63,21 +79,27 @@ class GenerationIntegrationTest {
 	void acceptsRunsAndFailsJobsWhilePreventingDuplicates() throws Exception {
 		String token = signupAndLogin("generation-owner@example.com");
 		String projectId = createProject(token, "생성 프로젝트");
+		String fileId = upload(token, projectId, "notes.txt", "분석 자료");
 
 		aiService.prepare(false);
 		String firstJobId = createGeneration(token, projectId, """
-			{"document":{"metadata":{"title":"요청 보고서","author":"김예찬","course":"소프트웨어공학",
-			"date":"2026-08-07"},"sections":[{"id":"intro","title":"서론",
-			"blocks":[{"id":"intro-summary","type":"paragraph","content":"요청 본문"}]}]}}
-			""");
+			{"fileIds":["%s"],"metadata":{"title":"요청 보고서","author":"김예찬"},
+			"instructions":"핵심 내용을 요약해 줘"}
+			""".formatted(fileId));
 		assertThat(aiService.awaitStarted()).isTrue();
 
 		mvc.perform(post("/api/projects/{projectId}/generations", projectId)
 				.header("Authorization", bearer(token))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{}"))
+				.content("""
+					{"fileIds":["%s"],"metadata":{},"instructions":"다시 생성"}
+					""".formatted(fileId)))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("GENERATION_ALREADY_RUNNING"));
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("FILE_IN_USE"));
 
 		aiService.release();
 		awaitStatus(token, firstJobId, "COMPLETED");
@@ -89,12 +111,10 @@ class GenerationIntegrationTest {
 			.andExpect(jsonPath("$.currentStage").value("COMPLETED"))
 			.andExpect(jsonPath("$.reportId").value(completed.getReportId().toString()));
 		assertThat(completed.getReportId()).isNotNull();
-		ReportDocument requestDocument = completed.getRequestDocument().document();
-		assertThat(requestDocument.metadata()).isEqualTo(
-			new ReportDocument.Metadata("요청 보고서", "김예찬", "소프트웨어공학", "2026-08-07"));
-		assertThat(requestDocument.sections()).containsExactly(
-			new ReportDocument.Section("intro", "서론",
-				List.of(Map.of("id", "intro-summary", "type", "paragraph", "content", "요청 본문"))));
+		GenerationRequest savedRequest = completed.getRequestDocument();
+		assertThat(savedRequest.fileIds()).containsExactly(UUID.fromString(fileId));
+		assertThat(savedRequest.metadata()).containsEntry("title", "요청 보고서").containsEntry("author", "김예찬");
+		assertThat(savedRequest.instructions()).isEqualTo("핵심 내용을 요약해 줘");
 		assertThat(completed.getResultDocument().metadata().title()).isEqualTo("Spring Boot 실습보고서");
 		mvc.perform(get("/api/reports/{reportId}", completed.getReportId())
 				.header("Authorization", bearer(token)))
@@ -102,7 +122,9 @@ class GenerationIntegrationTest {
 			.andExpect(jsonPath("$.metadata.title").value("Spring Boot 실습보고서"));
 
 		aiService.prepare(true);
-		String failedJobId = createGeneration(token, projectId);
+		String failedJobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"실패 테스트"}
+			""".formatted(fileId));
 		assertThat(aiService.awaitStarted()).isTrue();
 		aiService.release();
 		awaitStatus(token, failedJobId, "FAILED");
@@ -115,12 +137,62 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void rejectsInvalidMissingAndForeignFiles() throws Exception {
+		String token = signupAndLogin("generation-validation@example.com");
+		String otherToken = signupAndLogin("generation-validation-other@example.com");
+		String projectId = createProject(token, "검증 프로젝트");
+		String otherProjectId = createProject(otherToken, "다른 프로젝트");
+		String fileId = upload(token, projectId, "valid.txt", "유효 파일");
+		String foreignFileId = upload(otherToken, otherProjectId, "foreign.txt", "다른 파일");
+		String missingFileId = upload(token, projectId, "missing.txt", "누락 파일");
+		Files.delete(uploadRoot.resolve(projectId).resolve(missingFileId));
+
+		for (String body : List.of(
+			"{}",
+			"{\"fileIds\":[],\"metadata\":{},\"instructions\":\"작성\"}",
+			"{\"fileIds\":[\"" + fileId + "\",\"" + fileId
+				+ "\"],\"metadata\":{},\"instructions\":\"작성\"}",
+			"{\"fileIds\":[\"" + fileId + "\"],\"metadata\":[],\"instructions\":\"작성\"}"
+		)) {
+			mvc.perform(post("/api/projects/{projectId}/generations", projectId)
+					.header("Authorization", bearer(token))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(body))
+				.andExpect(status().isBadRequest());
+		}
+
+		for (String unavailableId : List.of(foreignFileId, missingFileId, UUID.randomUUID().toString())) {
+			mvc.perform(post("/api/projects/{projectId}/generations", projectId)
+					.header("Authorization", bearer(token))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"fileIds":["%s"],"metadata":{},"instructions":"작성"}
+						""".formatted(unavailableId)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
+		}
+
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		mvc.perform(post("/api/projects/{projectId}/generations", projectId)
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"fileIds":["%s"],"metadata":{},"instructions":"작성"}
+					""".formatted(fileId)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
+	}
+
+	@Test
 	void recoversPendingAndInterruptsProcessingJobs() throws Exception {
 		String token = signupAndLogin("generation-recovery@example.com");
 		UUID pendingProjectId = UUID.fromString(createProject(token, "대기 프로젝트"));
 		UUID processingProjectId = UUID.fromString(createProject(token, "실행 프로젝트"));
-		GenerationJob pending = jobs.save(new GenerationJob(pendingProjectId, new GenerationRequest(null)));
-		GenerationJob processing = new GenerationJob(processingProjectId, new GenerationRequest(null));
+		GenerationRequest request = new GenerationRequest(List.of(), Map.of(), "복구 테스트");
+		GenerationJob pending = jobs.save(new GenerationJob(pendingProjectId, request));
+		GenerationJob processing = new GenerationJob(processingProjectId, request);
 		processing.start();
 		jobs.save(processing);
 
@@ -144,10 +216,6 @@ class GenerationIntegrationTest {
 		throw new AssertionError("Generation did not reach status " + expected);
 	}
 
-	private String createGeneration(String token, String projectId) throws Exception {
-		return createGeneration(token, projectId, null);
-	}
-
 	private String createGeneration(String token, String projectId, String requestBody) throws Exception {
 		var request = post("/api/projects/{projectId}/generations", projectId)
 			.header("Authorization", bearer(token));
@@ -158,6 +226,16 @@ class GenerationIntegrationTest {
 			.andExpect(status().isAccepted())
 			.andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.jobId");
+	}
+
+	private String upload(String token, String projectId, String name, String content) throws Exception {
+		String body = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(new MockMultipartFile("file", name, "text/plain",
+					content.getBytes(StandardCharsets.UTF_8)))
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(body, "$.fileId");
 	}
 
 	private void awaitStatus(String token, String jobId, String expected) throws Exception {
