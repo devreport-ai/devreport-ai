@@ -152,7 +152,9 @@ class GenerationIntegrationTest {
 			"{\"fileIds\":[],\"metadata\":{},\"instructions\":\"작성\"}",
 			"{\"fileIds\":[\"" + fileId + "\",\"" + fileId
 				+ "\"],\"metadata\":{},\"instructions\":\"작성\"}",
-			"{\"fileIds\":[\"" + fileId + "\"],\"metadata\":[],\"instructions\":\"작성\"}"
+			"{\"fileIds\":[\"" + fileId + "\"],\"metadata\":[],\"instructions\":\"작성\"}",
+			"{\"fileIds\":[\"" + fileId
+				+ "\"],\"metadata\":{},\"instructions\":\"작성\",\"unknown\":true}"
 		)) {
 			mvc.perform(post("/api/projects/{projectId}/generations", projectId)
 					.header("Authorization", bearer(token))
@@ -190,9 +192,13 @@ class GenerationIntegrationTest {
 		String token = signupAndLogin("generation-recovery@example.com");
 		UUID pendingProjectId = UUID.fromString(createProject(token, "대기 프로젝트"));
 		UUID processingProjectId = UUID.fromString(createProject(token, "실행 프로젝트"));
-		GenerationRequest request = new GenerationRequest(List.of(), Map.of(), "복구 테스트");
-		GenerationJob pending = jobs.save(new GenerationJob(pendingProjectId, request));
-		GenerationJob processing = new GenerationJob(processingProjectId, request);
+		UUID pendingFileId = UUID.fromString(upload(token, pendingProjectId.toString(), "pending.txt", "대기 파일"));
+		UUID processingFileId = UUID.fromString(upload(token, processingProjectId.toString(),
+			"processing.txt", "실행 파일"));
+		GenerationJob pending = jobs.save(new GenerationJob(pendingProjectId,
+			new GenerationRequest(List.of(pendingFileId), Map.of(), "복구 테스트")));
+		GenerationJob processing = new GenerationJob(processingProjectId,
+			new GenerationRequest(List.of(processingFileId), Map.of(), "복구 테스트"));
 		processing.start();
 		jobs.save(processing);
 
