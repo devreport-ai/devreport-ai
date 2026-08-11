@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import health, reports
 from app.core.config import APP_VERSION, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(health.router)
+    app.include_router(reports.router)
     return app
 
 
