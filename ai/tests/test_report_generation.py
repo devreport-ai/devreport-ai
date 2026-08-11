@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings, get_settings
+from app.core.errors import AIServiceError, ErrorCode
 from app.main import app
+from app.services.mock_report_generator import MockReportGenerator
 
 client = TestClient(app)
 
@@ -57,3 +60,18 @@ def test_generate_returns_unavailable_when_mock_is_disabled():
 
     assert response.status_code == 503
     assert response.json()["code"] == "AI_UNAVAILABLE"
+
+
+def test_mock_generator_converts_invalid_utf8_contract_file_to_ai_error(tmp_path: Path):
+    invalid_sample_path = tmp_path / "sample-report.json"
+    invalid_sample_path.write_bytes(b"\xff")
+
+    generator = MockReportGenerator(
+        sample_report_path=invalid_sample_path,
+        report_schema_path=SAMPLE_REPORT_PATH,
+    )
+
+    with pytest.raises(AIServiceError) as raised:
+        generator.generate()
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE

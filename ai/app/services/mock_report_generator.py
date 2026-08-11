@@ -37,7 +37,7 @@ class MockReportGenerator:
         try:
             with path.open(encoding="utf-8") as json_file:
                 value = json.load(json_file)
-        except (OSError, json.JSONDecodeError) as exception:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exception:
             raise AIServiceError(
                 ErrorCode.AI_INVALID_RESPONSE,
                 "AI 응답 검증에 필요한 계약 파일을 읽을 수 없습니다.",
