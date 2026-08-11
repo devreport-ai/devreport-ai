@@ -25,9 +25,11 @@
 
 ## Issue 자동 종료
 
-Feature PR은 `dev`를 대상으로 한다. PR 본문에 `Closes #123`,
-`Fixes #123`, `Resolves #123`과 같은 closing keyword를 작성하면 PR이
-`dev`에 병합된 후 해당 Issue가 자동으로 완료 처리된다.
+`dev` 대상 PR 본문에 `Closes #123`, `Fixes #123`, `Resolves #123`과 같은
+closing keyword를 작성하면 PR이 `dev`에 병합된 후 해당 Issue가 자동으로
+완료 처리된다. 각 keyword의 표준 변형(`close/closes/closed`,
+`fix/fixes/fixed`, `resolve/resolves/resolved`)과 선택적 콜론을 대소문자
+구분 없이 지원한다.
 
 PR을 병합하지 않고 닫은 경우 Issue는 종료되지 않는다.
 
