@@ -93,13 +93,15 @@ Client는 `AI_SERVICE_URL`의 `GET /health`를 호출한다. 연결 실패와 5x
 
 보고서 생성은 선택 파일을 임시 bundle로 정제한 뒤 `X-Internal-Token` 헤더와
 `multipart/form-data`로 AI Service에 전달한다. bundle은 성공·실패·취소 모두 호출 종료 즉시 삭제한다.
+AI Service의 공통 오류 응답은 `contracts/report-generation.md`의 규칙에 따라 Backend 생성
+오류 코드로 변환한다. 원격 `message`와 `details`는 사용자 응답과 로그에 전달하지 않는다.
 
 | 코드 | HTTP 상태 | 설명 |
 | --- | --- | --- |
-| `AI_SERVICE_ERROR` | 502 | AI Service가 오류 응답 반환 |
-| `AI_SERVICE_UNAVAILABLE` | 502 | AI Service 연결 실패 |
-| `AI_SERVICE_INVALID_RESPONSE` | 502 | 비어 있거나 올바르지 않은 응답 |
-| `AI_SERVICE_TIMEOUT` | 504 | AI Service 응답 시간 초과 |
+| `GENERATION_REQUEST_INVALID` | 400 | AI Service가 생성 요청을 거부함 |
+| `GENERATION_FAILED` | 502 | 파일 처리·생성·응답 검증 실패 또는 알 수 없는 오류 |
+| `AI_SERVICE_UNAVAILABLE` | 502 | AI Service 연결 실패 또는 사용 불가 |
+| `GENERATION_TIMEOUT` | 504 | AI Service 응답 시간 초과 |
 
 ## 비동기 보고서 생성
 
