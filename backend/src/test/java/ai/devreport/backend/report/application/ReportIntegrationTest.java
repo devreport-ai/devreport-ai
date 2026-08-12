@@ -64,7 +64,7 @@ class ReportIntegrationTest {
 	}
 
 	@Test
-	void readsAndUpdatesOwnedSchemaValidReport() throws Exception {
+	void readsUpdatesAndRejectsStaleOwnedReport() throws Exception {
 		Credentials owner = signupAndLogin("report-owner@example.com");
 		Credentials other = signupAndLogin("report-other@example.com");
 		UUID projectId = createProject(owner.token(), "보고서 프로젝트");
@@ -75,7 +75,9 @@ class ReportIntegrationTest {
 		mvc.perform(get("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(owner.token())))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.metadata.title").value("초안"));
+			.andExpect(jsonPath("$.id").value(report.getId().toString()))
+			.andExpect(jsonPath("$.document.metadata.title").value("초안"))
+			.andExpect(jsonPath("$.presentationSettings").isEmpty());
 		mvc.perform(get("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(other.token())))
 			.andExpect(status().isNotFound())
@@ -83,16 +85,20 @@ class ReportIntegrationTest {
 		mvc.perform(put("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(other.token()))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(validDocument("탈취 시도")))
+				.content(updateRequest(validDocument("탈취 시도"), initialVersion, null, null, "{}")))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("REPORT_NOT_FOUND"));
 
 		mvc.perform(put("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(owner.token()))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(validDocument("수정본")))
+				.content(updateRequest(validDocument("수정본"), initialVersion, "modern", 1,
+					"{\"accentColor\":\"#2563eb\",\"showPageNumbers\":true}")))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.metadata.title").value("수정본"));
+			.andExpect(jsonPath("$.document.metadata.title").value("수정본"))
+			.andExpect(jsonPath("$.templateId").value("modern"))
+			.andExpect(jsonPath("$.templateVersion").value(1))
+			.andExpect(jsonPath("$.presentationSettings.accentColor").value("#2563eb"));
 		Report updated = reports.findById(report.getId()).orElseThrow();
 		assertThat(updated.getVersion()).isGreaterThan(initialVersion);
 		assertThat(updated.getUpdatedAt()).isAfter(initialUpdatedAt);
@@ -100,9 +106,17 @@ class ReportIntegrationTest {
 		mvc.perform(put("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(owner.token()))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"metadata\":{\"title\":\"오류\"},\"sections\":[{\"id\":\"intro\","
+				.content(updateRequest(validDocument("오래된 수정"), initialVersion, "modern", 1, "{}")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("REPORT_VERSION_CONFLICT"))
+			.andExpect(jsonPath("$.details.currentVersion").value(updated.getVersion()));
+
+		mvc.perform(put("/api/reports/{reportId}", report.getId())
+				.header("Authorization", bearer(owner.token()))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(updateRequest("{\"metadata\":{\"title\":\"오류\"},\"sections\":[{\"id\":\"intro\","
 					+ "\"title\":\"서론\",\"blocks\":[{\"type\":\"paragraph\","
-					+ "\"content\":\"본문\"}]}]}"))
+					+ "\"content\":\"본문\"}]}]}", updated.getVersion(), "modern", 1, "{}")))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("REPORT_DOCUMENT_INVALID"));
 		assertThat(objectMapper.valueToTree(reports.findById(report.getId()).orElseThrow().getDocument())
@@ -135,19 +149,53 @@ class ReportIntegrationTest {
 		mvc.perform(put("/api/reports/{reportId}", report.getId())
 				.header("Authorization", bearer(token))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(imageDocument(imageId)))
+				.content(updateRequest(imageDocument(imageId), report.getVersion(), null, null, "{}")))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.sections[0].blocks[0].fileId").value(imageId));
+			.andExpect(jsonPath("$.document.sections[0].blocks[0].fileId").value(imageId));
 
 		for (String invalidFileId : List.of(textId, foreignImageId, deletedImageId, missingImageId,
 			UUID.randomUUID().toString())) {
+			long currentVersion = reports.findById(report.getId()).orElseThrow().getVersion();
 			mvc.perform(put("/api/reports/{reportId}", report.getId())
 					.header("Authorization", bearer(token))
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(imageDocument(invalidFileId)))
+					.content(updateRequest(imageDocument(invalidFileId), currentVersion, null, null, "{}")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("REPORT_DOCUMENT_INVALID"));
 		}
+	}
+
+	@Test
+	void listsOwnedReportsByUpdatedAtWithPagination() throws Exception {
+		String token = signupAndLogin("report-list-owner@example.com").token();
+		String otherToken = signupAndLogin("report-list-other@example.com").token();
+		UUID projectId = createProject(token, "보고서 목록 프로젝트");
+		UUID otherProjectId = createProject(otherToken, "다른 보고서 목록 프로젝트");
+		Report first = reportService.create(projectId, objectMapper.readTree(validDocument("첫 번째")));
+		Report second = reportService.create(projectId, objectMapper.readTree(validDocument("두 번째")));
+		reportService.create(otherProjectId, objectMapper.readTree(validDocument("타인 보고서")));
+
+		mvc.perform(put("/api/reports/{reportId}", first.getId())
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(updateRequest(validDocument("첫 번째 수정"), first.getVersion(), "modern", 1, "{}")))
+			.andExpect(status().isOk());
+
+		mvc.perform(get("/api/projects/{projectId}/reports", projectId)
+				.header("Authorization", bearer(token))
+				.param("page", "0")
+				.param("size", "1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(1))
+			.andExpect(jsonPath("$.items[0].id").value(first.getId().toString()))
+			.andExpect(jsonPath("$.items[0].templateId").value("modern"))
+			.andExpect(jsonPath("$.totalElements").value(2))
+			.andExpect(jsonPath("$.totalPages").value(2));
+
+		mvc.perform(get("/api/projects/{projectId}/reports", otherProjectId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
 	}
 
 	private UUID createProject(String token, String name) throws Exception {
@@ -199,6 +247,15 @@ class ReportIntegrationTest {
 			{"metadata":{"title":"이미지 보고서"},"sections":[{"id":"images",
 			"title":"이미지","blocks":[{"id":"screen","type":"image","fileId":"%s","alt":"화면"}]}]}
 			""".formatted(fileId);
+	}
+
+	private static String updateRequest(String document, long expectedVersion, String templateId,
+		Integer templateVersion, String presentationSettings) {
+		return """
+			{"document":%s,"templateId":%s,"templateVersion":%s,"presentationSettings":%s,
+			"expectedVersion":%d}
+			""".formatted(document, templateId == null ? "null" : "\"" + templateId + "\"",
+				templateVersion == null ? "null" : templateVersion, presentationSettings, expectedVersion);
 	}
 
 	private static byte[] png() {
