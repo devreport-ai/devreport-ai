@@ -49,11 +49,19 @@ export class ApiError extends Error {
  * 서버가 항상 규격을 지킬 것이라고 가정하면 안 된다. 프록시나 게이트웨이가
  * HTML 오류 페이지를 대신 돌려주는 경우가 실제로 있고, 그때 body.code 를
  * 그냥 읽으면 undefined 가 흘러들어가 엉뚱한 곳에서 터진다.
+ *
+ * 계약상 필수인 `code`·`message`·`timestamp` 세 개를 모두 확인한다.
+ * `timestamp` 를 빼고 검사하면, 타입은 string 이라고 선언해 놓고 실제로는
+ * undefined 가 담긴 객체가 통과해 버린다.
  */
 export function isErrorResponse(value: unknown): value is ErrorResponse {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Record<string, unknown>
-  return typeof candidate.code === 'string' && typeof candidate.message === 'string'
+  return (
+    typeof candidate.code === 'string' &&
+    typeof candidate.message === 'string' &&
+    typeof candidate.timestamp === 'string'
+  )
 }
 
 /**

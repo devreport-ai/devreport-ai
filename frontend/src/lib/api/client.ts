@@ -6,6 +6,8 @@
  * 고칠 수 있다. 화면마다 fetch 를 흩뿌리면 나중에 인증 토큰을 붙일 때
  * 수십 군데를 찾아다녀야 한다.
  *
+ * 본문이 있는 응답과 없는 응답을 두 함수로 나눠 둔 이유는 아래 apiFetch 주석 참고.
+ *
  * 이번 범위에서 일부러 넣지 않은 것 (이슈 #50 참고):
  *  - Authorization 헤더 주입 / 401 재발급 → 로그인 화면이 없어 검증할 수 없다.
  *    회원가입·로그인 이슈에서 이 파일에 추가한다.
@@ -37,14 +39,52 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 /**
- * Backend 를 호출하고 JSON 을 파싱해 돌려준다.
+ * 본문이 있는 응답을 기대하는 호출에 쓴다. (GET, POST 대부분)
  *
- * 실패하면 항상 {@link ApiError} 를 던진다. 성공/실패를 반환값으로 구분하지 않고
- * 예외로 처리하는 이유는, 호출부가 실패를 조용히 무시하는 실수를 막기 위해서다.
+ * 반환 타입이 `Promise<T>` 라고 선언한 이상 실제로도 항상 T 를 줘야 한다.
+ * 그래서 본문이 없는 204 가 오면 조용히 undefined 를 돌려주지 않고 에러로 만든다.
+ * 예전 구현은 `undefined as T` 로 타입을 속였고, 호출부가 아무 검사 없이
+ * 속성에 접근하다 런타임에 터질 수 있었다.
+ *
+ * 204 를 정상으로 기대하는 호출(DELETE, logout 등)은 {@link apiFetchNoContent} 를 쓴다.
  *
  * @param path `/api/projects` 처럼 슬래시로 시작하는 경로
+ * @throws {ApiError} 서버가 거절했거나, 연결에 실패했거나, 본문이 없을 때
+ * @throws {DOMException} 호출자가 signal 로 요청을 취소했을 때 (AbortError)
  */
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const response = await request(path, options)
+
+  if (response.status === 204) {
+    throw new ApiError(
+      response.status,
+      toFallbackErrorResponse('서버가 본문 없이 응답했습니다. (204)'),
+    )
+  }
+
+  return (await response.json()) as T
+}
+
+/**
+ * 본문이 없는 204 응답을 기대하는 호출에 쓴다.
+ *
+ * 계약상 `DELETE /api/projects/{id}`, `POST /api/auth/logout` 등이 여기에 해당한다.
+ * 본문이 없으므로 돌려줄 값도 없다.
+ */
+export async function apiFetchNoContent(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<void> {
+  await request(path, options)
+}
+
+/**
+ * 실제 요청을 보내고, 실패면 {@link ApiError} 를 던진다.
+ *
+ * 성공/실패를 반환값으로 구분하지 않고 예외로 처리하는 이유는,
+ * 호출부가 실패를 조용히 무시하는 실수를 막기 위해서다.
+ */
+async function request(path: string, options: ApiRequestOptions): Promise<Response> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, headers, signal, ...rest } = options
 
   // 타임아웃과 호출부가 넘긴 취소 신호를 함께 걸어둔다.
@@ -57,13 +97,17 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     response = await fetch(`${BASE_URL}${path}`, {
       ...rest,
       signal: mergedSignal,
-      headers: {
-        Accept: 'application/json',
-        ...headers,
-      },
+      headers: buildHeaders(headers),
     })
   } catch (cause) {
-    // 여기로 오는 건 서버가 응답을 못 준 경우다(네트워크 끊김, 타임아웃, 취소).
+    // 호출자가 스스로 끊은 것은 장애가 아니다. 화면을 벗어나며 정리한 경우가 대부분이라
+    // "서버에 연결할 수 없습니다" 같은 문구를 띄우면 안 된다. 그대로 다시 던져
+    // 호출부가 취소와 실패를 구분할 수 있게 한다.
+    if (cause instanceof DOMException && cause.name === 'AbortError') {
+      throw cause
+    }
+
+    // 여기부터는 서버가 응답을 못 준 경우다(네트워크 끊김, 타임아웃).
     // 서버가 거절한 것과는 성격이 다르므로 상태코드를 0 으로 표시해 구분한다.
     const message =
       cause instanceof DOMException && cause.name === 'TimeoutError'
@@ -76,13 +120,30 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     throw new ApiError(response.status, await readErrorBody(response))
   }
 
-  // 204 No Content 는 본문이 없다. 삭제 API 등이 여기에 해당한다.
-  // 그대로 response.json() 을 부르면 파싱 에러가 난다.
-  if (response.status === 204) {
-    return undefined as T
+  return response
+}
+
+/**
+ * 호출부가 넘긴 헤더에 기본값을 얹는다.
+ *
+ * `HeadersInit` 은 객체뿐 아니라 `Headers` 인스턴스와 `[key, value]` 튜플 배열도
+ * 허용한다. 이것들을 객체 전개(`{ ...headers }`)로 합치면 조용히 망가진다.
+ *  - `Headers` 인스턴스는 열거 가능한 속성이 없어 항목이 통째로 사라진다.
+ *    나중에 Authorization 을 Headers 로 넘기면 인증이 빠진 채 401 만 받게 된다.
+ *  - 튜플 배열은 `{ "0": [...], "1": [...] }` 같은 엉뚱한 헤더로 바뀐다.
+ *
+ * 그래서 반드시 `new Headers()` 로 정규화한 뒤 다룬다.
+ */
+function buildHeaders(headers: HeadersInit | undefined): Headers {
+  const normalized = new Headers(headers)
+
+  // 호출부가 Accept 를 직접 지정했다면 존중한다. 파일 다운로드처럼
+  // JSON 이 아닌 응답을 받아야 하는 경우가 있다.
+  if (!normalized.has('Accept')) {
+    normalized.set('Accept', 'application/json')
   }
 
-  return (await response.json()) as T
+  return normalized
 }
 
 /**

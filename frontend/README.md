@@ -65,7 +65,7 @@ cp .env.example .env.local
 Backend 에 CORS 설정이 아직 없어서 브라우저가 `localhost:3000` → `localhost:8080`
 요청을 preflight 단계에서 막는다. 개발 중에는 Vite 개발 서버의 프록시로 우회한다.
 
-```
+```text
 브라우저 → localhost:3000/api/...  →  (Vite 프록시)  →  localhost:8080/api/...
 ```
 
@@ -83,7 +83,7 @@ cd backend && ./gradlew bootRun     # http://localhost:8080
 
 ## 디렉터리 구조
 
-```
+```text
 frontend/
 ├── src/
 │   ├── main.tsx           진입점. 라우터로 감싸고 전역 스타일을 불러온다.
@@ -108,5 +108,7 @@ frontend/
 
 - 인증 토큰 주입과 401 재발급 — 로그인 화면이 없어 검증할 수 없다
 - `contracts/openapi.yaml` 기반 타입 생성 — 계약이 아직 변경 중이다
-- Frontend CI 워크플로 — `.github/` 는 3인 리뷰 대상이라 별도 PR 로 올린다
 - 실제 화면 구현 — 이슈 #36, #38, #39
+
+CI 워크플로(`.github/workflows/frontend-ci.yml`)는 이 작업에 함께 포함했다.
+`frontend/**` 가 바뀔 때만 `npm ci` → lint → typecheck → test → build 를 실행한다.
