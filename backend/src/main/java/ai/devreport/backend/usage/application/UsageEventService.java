@@ -26,9 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class UsageEventService {
 
 	private static final Set<String> SAFE_FAILURE_CODES = Set.of(
-		"AI_SERVICE_ERROR",
-		"AI_SERVICE_INVALID_RESPONSE",
-		"AI_SERVICE_TIMEOUT",
+		"GENERATION_REQUEST_INVALID",
+		"GENERATION_TIMEOUT",
 		"AI_SERVICE_UNAVAILABLE",
 		"GENERATION_CAPACITY_EXCEEDED",
 		"GENERATION_FAILED",

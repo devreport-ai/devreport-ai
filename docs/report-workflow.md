@@ -2,7 +2,7 @@
 
 이 문서는 DevReport AI MVP의 사용자 흐름과 서비스별 책임을 정의한다.
 
-> 구현 상태: 생성 입력은 #34, 파일 참조 검증은 #37, AI 오류 변환은 #30에서 관리한다.
+> 구현 상태: 생성 입력은 #34, 파일 참조 검증은 #37, AI 오류 변환은 #60에서 관리한다.
 > Backend의 Chromium PDF pipeline과 출력 API는 #40에서 구현하며, Frontend 출력 route는 #39의 범위다.
 
 ## 서비스 흐름
@@ -130,11 +130,17 @@ AI Service와 Backend는 모두 `ReportDocument`를 검증한다. Backend는 Sch
 
 목표 AI 내부 오류 코드는 `AI_INVALID_REQUEST`, `AI_FILE_PROCESSING_FAILED`,
 `AI_GENERATION_FAILED`, `AI_INVALID_RESPONSE`, `AI_TIMEOUT`, `AI_UNAVAILABLE`의
-최소 집합으로 정의한다. Backend 사용자 API는 기존 오류 규칙에 맞춰
-`GENERATION_FAILED`, `GENERATION_TIMEOUT`, `AI_SERVICE_UNAVAILABLE`로 변환한다.
+최소 집합으로 정의한다. Backend 사용자 API는 다음과 같이 변환한다.
 
-현재 Backend의 `AI_SERVICE_ERROR`·`AI_SERVICE_TIMEOUT` 임시 변환은 #30에서 위 단일
-매핑과 HTTP status를 확정한 뒤 #34 구현과 함께 교체한다. 세부 생성 JSON Schema는
+| AI Service | Backend 사용자 API |
+| --- | --- |
+| `AI_INVALID_REQUEST` | `GENERATION_REQUEST_INVALID` |
+| `AI_FILE_PROCESSING_FAILED`·`AI_GENERATION_FAILED`·`AI_INVALID_RESPONSE` | `GENERATION_FAILED` |
+| `AI_TIMEOUT` | `GENERATION_TIMEOUT` |
+| `AI_UNAVAILABLE` | `AI_SERVICE_UNAVAILABLE` |
+
+알 수 없거나 형식이 잘못된 AI 오류 응답은 `GENERATION_FAILED`로 처리하며, 원격 오류의
+`message`·`details`는 Backend 응답과 로그에 노출하지 않는다. 세부 생성 JSON Schema는
 Issue #30, ReportDocument와 Report envelope는 #31에서 확정한다.
 
 ## 저장·편집·PDF 원칙

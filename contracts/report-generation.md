@@ -2,8 +2,8 @@
 
 이 문서는 프로젝트 파일 기반 AI 보고서 생성의 서비스 간 계약을 기록한다.
 
-> 구현 상태: Frontend → Backend 요청 검증과 JSONB 저장은 #34에서 반영했다. bundle 전달은
-> #43, AI 결과의 파일 참조 검증은 #37에서 구현한다.
+> 구현 상태: Frontend → Backend 요청 검증과 JSONB 저장은 #34, bundle 전달은 #43,
+> AI 결과의 파일 참조 검증은 #37, AI 오류 변환은 #60에서 반영했다.
 
 ## Frontend → Backend
 
@@ -116,13 +116,13 @@ Issue #37에서 모든 Report 저장 경로에 추가한다.
 
 | AI Service | Backend 사용자 API |
 | --- | --- |
-| `AI_INVALID_REQUEST` | 기존 요청 검증 오류 규칙 |
+| `AI_INVALID_REQUEST` | `GENERATION_REQUEST_INVALID` |
 | `AI_FILE_PROCESSING_FAILED` | `GENERATION_FAILED` |
 | `AI_GENERATION_FAILED` | `GENERATION_FAILED` |
 | `AI_INVALID_RESPONSE` | `GENERATION_FAILED` |
 | `AI_TIMEOUT` | `GENERATION_TIMEOUT` |
 | `AI_UNAVAILABLE` | `AI_SERVICE_UNAVAILABLE` |
 
-현재 `HttpAiServiceClient`는 연결·5xx를 `AI_SERVICE_ERROR`, timeout을
-`AI_SERVICE_TIMEOUT`으로 변환하는 임시 구현이다. 위 표의 단일 매핑과 오류 응답 모양,
-HTTP status는 #30에서 확정하고 #34 구현·테스트와 함께 교체한다.
+`HttpAiServiceClient`는 AI Service의 공통 오류 응답에서 `code`만 읽어 위 표로 변환한다.
+원격 `message`·`details`는 내부 정보일 수 있으므로 Backend 응답과 로그에 전달하지 않는다.
+알 수 없거나 JSON으로 해석할 수 없는 오류 응답은 `GENERATION_FAILED`로 처리한다.

@@ -23,6 +23,9 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @ConditionalOnProperty(name = "ai.service.mock", havingValue = "false", matchIfMissing = true)
@@ -30,30 +33,33 @@ class HttpAiServiceClient implements AiServiceClient {
 
 	private final RestClient client;
 	private final String internalToken;
+	private final ObjectMapper objectMapper;
 
 	HttpAiServiceClient(
 		@Value("${ai.service.url}") String serviceUrl,
 		@Value("${ai.service.connect-timeout}") Duration connectTimeout,
 		@Value("${ai.service.response-timeout}") Duration responseTimeout,
-		@Value("${ai.service.internal-token}") String internalToken
+		@Value("${ai.service.internal-token}") String internalToken,
+		ObjectMapper objectMapper
 	) {
 		HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
 		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
 		requestFactory.setReadTimeout(responseTimeout);
 		this.client = RestClient.builder().baseUrl(serviceUrl).requestFactory(requestFactory).build();
 		this.internalToken = internalToken;
+		this.objectMapper = objectMapper;
 	}
 
 	@Override
 	public AiHealthResponse health() {
 		return execute(() -> client.get().uri("/health").retrieve().body(AiHealthResponse.class),
-			response -> response != null && "UP".equalsIgnoreCase(response.status()));
+			response -> response != null && "UP".equalsIgnoreCase(response.status()), Operation.HEALTH);
 	}
 
 	@Override
 	public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
 		if (internalToken.isBlank()) {
-			throw failure("AI_SERVICE_UNAVAILABLE", "AI 서비스 내부 인증이 설정되지 않았습니다.", null);
+			throw Failure.AI_SERVICE_UNAVAILABLE.exception();
 		}
 		var body = new LinkedMultiValueMap<String, Object>();
 		body.add("request", jsonPart(request));
@@ -63,7 +69,7 @@ class HttpAiServiceClient implements AiServiceClient {
 			filePart(file.path(), "files", file.relativePath(), file.contentType())));
 		return execute(() -> client.post().uri("/internal/ai/reports/generate")
 			.header("X-Internal-Token", internalToken).contentType(MediaType.MULTIPART_FORM_DATA).body(body)
-			.retrieve().body(ReportDocument.class), response -> response != null);
+			.retrieve().body(ReportDocument.class), response -> response != null, Operation.GENERATE);
 	}
 
 	private static HttpEntity<Object> jsonPart(Object value) {
@@ -80,25 +86,53 @@ class HttpAiServiceClient implements AiServiceClient {
 		return new HttpEntity<>(new FileSystemResource(path), headers);
 	}
 
-	private static <T> T execute(Supplier<T> request, Predicate<T> validResponse) {
+	private <T> T execute(Supplier<T> request, Predicate<T> validResponse, Operation operation) {
 		try {
 			T response = request.get();
 			if (!validResponse.test(response)) {
-				throw failure("AI_SERVICE_INVALID_RESPONSE", "AI 서비스 응답을 확인할 수 없습니다.", null);
+				throw operation.invalidResponse().exception();
 			}
 			return response;
 		} catch (AiServiceException exception) {
 			throw exception;
-		} catch (RestClientResponseException ignored) {
-			throw failure("AI_SERVICE_ERROR", "AI 서비스가 요청 처리에 실패했습니다.", null);
+		} catch (RestClientResponseException exception) {
+			throw mapRemoteFailure(exception.getResponseBodyAsString(), operation.fallback());
 		} catch (ResourceAccessException exception) {
 			if (hasCause(exception, HttpTimeoutException.class)) {
-				throw timeout(exception);
+				throw operation.timeout().exception(exception);
 			}
-			throw failure("AI_SERVICE_UNAVAILABLE", "AI 서비스에 연결할 수 없습니다.", exception);
+			throw Failure.AI_SERVICE_UNAVAILABLE.exception(exception);
 		} catch (RestClientException ignored) {
-			throw failure("AI_SERVICE_INVALID_RESPONSE", "AI 서비스 응답을 확인할 수 없습니다.", null);
+			throw operation.invalidResponse().exception();
 		}
+	}
+
+	private AiServiceException mapRemoteFailure(String responseBody, Failure fallback) {
+		if (responseBody == null || responseBody.isBlank()) {
+			return fallback.exception();
+		}
+		String code = null;
+		try {
+			JsonNode payload = objectMapper.readTree(responseBody);
+			JsonNode codeNode = payload == null ? null : payload.get("code");
+			if (codeNode != null && codeNode.isString()) {
+				code = codeNode.asText();
+			}
+		} catch (JacksonException ignored) {
+			// AI Service 오류 본문은 내부 정보일 수 있으므로 원문을 로그나 응답에 남기지 않는다.
+		}
+		if (code == null) {
+			return fallback.exception();
+		}
+
+		return switch (code) {
+			case "AI_INVALID_REQUEST" -> Failure.GENERATION_REQUEST_INVALID.exception();
+			case "AI_FILE_PROCESSING_FAILED", "AI_GENERATION_FAILED", "AI_INVALID_RESPONSE" ->
+				Failure.GENERATION_FAILED.exception();
+			case "AI_TIMEOUT" -> Failure.GENERATION_TIMEOUT.exception();
+			case "AI_UNAVAILABLE" -> Failure.AI_SERVICE_UNAVAILABLE.exception();
+			default -> fallback.exception();
+		};
 	}
 
 	private static boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
@@ -110,12 +144,67 @@ class HttpAiServiceClient implements AiServiceClient {
 		return false;
 	}
 
-	private static AiServiceException timeout(Throwable cause) {
-		return new AiServiceException(HttpStatus.GATEWAY_TIMEOUT, "AI_SERVICE_TIMEOUT",
-			"AI 서비스 응답 시간이 초과되었습니다.", cause);
+	private enum Operation {
+		HEALTH(
+			Failure.AI_SERVICE_UNAVAILABLE,
+			Failure.AI_SERVICE_TIMEOUT,
+			Failure.AI_SERVICE_INVALID_RESPONSE
+		),
+		GENERATE(
+			Failure.GENERATION_FAILED,
+			Failure.GENERATION_TIMEOUT,
+			Failure.GENERATION_FAILED
+		);
+
+		private final Failure fallback;
+		private final Failure timeout;
+		private final Failure invalidResponse;
+
+		Operation(Failure fallback, Failure timeout, Failure invalidResponse) {
+			this.fallback = fallback;
+			this.timeout = timeout;
+			this.invalidResponse = invalidResponse;
+		}
+
+		Failure fallback() {
+			return fallback;
+		}
+
+		Failure timeout() {
+			return timeout;
+		}
+
+		Failure invalidResponse() {
+			return invalidResponse;
+		}
 	}
 
-	private static AiServiceException failure(String code, String message, Throwable cause) {
-		return new AiServiceException(HttpStatus.BAD_GATEWAY, code, message, cause);
+	private enum Failure {
+		GENERATION_REQUEST_INVALID(HttpStatus.BAD_REQUEST, "GENERATION_REQUEST_INVALID",
+			"보고서 생성 요청이 올바르지 않습니다."),
+		GENERATION_FAILED(HttpStatus.BAD_GATEWAY, "GENERATION_FAILED", "보고서 생성에 실패했습니다."),
+		GENERATION_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "GENERATION_TIMEOUT", "보고서 생성 시간이 초과되었습니다."),
+		AI_SERVICE_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "AI_SERVICE_UNAVAILABLE", "AI 서비스에 연결할 수 없습니다."),
+		AI_SERVICE_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_SERVICE_TIMEOUT", "AI 서비스 응답 시간이 초과되었습니다."),
+		AI_SERVICE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "AI_SERVICE_INVALID_RESPONSE",
+			"AI 서비스 응답을 확인할 수 없습니다.");
+
+		private final HttpStatus status;
+		private final String code;
+		private final String message;
+
+		Failure(HttpStatus status, String code, String message) {
+			this.status = status;
+			this.code = code;
+			this.message = message;
+		}
+
+		AiServiceException exception() {
+			return exception(null);
+		}
+
+		AiServiceException exception(Throwable cause) {
+			return new AiServiceException(status, code, message, cause);
+		}
 	}
 }
