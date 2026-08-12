@@ -386,6 +386,39 @@ components:
         completedAt:
           type: [string, "null"]
           format: date-time
+    ReportRenderDataResponse:
+      type: object
+      required: [exportId, reportId, projectId, reportVersion, document, templateId, templateVersion,
+        presentationSettings, imageFileIds]
+      properties:
+        exportId:
+          type: string
+          format: uuid
+        reportId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        reportVersion:
+          type: integer
+          minimum: 0
+        document:
+          $ref: "report-document.schema.json"
+        templateId:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'
+        templateVersion:
+          type: integer
+          minimum: 1
+        presentationSettings:
+          $ref: "#/components/schemas/ReportPresentationSettings"
+        imageFileIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
     ErrorResponse:
       type: object
       required: [code, message, timestamp]
@@ -1118,7 +1151,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
     put:
       summary: 보고서 수정
       parameters:
@@ -1195,6 +1227,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/report-exports/{exportId}:
     get:
@@ -1221,6 +1259,81 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: 작업이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/report-exports/{exportId}/render-data:
+    get:
+      summary: PDF 출력용 보고서 스냅샷 조회
+      security: []
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Render-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF 출력용 요청 시점 스냅샷
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportRenderDataResponse"
+        "404":
+          description: 유효하지 않거나 만료된 출력 토큰 또는 작업 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/report-exports/{exportId}/files/{fileId}:
+    get:
+      summary: PDF 출력용 이미지 조회
+      security: []
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Render-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 보고서 스냅샷에 포함된 이미지 파일
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: 유효하지 않거나 만료된 출력 토큰·작업·이미지
           content:
             application/json:
               schema:
