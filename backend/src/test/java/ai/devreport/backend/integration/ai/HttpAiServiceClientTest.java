@@ -21,13 +21,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpStatus;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class HttpAiServiceClientTest {
 	@TempDir
 	Path temporaryDirectory;
 
 	private HttpServer server;
+	private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
 	@AfterEach
 	void stopServer() {
@@ -84,7 +89,7 @@ class HttpAiServiceClientTest {
 	@Test
 	void rejectsGenerationWithoutInternalToken() {
 		var client = new HttpAiServiceClient("http://127.0.0.1", Duration.ofSeconds(1),
-			Duration.ofSeconds(1), " ");
+			Duration.ofSeconds(1), " ", objectMapper);
 		var bundle = new GenerationBundle(temporaryDirectory, temporaryDirectory.resolve("manifest.json"),
 			List.of());
 
@@ -98,7 +103,7 @@ class HttpAiServiceClientTest {
 	@EnabledIfEnvironmentVariable(named = "AI_SERVICE_INTEGRATION_URL", matches = ".+")
 	void connectsToRunningFastApi() {
 		var client = new HttpAiServiceClient(System.getenv("AI_SERVICE_INTEGRATION_URL"),
-			Duration.ofSeconds(3), Duration.ofSeconds(3), "integration-test-token");
+			Duration.ofSeconds(3), Duration.ofSeconds(3), "integration-test-token", objectMapper);
 
 		assertThat(client.health().service()).isEqualTo("devreport-ai-service");
 	}
@@ -110,8 +115,70 @@ class HttpAiServiceClientTest {
 		assertThatThrownBy(() -> client(Duration.ofSeconds(1)).health())
 			.isInstanceOfSatisfying(AiServiceException.class, exception -> {
 				assertThat(exception.status()).isEqualTo(HttpStatus.BAD_GATEWAY);
-				assertThat(exception.code()).isEqualTo("AI_SERVICE_ERROR");
+				assertThat(exception.code()).isEqualTo("AI_SERVICE_UNAVAILABLE");
 			});
+	}
+
+	@ParameterizedTest(name = "{0} -> {1}")
+	@CsvSource({
+		"AI_INVALID_REQUEST, GENERATION_REQUEST_INVALID, BAD_REQUEST",
+		"AI_FILE_PROCESSING_FAILED, GENERATION_FAILED, BAD_GATEWAY",
+		"AI_GENERATION_FAILED, GENERATION_FAILED, BAD_GATEWAY",
+		"AI_INVALID_RESPONSE, GENERATION_FAILED, BAD_GATEWAY",
+		"AI_TIMEOUT, GENERATION_TIMEOUT, GATEWAY_TIMEOUT",
+		"AI_UNAVAILABLE, AI_SERVICE_UNAVAILABLE, BAD_GATEWAY"
+	})
+	void mapsFastApiErrorCodes(String aiCode, String backendCode, HttpStatus status) throws Exception {
+		startServer(exchange -> respond(exchange, 500, """
+			{"code":"%s","message":"internal detail","details":{"apiKey":"secret"}}
+			""".formatted(aiCode)));
+		var bundle = emptyBundle();
+		try {
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
+					assertThat(exception.status()).isEqualTo(status);
+					assertThat(exception.code()).isEqualTo(backendCode);
+					assertThat(exception).hasMessageNotContaining("internal detail");
+					assertThat(exception).hasMessageNotContaining("secret");
+					assertThat(exception.getCause()).isNull();
+				});
+		} finally {
+			bundle.close();
+		}
+	}
+
+	@Test
+	void defaultsUnknownErrorPayloadToSafeGenerationFailure() throws Exception {
+		startServer(exchange -> respond(exchange, 500, """
+			{"code":"AI_NEW_CODE","message":"internal detail","details":{"apiKey":"secret"}}
+			"""));
+		var bundle = emptyBundle();
+		try {
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
+					assertThat(exception.code()).isEqualTo("GENERATION_FAILED");
+					assertThat(exception).hasMessageNotContaining("internal detail");
+					assertThat(exception).hasMessageNotContaining("secret");
+					assertThat(exception.getCause()).isNull();
+				});
+		} finally {
+			bundle.close();
+		}
+	}
+
+	@Test
+	void defaultsMalformedErrorPayloadToSafeGenerationFailure() throws Exception {
+		startServer(exchange -> respond(exchange, 500, "not-json"));
+		var bundle = emptyBundle();
+		try {
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
+					assertThat(exception.code()).isEqualTo("GENERATION_FAILED");
+					assertThat(exception.getCause()).isNull();
+				});
+		} finally {
+			bundle.close();
+		}
 	}
 
 	@Test
@@ -132,9 +199,41 @@ class HttpAiServiceClientTest {
 			});
 	}
 
+	@Test
+	void convertsGenerationResponseTimeout() throws Exception {
+		startServer(exchange -> {
+			try {
+				Thread.sleep(300);
+				respond(exchange, 200, "{\"metadata\":{\"title\":\"보고서\"},\"sections\":[]}");
+			} catch (InterruptedException exception) {
+				Thread.currentThread().interrupt();
+			}
+		});
+		var bundle = emptyBundle();
+		try {
+			assertThatThrownBy(() -> client(Duration.ofMillis(50)).generate(generationRequest(), bundle))
+				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
+					assertThat(exception.status()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+					assertThat(exception.code()).isEqualTo("GENERATION_TIMEOUT");
+				});
+		} finally {
+			bundle.close();
+		}
+	}
+
 	private HttpAiServiceClient client(Duration responseTimeout) {
 		return new HttpAiServiceClient("http://127.0.0.1:" + server.getAddress().getPort(),
-			Duration.ofSeconds(1), responseTimeout, "test-internal-token");
+			Duration.ofSeconds(1), responseTimeout, "test-internal-token", objectMapper);
+	}
+
+	private GenerationRequest generationRequest() {
+		return new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약");
+	}
+
+	private GenerationBundle emptyBundle() throws IOException {
+		Path manifest = temporaryDirectory.resolve("manifest.json");
+		Files.writeString(manifest, "{\"version\":1,\"files\":[]}");
+		return new GenerationBundle(temporaryDirectory, manifest, List.of());
 	}
 
 	private void startServer(com.sun.net.httpserver.HttpHandler handler) throws IOException {
