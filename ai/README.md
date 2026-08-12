@@ -56,6 +56,22 @@ uv run uvicorn app.main:app --reload --port 8000
 | http://localhost:8000/health | Health Check |
 | http://localhost:8000/docs | Swagger UI |
 
+## 내부 보고서 생성 API
+
+`POST /internal/ai/reports/generate`는 Backend 전용 multipart API다. Backend가 생성한
+bundle을 다음 part로 전달한다.
+
+| Part | Content-Type | 내용 |
+| --- | --- | --- |
+| `request` | `application/json` | `fileIds`, `metadata`, `instructions` |
+| `manifest` | `application/json` | bundle 파일 메타데이터 |
+| `files` | 파일 MIME | manifest 순서와 일치하는 반복 파일 part |
+
+AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 검증한다. 현재
+`MOCK_REPORT=true`에서는 유효한 bundle을 받으면 샘플 `ReportDocument`를 반환하며,
+실제 문서·코드·이미지 분석과 Gemini 호출은 후속 작업에서 추가한다. 상세 계약은
+[`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
+
 ### 5. 테스트 및 린트
 
 ```bash
@@ -100,6 +116,6 @@ ai/
 
 ## 다음 작업
 
-- [ ] `contracts/report-document.schema.json` 보강 (3인 리뷰 필요)
-- [ ] `POST /internal/ai/reports/generate` 임시 구현 (샘플 ReportDocument 반환)
+- [x] `POST /internal/ai/reports/generate` multipart bundle Mock 구현
+- [ ] `X-Internal-Token` AI Service 검증 추가 (배포 전 보안 task)
 - [ ] Gemini Client 및 생성 파이프라인 (추출 → 목차 설계 → 섹션 생성)
