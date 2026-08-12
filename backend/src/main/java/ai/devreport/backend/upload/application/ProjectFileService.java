@@ -56,6 +56,7 @@ public class ProjectFileService {
 	};
 	private static final byte[] JPEG_SIGNATURE = {(byte) 0xff, (byte) 0xd8, (byte) 0xff};
 	private static final Set<String> ZIP_MIME_TYPES = Set.of("application/zip", "application/x-zip-compressed");
+	private static final Set<String> IMAGE_MIME_TYPES = Set.of("image/jpeg", "image/png");
 
 	private final UploadedFileRepository files;
 	private final GenerationJobRepository generationJobs;
@@ -204,6 +205,14 @@ public class ProjectFileService {
 			!file.getProjectId().equals(projectId) || !isStoredFileConsistent(file))) {
 			throw fileNotFound();
 		}
+	}
+
+	public boolean hasAvailableImages(UUID projectId, Collection<UUID> fileIds) {
+		List<UploadedFile> selected = files.findAllById(fileIds);
+		return selected.size() == fileIds.size() && selected.stream().allMatch(file ->
+			file.getProjectId().equals(projectId)
+				&& IMAGE_MIME_TYPES.contains(file.getContentType())
+				&& isStoredFileConsistent(file));
 	}
 
 	private static String originalName(MultipartFile file) {

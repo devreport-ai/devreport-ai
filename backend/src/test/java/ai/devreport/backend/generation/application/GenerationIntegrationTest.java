@@ -140,6 +140,27 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void rejectsAiReportWithInvalidImageReferenceBeforeSaving() throws Exception {
+		String token = signupAndLogin("generation-report-validation@example.com");
+		String projectId = createProject(token, "생성 결과 검증 프로젝트");
+		String textId = upload(token, projectId, "notes.txt", "분석 자료");
+
+		aiService.prepare(false, imageReport(textId));
+		String jobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"이미지 검증"}
+			""".formatted(textId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, jobId, "FAILED");
+
+		mvc.perform(get("/api/generations/{jobId}", jobId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.failureCode").value("REPORT_DOCUMENT_INVALID"));
+		assertThat(jobs.findById(UUID.fromString(jobId)).orElseThrow().getReportId()).isNull();
+	}
+
+	@Test
 	void rejectsInvalidMissingAndForeignFiles() throws Exception {
 		String token = signupAndLogin("generation-validation@example.com");
 		String otherToken = signupAndLogin("generation-validation-other@example.com");
@@ -343,12 +364,18 @@ class GenerationIntegrationTest {
 		private volatile CountDownLatch started = new CountDownLatch(1);
 		private volatile CountDownLatch released = new CountDownLatch(1);
 		private volatile boolean fail;
+		private volatile ReportDocument generatedResult;
 		private volatile Path bundleRoot;
 
 		void prepare(boolean shouldFail) {
+			prepare(shouldFail, null);
+		}
+
+		void prepare(boolean shouldFail, ReportDocument result) {
 			started = new CountDownLatch(1);
 			released = new CountDownLatch(1);
 			fail = shouldFail;
+			generatedResult = result;
 			bundleRoot = null;
 		}
 
@@ -385,7 +412,14 @@ class GenerationIntegrationTest {
 			if (fail) {
 				throw new IllegalStateException("AI failed");
 			}
-			return new MockAiServiceClient().generate(request, bundle);
+			return generatedResult == null ? new MockAiServiceClient().generate(request, bundle) : generatedResult;
 		}
+	}
+
+	private static ReportDocument imageReport(String fileId) {
+		return new ReportDocument(
+			new ReportDocument.Metadata("이미지 보고서", null, null, null),
+			List.of(new ReportDocument.Section("images", "이미지", List.of(Map.of(
+				"id", "screen", "type", "image", "fileId", fileId, "alt", "화면")))));
 	}
 }
