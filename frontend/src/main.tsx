@@ -2,14 +2,14 @@
  * 앱의 진입점.
  *
  * index.html 의 <div id="root"> 안에 React 앱을 붙인다.
- * 여기서 하는 일은 딱 두 가지뿐이며, 화면 로직은 App.tsx 이하로 내린다.
- *  1) 라우터로 감싸기
- *  2) 전역 스타일 불러오기
+ * 여기서 하는 일은 감싸기와 스타일 로드뿐이고, 화면 로직은 App.tsx 이하로 내린다.
  */
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { queryClient } from './lib/queryClient'
 import './index.css'
 
 const rootElement = document.getElementById('root')
@@ -22,10 +22,12 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   // StrictMode 는 개발 중에만 동작하며, 부수효과가 있는 코드를 일부러 두 번 실행해
-  // 정리(cleanup)를 빠뜨린 곳을 드러낸다. 폴링을 붙일 때 특히 도움이 된다.
+  // 정리(cleanup)를 빠뜨린 곳을 드러낸다. 폴링을 붙였으므로 특히 유용하다.
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 )

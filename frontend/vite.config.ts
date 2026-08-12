@@ -16,9 +16,12 @@
  */
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind v4 는 PostCSS 설정 파일 없이 Vite 플러그인으로 붙인다.
+  // 클래스 스캔 대상도 자동으로 잡으므로 content 설정이 필요 없다.
+  plugins: [react(), tailwindcss()],
 
   server: {
     // Vite 기본 포트는 5173 이다. 팀 규격이 3000 이므로 명시적으로 고정한다.
