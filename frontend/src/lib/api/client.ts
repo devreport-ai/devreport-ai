@@ -67,7 +67,10 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   // ApiError 와 두 갈래가 된다. 여기서 ApiError 로 통일한다.
   try {
     return (await response.json()) as T
-  } catch {
+  } catch (cause) {
+    // 본문을 읽는 도중에도 취소·타임아웃이 날 수 있다. 그것까지 "해석 실패" 로
+    // 뭉뚱그리면 원인을 잃는다. 아래에서 원인별로 먼저 걸러낸다.
+    rethrowIfAbortOrTimeout(cause)
     throw new ApiError(response.status, toFallbackErrorResponse('서버 응답을 해석하지 못했습니다.'))
   }
 }
@@ -118,20 +121,14 @@ async function request(path: string, options: ApiRequestOptions): Promise<Respon
       headers: buildHeaders(headers),
     })
   } catch (cause) {
-    // 호출자가 스스로 끊은 것은 장애가 아니다. 화면을 벗어나며 정리한 경우가 대부분이라
-    // "서버에 연결할 수 없습니다" 같은 문구를 띄우면 안 된다. 그대로 다시 던져
-    // 호출부가 취소와 실패를 구분할 수 있게 한다.
-    if (cause instanceof DOMException && cause.name === 'AbortError') {
-      throw cause
-    }
+    rethrowIfAbortOrTimeout(cause)
 
-    // 여기부터는 서버가 응답을 못 준 경우다(네트워크 끊김, 타임아웃).
+    // 여기까지 왔으면 서버가 응답을 못 준 경우다(네트워크 끊김 등).
     // 서버가 거절한 것과는 성격이 다르므로 상태코드를 0 으로 표시해 구분한다.
-    const message =
-      cause instanceof DOMException && cause.name === 'TimeoutError'
-        ? '서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.'
-        : '서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.'
-    throw new ApiError(0, toFallbackErrorResponse(message))
+    throw new ApiError(
+      0,
+      toFallbackErrorResponse('서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.'),
+    )
   }
 
   if (!response.ok) {
@@ -139,6 +136,33 @@ async function request(path: string, options: ApiRequestOptions): Promise<Respon
   }
 
   return response
+}
+
+/**
+ * 취소와 타임아웃만 골라내 원인에 맞게 다시 던진다. 그 외에는 아무것도 하지 않는다.
+ *
+ * 요청을 보낼 때뿐 아니라 **본문을 읽는 도중에도** 같은 오류가 날 수 있다.
+ * 두 곳에서 따로 처리하면 한쪽만 고쳐져 규칙이 어긋나므로 한 함수로 모았다.
+ *
+ *  - `AbortError`   호출자가 스스로 끊은 것이다. 장애가 아니므로 그대로 다시 던져
+ *                   호출부가 취소와 실패를 구분하게 한다. 화면을 벗어나며 폴링을
+ *                   정리한 경우에 "서버에 연결할 수 없습니다" 가 뜨면 안 된다.
+ *  - `TimeoutError` 서버가 제때 응답하지 못한 것이다. 서버가 거절한 것과 구분하려고
+ *                   상태코드 0 으로 표시한다.
+ */
+function rethrowIfAbortOrTimeout(cause: unknown): void {
+  if (!(cause instanceof DOMException)) return
+
+  if (cause.name === 'AbortError') {
+    throw cause
+  }
+
+  if (cause.name === 'TimeoutError') {
+    throw new ApiError(
+      0,
+      toFallbackErrorResponse('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.'),
+    )
+  }
 }
 
 /**
@@ -174,8 +198,11 @@ async function readErrorBody(response: Response): Promise<ErrorResponse> {
   try {
     const body: unknown = await response.json()
     if (isErrorResponse(body)) return body
-  } catch {
-    // JSON 이 아니었다는 뜻이다. 아래 기본 메시지로 넘어간다.
+  } catch (cause) {
+    // 여기서도 본문을 읽는 중이라 취소·타임아웃이 날 수 있다.
+    // 그것까지 "요청을 처리하지 못했습니다" 로 덮으면 원인을 잃는다.
+    rethrowIfAbortOrTimeout(cause)
+    // 그 외에는 JSON 이 아니었다는 뜻이다. 아래 기본 메시지로 넘어간다.
   }
   return toFallbackErrorResponse(`요청을 처리하지 못했습니다. (HTTP ${response.status})`)
 }

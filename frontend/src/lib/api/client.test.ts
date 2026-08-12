@@ -114,6 +114,47 @@ describe('본문 없는 응답', () => {
   })
 })
 
+/** 응답은 정상이지만 본문을 읽는 도중 실패하는 상황을 만든다. */
+function responseWithFailingBody(reason: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.reject(reason),
+  } as unknown as Response
+}
+
+describe('본문 읽는 도중 취소·타임아웃', () => {
+  it('성공 응답 본문을 읽다 취소되면 AbortError 를 그대로 던진다', async () => {
+    fetchMock.mockResolvedValue(responseWithFailingBody(new DOMException('Aborted', 'AbortError')))
+
+    await expect(apiFetch('/api/projects')).rejects.toSatisfy(
+      (error: unknown) => error instanceof DOMException && error.name === 'AbortError',
+    )
+  })
+
+  it('성공 응답 본문을 읽다 타임아웃이면 상태코드 0 의 ApiError 로 바꾼다', async () => {
+    fetchMock.mockResolvedValue(
+      responseWithFailingBody(new DOMException('Timed out', 'TimeoutError')),
+    )
+
+    const error = await apiFetch('/api/projects').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(0)
+  })
+
+  it('실패 응답 본문을 읽다 취소되면 AbortError 를 그대로 던진다', async () => {
+    // readErrorBody 쪽 경로. 여기도 같은 규칙이어야 한다.
+    fetchMock.mockResolvedValue(
+      responseWithFailingBody(new DOMException('Aborted', 'AbortError'), 500),
+    )
+
+    await expect(apiFetch('/api/projects')).rejects.toSatisfy(
+      (error: unknown) => error instanceof DOMException && error.name === 'AbortError',
+    )
+  })
+})
+
 describe('본문 해석', () => {
   it('성공 응답이 JSON 이 아니면 ApiError 로 감싼다', async () => {
     // 날것의 SyntaxError 가 새어 나가면 호출부가 실패 처리를 두 갈래로 해야 한다.
