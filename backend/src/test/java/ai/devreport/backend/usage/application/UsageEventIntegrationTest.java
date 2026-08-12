@@ -15,6 +15,7 @@ import ai.devreport.backend.usage.domain.UsageEventType;
 import ai.devreport.backend.usage.infrastructure.UsageEventRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -30,6 +31,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import jakarta.persistence.EntityManager;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
@@ -75,6 +78,9 @@ class UsageEventIntegrationTest {
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	@Autowired
+	EntityManager entityManager;
 
 	@Autowired
 	ProjectService projects;
@@ -141,6 +147,26 @@ class UsageEventIntegrationTest {
 			assertThat(event.getMetadata().toString())
 				.doesNotContain("개인정보", "프롬프트", "notes.txt", "민감한 제목");
 		});
+		assertThatThrownBy(() -> projectEvents.get(0).getMetadata().put("unexpected", "value"))
+			.isInstanceOf(UnsupportedOperationException.class);
+		assertThat(eventsOf(projectEvents, UsageEventType.FILE_UPLOADED))
+			.extracting(UsageEvent::getFileId)
+			.containsExactly(UUID.fromString(fileId));
+		assertThat(eventsOf(projectEvents, UsageEventType.GENERATION_REQUESTED))
+			.extracting(UsageEvent::getJobId)
+			.containsExactlyInAnyOrder(UUID.fromString(jobId), UUID.fromString(failedJobId));
+		assertThat(eventsOf(projectEvents, UsageEventType.GENERATION_COMPLETED))
+			.extracting(UsageEvent::getReportId)
+			.containsExactly(UUID.fromString(reportId));
+		assertThat(eventsOf(projectEvents, UsageEventType.GENERATION_FAILED))
+			.extracting(UsageEvent::getJobId)
+			.containsExactly(UUID.fromString(failedJobId));
+		assertThat(eventsOf(projectEvents, UsageEventType.REPORT_EDITED))
+			.extracting(UsageEvent::getReportId)
+			.containsExactly(UUID.fromString(reportId));
+		assertThat(eventsOf(projectEvents, UsageEventType.PDF_EXPORTED))
+			.extracting(UsageEvent::getExportId)
+			.containsExactly(UUID.fromString(exportId));
 
 		Project project = projects.get(projectEvents.get(0).getUserId(), projectUuid);
 		usageEvents.projectCreated(project.getOwnerId(), project);
@@ -149,8 +175,58 @@ class UsageEventIntegrationTest {
 	}
 
 	@Test
-	void purgesExpiredEventsAndCascadesProjectDeletion() throws Exception {
-		String token = signupAndLogin("usage-events-policy@example.com");
+	void enforcesRetentionAndForeignKeyDeletionPolicies() throws Exception {
+		failingAi.set(false);
+		String token = signupAndLogin("usage-events-deletion@example.com");
+		String projectId = createProject(token, "개별 삭제 정책 프로젝트");
+		String fileId = upload(token, projectId);
+		String jobId = createGeneration(token, projectId, fileId, "삭제 정책 테스트");
+		awaitStatus(jobId, GenerationJob.Status.COMPLETED);
+		GenerationJob job = jobs.findById(UUID.fromString(jobId)).orElseThrow();
+		UUID reportId = job.getReportId();
+		String exportBody = mvc.perform(post("/api/reports/{reportId}/exports", reportId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isAccepted())
+			.andReturn().getResponse().getContentAsString();
+		UUID exportId = UUID.fromString(JsonPath.read(exportBody, "$.exportId"));
+		awaitExport(token, exportId.toString());
+
+		UUID projectUuid = UUID.fromString(projectId);
+		UsageEvent fileEvent = eventOf(projectEvents(projectUuid), UsageEventType.FILE_UPLOADED);
+		UsageEvent completedEvent = eventOf(projectEvents(projectUuid), UsageEventType.GENERATION_COMPLETED);
+		UsageEvent exportEvent = eventOf(projectEvents(projectUuid), UsageEventType.PDF_EXPORTED);
+
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		clearPersistenceContext();
+		assertThat(events.findById(fileEvent.getId()).orElseThrow().getFileId()).isNull();
+
+		jdbc.update("DELETE FROM report_exports WHERE id = ?", exportId);
+		clearPersistenceContext();
+		assertThat(events.findById(exportEvent.getId()).orElseThrow().getExportId()).isNull();
+
+		jdbc.update("DELETE FROM generation_jobs WHERE id = ?", job.getId());
+		clearPersistenceContext();
+		assertThat(eventsOf(projectEvents(projectUuid), UsageEventType.GENERATION_REQUESTED))
+			.allSatisfy(event -> assertThat(event.getJobId()).isNull());
+		assertThat(events.findById(completedEvent.getId()).orElseThrow().getJobId()).isNull();
+
+		jdbc.update("DELETE FROM reports WHERE id = ?", reportId);
+		clearPersistenceContext();
+		assertThat(events.findById(completedEvent.getId()).orElseThrow().getReportId()).isNull();
+		assertThat(events.findById(exportEvent.getId()).orElseThrow().getReportId()).isNull();
+
+		String cascadeToken = signupAndLogin("usage-events-user-cascade@example.com");
+		String cascadeProjectId = createProject(cascadeToken, "회원 삭제 프로젝트");
+		UUID cascadeUserId = jdbc.queryForObject("SELECT id FROM app_users WHERE email = ?", UUID.class,
+			"usage-events-user-cascade@example.com");
+		assertThat(projectEvents(UUID.fromString(cascadeProjectId))).isNotEmpty();
+		jdbc.update("DELETE FROM app_users WHERE id = ?", cascadeUserId);
+		clearPersistenceContext();
+		assertThat(events.findAll().stream().noneMatch(event -> cascadeUserId.equals(event.getUserId())))
+			.isTrue();
+
 		String oldProjectId = createProject(token, "보존 만료 프로젝트");
 		UUID oldProjectUuid = UUID.fromString(oldProjectId);
 		UsageEvent oldEvent = events.findAll().stream()
@@ -159,6 +235,7 @@ class UsageEventIntegrationTest {
 		jdbc.update("UPDATE usage_events SET occurred_at = ? WHERE id = ?",
 			Instant.now().minus(Duration.ofDays(91)), oldEvent.getId());
 		usageEvents.purgeExpired();
+		clearPersistenceContext();
 		assertThat(events.findById(oldEvent.getId())).isEmpty();
 
 		String deletedProjectId = createProject(token, "삭제 정책 프로젝트");
@@ -169,8 +246,27 @@ class UsageEventIntegrationTest {
 		jdbc.update("UPDATE projects SET deleted_at = ? WHERE id = ?",
 			Instant.now().minus(Duration.ofDays(31)), deletedProjectUuid);
 		trash.purgeExpiredProjects();
+		clearPersistenceContext();
 		assertThat(events.findAll().stream().noneMatch(event -> deletedProjectUuid.equals(event.getProjectId())))
 			.isTrue();
+	}
+
+	private List<UsageEvent> projectEvents(UUID projectId) {
+		return events.findAll().stream()
+			.filter(event -> projectId.equals(event.getProjectId()))
+			.toList();
+	}
+
+	private static List<UsageEvent> eventsOf(List<UsageEvent> events, UsageEventType eventType) {
+		return events.stream().filter(event -> event.getEventType() == eventType).toList();
+	}
+
+	private static UsageEvent eventOf(List<UsageEvent> events, UsageEventType eventType) {
+		return eventsOf(events, eventType).stream().findFirst().orElseThrow();
+	}
+
+	private void clearPersistenceContext() {
+		entityManager.clear();
 	}
 
 	private String createProject(String token, String name) throws Exception {

@@ -7,9 +7,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UsageEventRepository extends JpaRepository<UsageEvent, UUID> {
-
-	boolean existsByDeduplicationKey(String deduplicationKey);
+public interface UsageEventRepository extends JpaRepository<UsageEvent, UUID>, UsageEventRepositoryCustom {
 
 	long deleteByOccurredAtBefore(Instant occurredAt);
 }

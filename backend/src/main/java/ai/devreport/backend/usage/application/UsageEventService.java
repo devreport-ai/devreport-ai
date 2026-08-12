@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,11 +52,11 @@ public class UsageEventService {
 	private final Duration retention;
 
 	UsageEventService(UsageEventRepository events, ProjectRepository projects, ReportRepository reports,
-		@Value("${usage-events.retention:90d}") Duration retention) {
+		UsageEventProperties properties) {
 		this.events = events;
 		this.projects = projects;
 		this.reports = reports;
-		this.retention = retention;
+		this.retention = properties.getRetention();
 	}
 
 	public void projectCreated(UUID userId, Project project) {
@@ -124,11 +123,12 @@ public class UsageEventService {
 	private void record(UsageEventType eventType, String deduplicationKey, UUID userId, UUID projectId,
 		UUID fileId, UUID reportId, UUID jobId, UUID exportId, Instant occurredAt,
 		Map<String, Object> metadata) {
-		if (events.existsByDeduplicationKey(deduplicationKey)) {
+		UsageEvent event = new UsageEvent(eventType, deduplicationKey, userId, projectId, fileId, reportId, jobId,
+			exportId, metadata, orNow(occurredAt));
+		events.flush();
+		if (events.insertIgnoringDuplicate(event) == 0) {
 			return;
 		}
-		events.save(new UsageEvent(eventType, deduplicationKey, userId, projectId, fileId, reportId, jobId,
-			exportId, metadata, orNow(occurredAt)));
 	}
 
 	private static Map<String, Object> failureMetadata(String failureCode) {

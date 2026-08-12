@@ -1,6 +1,7 @@
 package ai.devreport.backend.usage.domain;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -110,7 +111,7 @@ public class UsageEvent {
 	}
 
 	public Map<String, Object> getMetadata() {
-		return metadata;
+		return metadata == null ? null : Collections.unmodifiableMap(metadata);
 	}
 
 	public Instant getOccurredAt() {
