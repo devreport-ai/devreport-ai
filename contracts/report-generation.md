@@ -3,7 +3,9 @@
 이 문서는 프로젝트 파일 기반 AI 보고서 생성의 서비스 간 계약을 기록한다.
 
 > 구현 상태: Frontend → Backend 요청 검증과 JSONB 저장은 #34, bundle 전달은 #43,
-> AI 결과의 파일 참조 검증은 #37, AI 오류 변환은 #60에서 반영했다.
+> AI 결과의 파일 참조 검증은 #37, AI 오류 변환은 #60에서 반영했다. `metadata` 내부 필드
+> 검증은 아직 구현하지 않았다. Backend는 `Map<String, Object>`로, AI Service는
+> `dict[str, Any]`로 받아 `{}`도 통과하므로 런타임이 계약을 강제하지 않는다.
 
 ## Frontend → Backend
 
@@ -12,13 +14,19 @@
 ```json
 {
   "fileIds": ["업로드 파일 UUID"],
-  "metadata": {},
+  "metadata": {
+    "title": "보고서 제목",
+    "author": "작성자",
+    "course": "과목",
+    "date": "2026-08-12"
+  },
   "instructions": "보고서 작성 지시"
 }
 ```
 
 - `fileIds`는 비어 있거나 중복될 수 없고 모두 요청 프로젝트의 유효한 파일이어야 한다.
 - 삭제·누락 파일과 다른 프로젝트 파일은 거부한다.
+- `metadata`는 `ReportDocument.metadata`와 같은 형태다. `title`은 필수이고 `author`·`course`·`date`는 선택이며 그 밖의 키는 허용하지 않는다.
 - 디자인용 `templateId`와 `templateVersion`은 생성 요청에 포함하지 않는다.
 - 요청 원문은 `generation_jobs.request_document` JSONB에 저장한다.
 - 생성 작업이 `PENDING` 또는 `PROCESSING`인 동안에는 같은 프로젝트의 파일 삭제를

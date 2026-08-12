@@ -65,6 +65,20 @@ export function isErrorResponse(value: unknown): value is ErrorResponse {
 }
 
 /**
+ * 화면에 보여줄 문구를 고른다.
+ *
+ * 계약의 `message` 를 우선 쓴다. 서버가 이미 사용자용 한국어 문구를 주기 때문에
+ * 프론트에서 code 별 문구 표를 따로 만들 필요가 없다. 코드 목록은 계속 늘어나므로
+ * 표를 만들면 곧 낡는다. 분기가 필요할 때만 `ApiError.code` 를 본다.
+ */
+export function toDisplayMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message
+  // 취소는 사용자가 의도한 것이므로 오류 문구를 띄우지 않는다. 호출부가 걸러야 한다.
+  if (error instanceof DOMException && error.name === 'AbortError') return '요청이 취소되었습니다.'
+  return '알 수 없는 오류가 발생했습니다.'
+}
+
+/**
  * 알 수 없는 실패를 ErrorResponse 모양으로 바꿔준다.
  *
  * 규격 밖 응답이 와도 화면에서는 결국 message 하나만 보여주면 되므로,
