@@ -35,9 +35,12 @@ const MAX_POLL_COUNT = 60
  *
  * 고정 간격으로 계속 두드리면 오래 걸리는 작업일수록 서버에 낭비가 쌓인다.
  * 2초에서 시작해 1.5배씩 늘리고 15초에서 멈춘다 (2 → 3 → 4.5 → … → 15).
+ *
+ * 지수에서 1을 빼는 이유: 이 함수는 첫 응답을 받은 뒤에 처음 불린다. 그 시점의
+ * `dataUpdateCount` 가 이미 1 이라 그대로 쓰면 첫 재조회가 2초가 아닌 3초가 된다.
  */
 function pollIntervalMs(dataUpdateCount: number): number {
-  return Math.min(POLL_START_MS * 1.5 ** dataUpdateCount, POLL_MAX_MS)
+  return Math.min(POLL_START_MS * 1.5 ** Math.max(0, dataUpdateCount - 1), POLL_MAX_MS)
 }
 
 export const generationKeys = {
