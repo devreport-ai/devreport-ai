@@ -12,6 +12,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `generation` | 비동기 AI 보고서 생성 작업 기능 |
 | `report` | ReportDocument 검증·보고서 저장·수정 기능 |
 | `export` | PDF 생성 작업·다운로드·만료 처리 기능 |
+| `usage` | 비식별 서비스 사용 이벤트 기록·보존 기능 |
 | `integration.ai` | FastAPI AI Service 연동 |
 | `common.error` | 공통 API 오류 응답 |
 | `config` | 보안·비동기 실행 설정 |
@@ -188,6 +189,25 @@ ZIP은 업로드 중 안전한 임시 경로에 해제한 뒤 분석 대상 파�
 - 삭제 후 30일 경과: 매일 오전 3시에 DB 메타데이터와 실제 저장 파일을 완전 삭제
 
 장기 분석에는 원본 파일을 영구 보관하지 않고 별도로 정의한 비식별 사용 이벤트를 사용한다.
+
+## 비식별 사용 이벤트
+
+사용 흐름과 장애를 분석하기 위해 다음 이벤트를 PostgreSQL에 최대 90일 보관한다.
+
+| 이벤트 | 연결 ID | 허용 metadata |
+| --- | --- | --- |
+| `PROJECT_CREATED` | user, project | 없음 |
+| `FILE_UPLOADED` | user, project, file | `contentType`, `sizeBytes` |
+| `GENERATION_REQUESTED` | user, project, job | `fileCount` |
+| `GENERATION_COMPLETED` | user, project, job, report | 없음 |
+| `GENERATION_FAILED` | user, project, job | 허용 목록의 `failureCode` |
+| `REPORT_EDITED` | user, project, report | `previousVersion` |
+| `PDF_EXPORTED` | user, project, report, export | `sizeBytes` |
+
+파일 이름·내용, AI `metadata`·`instructions`, 보고서 문서와 개인정보는 이벤트 metadata나
+사용 이벤트 전용 로그에 저장하지 않는다. 프로젝트를 휴지통에서 30일 후 완전 삭제하거나
+회원을 삭제하면 외래 키 `CASCADE`로 연결 이벤트도 삭제한다. 파일·보고서·작업·내보내기
+단독 삭제 시에는 이벤트를 보존하되 해당 리소스 ID만 `NULL`로 만든다.
 
 ## 테스트
 
