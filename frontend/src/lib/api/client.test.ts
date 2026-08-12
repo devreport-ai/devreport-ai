@@ -97,12 +97,37 @@ describe('본문 없는 응답', () => {
     await expect(apiFetchNoContent('/api/projects/1')).resolves.toBeUndefined()
   })
 
+  it('apiFetchNoContent 는 204 가 아닌 2xx 를 계약 위반으로 거부한다', async () => {
+    // Backend 가 실수로 200 과 본문을 돌려주면 그대로 통과시켜선 안 된다.
+    // 조용히 본문만 버려지고 아무도 눈치채지 못하게 된다.
+    fetchMock.mockResolvedValue(jsonResponse({ unexpected: 'body' }, 200))
+
+    await expect(apiFetchNoContent('/api/projects/1')).rejects.toBeInstanceOf(ApiError)
+  })
+
   it('apiFetch 는 204 를 받으면 undefined 를 반환하지 않고 에러를 던진다', async () => {
     // 예전 구현은 `undefined as T` 로 타입을 속였다. 호출부가 아무 검사 없이
     // 속성에 접근하다 런타임에 터질 수 있었다.
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
 
     await expect(apiFetch('/api/projects/1')).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+describe('본문 해석', () => {
+  it('성공 응답이 JSON 이 아니면 ApiError 로 감싼다', async () => {
+    // 날것의 SyntaxError 가 새어 나가면 호출부가 실패 처리를 두 갈래로 해야 한다.
+    fetchMock.mockResolvedValue(new Response('<html>proxy</html>', { status: 200 }))
+
+    await expect(apiFetch('/api/projects')).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('base URL 을 붙여 요청한다', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+
+    await apiFetch('/api/projects')
+
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/projects')
   })
 })
 

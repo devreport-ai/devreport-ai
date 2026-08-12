@@ -62,7 +62,14 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     )
   }
 
-  return (await response.json()) as T
+  // 성공 응답이라도 본문이 JSON 이 아닐 수 있다(프록시가 끼어든 경우 등).
+  // 그대로 두면 날것의 SyntaxError 가 호출부로 새어 나가, 실패 처리 방식이
+  // ApiError 와 두 갈래가 된다. 여기서 ApiError 로 통일한다.
+  try {
+    return (await response.json()) as T
+  } catch {
+    throw new ApiError(response.status, toFallbackErrorResponse('서버 응답을 해석하지 못했습니다.'))
+  }
 }
 
 /**
@@ -70,12 +77,23 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
  *
  * 계약상 `DELETE /api/projects/{id}`, `POST /api/auth/logout` 등이 여기에 해당한다.
  * 본문이 없으므로 돌려줄 값도 없다.
+ *
+ * 204 가 아닌 2xx 도 조용히 성공으로 넘기지 않는다. Backend 가 실수로 200 과 본문을
+ * 돌려주면 계약이 어긋난 것이고, 그대로 통과시키면 아무도 눈치채지 못한 채
+ * 응답 본문만 버려진다. 계약 위반은 그 자리에서 드러나야 한다.
  */
 export async function apiFetchNoContent(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<void> {
-  await request(path, options)
+  const response = await request(path, options)
+
+  if (response.status !== 204) {
+    throw new ApiError(
+      response.status,
+      toFallbackErrorResponse(`본문 없는 응답(204)을 기대했으나 ${response.status} 을 받았습니다.`),
+    )
+  }
 }
 
 /**
