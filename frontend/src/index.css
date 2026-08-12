@@ -1,0 +1,29 @@
+/*
+ * 전역 기본 스타일.
+ *
+ * 이번 이슈(#50)의 범위는 실행 기반 구축이므로 디자인은 넣지 않는다.
+ * 브라우저마다 다른 기본값 때문에 화면이 어긋나 보이는 것만 막아 두고,
+ * 실제 스타일 방식(CSS Modules / Tailwind 등)은 화면을 만드는 이슈에서 정한다.
+ */
+
+/*
+ * 기본 box-sizing 은 content-box 라서, padding 을 주면 요소가 예상보다 커진다.
+ * border-box 로 바꿔두면 지정한 width 안에 padding 이 포함되어 계산이 직관적이다.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  /* 한글이 깨지거나 어색해 보이지 않도록 OS 기본 글꼴을 우선 사용한다. */
+  font-family:
+    system-ui,
+    -apple-system,
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
+    sans-serif;
+  line-height: 1.6;
+}
