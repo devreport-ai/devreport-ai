@@ -25,14 +25,14 @@ class ReportExportWorker {
 		this.renderer = renderer;
 	}
 
-	@Async("generationExecutor")
+	@Async("pdfExportExecutor")
 	void process(ReportExportQueuedEvent event) {
 		Optional<ReportExportService.ExportInput> input = exports.start(event.exportId());
 		if (input.isEmpty()) {
 			return;
 		}
 		try {
-			Path path = renderer.render(event.exportId(), input.get().document());
+			Path path = renderer.render(event.exportId(), input.get().renderToken());
 			if (!exports.complete(event.exportId(), Files.size(path))) {
 				renderer.delete(event.exportId());
 			}

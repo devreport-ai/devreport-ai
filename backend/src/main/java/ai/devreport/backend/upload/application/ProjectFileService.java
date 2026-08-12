@@ -139,6 +139,18 @@ public class ProjectFileService {
 	@Transactional(readOnly = true)
 	public FileContent content(UUID ownerId, UUID projectId, UUID fileId) {
 		projects.requireOwned(ownerId, projectId);
+		return contentForProject(projectId, fileId);
+	}
+
+	/**
+	 * Reads a file after the report export capability has already authorized the
+	 * export token and the file reference against its immutable snapshot.
+	 */
+	public FileContent contentForRender(UUID projectId, UUID fileId) {
+		return contentForProject(projectId, fileId);
+	}
+
+	private FileContent contentForProject(UUID projectId, UUID fileId) {
 		UploadedFile file = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);
 		Path path = storedPath(file);

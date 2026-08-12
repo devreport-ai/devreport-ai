@@ -36,6 +36,7 @@ public class SecurityConfig {
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
+					"/api/report-exports/*/render-data", "/api/report-exports/*/files/*",
 					"/actuator/health", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 				.anyRequest().authenticated())
 			.oauth2ResourceServer(resourceServer -> resourceServer

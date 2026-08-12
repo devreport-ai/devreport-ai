@@ -9,6 +9,7 @@ import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.integration.ai.MockAiServiceClient;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.project.domain.Project;
+import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
 import ai.devreport.backend.upload.application.ProjectTrashService;
 import ai.devreport.backend.usage.domain.UsageEvent;
 import ai.devreport.backend.usage.domain.UsageEventType;
@@ -16,6 +17,10 @@ import ai.devreport.backend.usage.infrastructure.UsageEventRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -24,6 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.persistence.EntityManager;
 
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +55,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
@@ -82,6 +90,9 @@ class UsageEventIntegrationTest {
 	@Autowired
 	EntityManager entityManager;
 
+	@MockitoBean
+	PdfReportRenderer renderer;
+
 	@Autowired
 	ProjectService projects;
 
@@ -92,6 +103,25 @@ class UsageEventIntegrationTest {
 	static void storageProperties(DynamicPropertyRegistry registry) {
 		registry.add("storage.upload-path", () -> storageRoot.resolve("uploads").toString());
 		registry.add("storage.export-path", () -> storageRoot.resolve("exports").toString());
+	}
+
+	@BeforeEach
+	void stubRenderer() throws Exception {
+		when(renderer.path(any(UUID.class))).thenAnswer(invocation -> storageRoot.resolve("exports")
+			.resolve(invocation.getArgument(0, UUID.class) + ".pdf"));
+		doAnswer(invocation -> {
+			Path path = renderer.path(invocation.getArgument(0, UUID.class));
+			Files.createDirectories(path.getParent());
+			Files.writeString(path, "%PDF-test");
+			return path;
+		}).when(renderer).render(any(UUID.class), anyString());
+		when(renderer.delete(any(UUID.class))).thenAnswer(invocation -> {
+			try {
+				return Files.deleteIfExists(renderer.path(invocation.getArgument(0, UUID.class)));
+			} catch (java.io.IOException exception) {
+				return false;
+			}
+		});
 	}
 
 	@Test
@@ -110,8 +140,8 @@ class UsageEventIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{"document":{"metadata":{"title":"민감한 제목"},"sections":[]},
-					"templateId":null,"templateVersion":null,"presentationSettings":{},"expectedVersion":0}
-					"""))
+					"templateId":"modern","templateVersion":1,"presentationSettings":{},"expectedVersion":0}
+				"""))
 			.andExpect(status().isOk());
 
 		String exportBody = mvc.perform(post("/api/reports/{reportId}/exports", reportId)
@@ -184,6 +214,7 @@ class UsageEventIntegrationTest {
 		awaitStatus(jobId, GenerationJob.Status.COMPLETED);
 		GenerationJob job = jobs.findById(UUID.fromString(jobId)).orElseThrow();
 		UUID reportId = job.getReportId();
+		selectTemplate(token, reportId.toString());
 		String exportBody = mvc.perform(post("/api/reports/{reportId}/exports", reportId)
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isAccepted())
@@ -300,6 +331,20 @@ class UsageEventIntegrationTest {
 			.andExpect(status().isAccepted())
 			.andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.jobId");
+	}
+
+	private void selectTemplate(String token, String reportId) throws Exception {
+		mvc.perform(put("/api/reports/{reportId}", reportId)
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"document":{"metadata":{"title":"Spring Boot 실습보고서","author":"김예찬",
+					"course":"SKALA Backend","date":"2026-08-06"},"sections":[{"id":"overview",
+					"title":"1. 프로젝트 개요","blocks":[{"id":"overview-summary","type":"paragraph",
+					"content":"본 실습에서는 REST API를 구현하였다."}]}]},"templateId":"modern",
+					"templateVersion":1,"presentationSettings":{},"expectedVersion":0}
+					"""))
+			.andExpect(status().isOk());
 	}
 
 	private void awaitStatus(String jobId, GenerationJob.Status expected) throws InterruptedException {

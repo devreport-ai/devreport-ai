@@ -19,4 +19,15 @@ class GenerationAsyncConfig {
 		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
 		return executor;
 	}
+
+	@Bean("pdfExportExecutor")
+	ThreadPoolTaskExecutor pdfExportExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(1);
+		executor.setMaxPoolSize(1);
+		executor.setQueueCapacity(100);
+		executor.setThreadNamePrefix("pdf-export-");
+		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+		return executor;
+	}
 }

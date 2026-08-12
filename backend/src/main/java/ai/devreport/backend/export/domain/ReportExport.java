@@ -2,6 +2,9 @@ package ai.devreport.backend.export.domain;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -10,6 +13,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "report_exports")
@@ -20,6 +26,10 @@ public class ReportExport {
 
 	@Column(name = "report_id", nullable = false)
 	private UUID reportId;
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(columnDefinition = "jsonb")
+	private Map<String, Object> snapshot;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
@@ -46,20 +56,33 @@ public class ReportExport {
 	@Column(name = "completed_at")
 	private Instant completedAt;
 
+	@Column(name = "render_token_hash", length = 64)
+	private String renderTokenHash;
+
+	@Column(name = "render_token_expires_at")
+	private Instant renderTokenExpiresAt;
+
 	protected ReportExport() {
 	}
 
 	public ReportExport(UUID reportId) {
+		this(reportId, Map.of());
+	}
+
+	public ReportExport(UUID reportId, Map<String, Object> snapshot) {
 		this.id = UUID.randomUUID();
 		this.reportId = reportId;
+		this.snapshot = snapshot;
 		this.status = Status.PENDING;
 		this.createdAt = Instant.now();
 	}
 
-	public void start() {
+	public void start(String renderTokenHash, Instant renderTokenExpiresAt) {
 		if (status == Status.PENDING) {
 			status = Status.PROCESSING;
 			startedAt = Instant.now();
+			this.renderTokenHash = renderTokenHash;
+			this.renderTokenExpiresAt = renderTokenExpiresAt;
 		}
 	}
 
@@ -69,6 +92,7 @@ public class ReportExport {
 			this.size = size;
 			completedAt = Instant.now();
 			expiresAt = completedAt.plus(ttl);
+			clearRenderToken();
 		}
 	}
 
@@ -78,6 +102,7 @@ public class ReportExport {
 			failureCode = code;
 			failureMessage = message == null ? null : message.substring(0, Math.min(message.length(), 500));
 			completedAt = Instant.now();
+			clearRenderToken();
 		}
 	}
 
@@ -91,12 +116,23 @@ public class ReportExport {
 		return expiresAt != null && !Instant.now().isBefore(expiresAt);
 	}
 
+	public boolean hasValidRenderToken(String tokenHash, Instant now) {
+		return status == Status.PROCESSING && renderTokenHash != null && renderTokenExpiresAt != null
+			&& renderTokenExpiresAt.isAfter(now) && tokenHash != null
+			&& MessageDigest.isEqual(renderTokenHash.getBytes(StandardCharsets.US_ASCII),
+				tokenHash.getBytes(StandardCharsets.US_ASCII));
+	}
+
 	public UUID getId() {
 		return id;
 	}
 
 	public UUID getReportId() {
 		return reportId;
+	}
+
+	public Map<String, Object> getSnapshot() {
+		return snapshot;
 	}
 
 	public Status getStatus() {
@@ -129,6 +165,11 @@ public class ReportExport {
 
 	public Instant getCompletedAt() {
 		return completedAt;
+	}
+
+	private void clearRenderToken() {
+		renderTokenHash = null;
+		renderTokenExpiresAt = null;
 	}
 
 	public enum Status {
