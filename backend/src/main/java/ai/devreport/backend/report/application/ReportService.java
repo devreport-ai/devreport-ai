@@ -4,9 +4,12 @@ import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.domain.ReportException;
 import ai.devreport.backend.report.infrastructure.ReportDocumentSchemaValidator;
 import ai.devreport.backend.report.infrastructure.ReportRepository;
+import ai.devreport.backend.upload.application.ProjectFileService;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -22,11 +25,14 @@ public class ReportService {
 
 	private final ReportRepository reports;
 	private final ReportDocumentSchemaValidator validator;
+	private final ProjectFileService files;
 	private final ObjectMapper objectMapper;
 
-	ReportService(ReportRepository reports, ReportDocumentSchemaValidator validator, ObjectMapper objectMapper) {
+	ReportService(ReportRepository reports, ReportDocumentSchemaValidator validator, ProjectFileService files,
+		ObjectMapper objectMapper) {
 		this.reports = reports;
 		this.validator = validator;
+		this.files = files;
 		this.objectMapper = objectMapper;
 	}
 
@@ -37,13 +43,13 @@ public class ReportService {
 
 	public Report update(UUID ownerId, UUID reportId, JsonNode document) {
 		Report report = get(ownerId, reportId);
-		requireValid(document);
+		requireValid(report.getProjectId(), document);
 		report.update(toMap(document));
 		return report;
 	}
 
 	public Report create(UUID projectId, JsonNode document) {
-		requireValid(document);
+		requireValid(projectId, document);
 		return reports.save(new Report(projectId, toMap(document)));
 	}
 
@@ -57,11 +63,23 @@ public class ReportService {
 		});
 	}
 
-	private void requireValid(JsonNode document) {
-		if (!validator.isValid(document)) {
+	private void requireValid(UUID projectId, JsonNode document) {
+		if (!validator.isValid(document) || !files.hasAvailableImages(projectId, imageFileIds(document))) {
 			throw new ReportException(HttpStatus.BAD_REQUEST, "REPORT_DOCUMENT_INVALID",
-				"ReportDocument가 JSON Schema와 일치하지 않습니다.");
+				"ReportDocument가 JSON Schema와 프로젝트 파일 참조 규칙을 만족하지 않습니다.");
 		}
+	}
+
+	private static Set<UUID> imageFileIds(JsonNode document) {
+		Set<UUID> fileIds = new HashSet<>();
+		for (JsonNode section : document.get("sections")) {
+			for (JsonNode block : section.get("blocks")) {
+				if ("image".equals(block.get("type").asText())) {
+					fileIds.add(UUID.fromString(block.get("fileId").asText()));
+				}
+			}
+		}
+		return fileIds;
 	}
 
 	private static ReportException notFound() {
