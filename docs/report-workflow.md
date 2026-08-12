@@ -3,7 +3,7 @@
 이 문서는 DevReport AI MVP의 사용자 흐름과 서비스별 책임을 정의한다.
 
 > 구현 상태: 이 문서는 목표 흐름이다. 생성 입력은 #34, 파일 참조 검증은 #37,
-> Report 표현 상태·자동 저장 충돌 처리는 #32, AI 오류 변환은 #30,
+> AI 오류 변환은 #30,
 > Frontend route 기반 Chromium PDF는 #40에서 구현한다.
 
 ## 서비스 흐름
@@ -140,7 +140,7 @@ Issue #30, ReportDocument와 Report envelope는 #31에서 확정한다.
 
 - Backend는 생성 요청과 Job 상태, 검증된 Report, 선택 템플릿과 표현 설정을 저장한다.
 - 자동 저장은 클라이언트의 기대 version 또는 `If-Match`를 전달하고, Backend는 불일치 시
-  저장하지 않고 충돌 정보와 `409 Conflict`를 반환하는 목표 계약이다. 이 API는 #32에서 구현한다.
+  저장하지 않고 충돌 정보와 `409 Conflict`를 반환한다.
 - A4 Preview와 출력 전용 route는 같은 템플릿 표현 규칙을 사용한다.
 - 최종 PDF는 사용자 브라우저 print가 아니라 Backend의 고정 Chromium 환경에서 생성한다.
 
