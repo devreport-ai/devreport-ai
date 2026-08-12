@@ -4,7 +4,7 @@
  * 생성은 백그라운드에서 이미 돌고 있지만 여기서는 티를 내지 않는다 — 고르는 행위가
  * 대기 시간을 대신한다. 진행·실패는 사용자가 선택을 마친 시점에만 드러낸다.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { REPORT_TEMPLATES } from '../report/templates'
 import { toDisplayMessage } from '../../lib/api/errors'
@@ -30,11 +30,28 @@ export function TemplateChoicePanel({
     job.data?.status === 'CANCELED' ||
     (job.data?.status === 'COMPLETED' && !job.data.reportId)
 
+  // 확정 후 보여줄 진행률. 계약의 progress 는 0·10·100 뿐이라 그대로 쓰면 10% 에서
+  // 멈춰 보인다. 시간 기반으로 90% 까지 차오르다 완료 신호에 100% 로 마무리한다.
+  const [percent, setPercent] = useState(0)
+  const navigatedRef = useRef(false)
+
   useEffect(() => {
-    if (confirmed && finished && job.data?.reportId) {
-      void navigate(`/reports/${job.data.reportId}`, { state: { templateId } })
+    if (!confirmed || failed) return
+    if (finished) {
+      // 표시할 100% 는 아래에서 파생값으로 계산한다
+      if (navigatedRef.current) return
+      navigatedRef.current = true
+      const reportId = job.data?.reportId
+      const timer = setTimeout(() => {
+        if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
+      }, 400) // 100% 를 잠깐 보여주고 넘어간다
+      return () => clearTimeout(timer)
     }
-  }, [confirmed, finished, job.data?.reportId, navigate, templateId])
+    const timer = setInterval(() => {
+      setPercent((p) => Math.min(90, p + (90 - p) * 0.08 + 0.5))
+    }, 200)
+    return () => clearInterval(timer)
+  }, [confirmed, failed, finished, job.data?.reportId, navigate, templateId])
 
   // 선택을 마쳤을 때만 실패를 드러낸다
   if (confirmed && failed) {
@@ -60,9 +77,23 @@ export function TemplateChoicePanel({
 
   if (confirmed) {
     return (
-      <p aria-live="polite" className="text-gray-700">
-        보고서를 마무리하는 중…
-      </p>
+      <section className="space-y-2">
+        <p aria-live="polite" className="text-gray-700">
+          보고서를 만들고 있어요…
+        </p>
+        <div
+          role="progressbar"
+          aria-valuenow={Math.round(finished ? 100 : percent)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          className="h-2 w-full overflow-hidden rounded bg-gray-200"
+        >
+          <div
+            className="h-full bg-gray-900 transition-[width] duration-300"
+            style={{ width: `${finished ? 100 : percent}%` }}
+          />
+        </div>
+      </section>
     )
   }
 
