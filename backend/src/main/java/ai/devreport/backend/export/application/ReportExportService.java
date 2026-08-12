@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import ai.devreport.backend.report.application.ReportService;
+import ai.devreport.backend.usage.application.UsageEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -34,15 +35,17 @@ public class ReportExportService {
 	private final ReportService reports;
 	private final ApplicationEventPublisher events;
 	private final PdfReportRenderer renderer;
+	private final UsageEventService usageEvents;
 	private final Duration ttl;
 
 	ReportExportService(ReportExportRepository exports, ReportService reports,
-		ApplicationEventPublisher events, PdfReportRenderer renderer,
+		ApplicationEventPublisher events, PdfReportRenderer renderer, UsageEventService usageEvents,
 		@Value("${storage.export-ttl}") Duration ttl) {
 		this.exports = exports;
 		this.reports = reports;
 		this.events = events;
 		this.renderer = renderer;
+		this.usageEvents = usageEvents;
 		this.ttl = ttl;
 	}
 
@@ -94,6 +97,7 @@ public class ReportExportService {
 			.filter(export -> export.getStatus() == ReportExport.Status.PROCESSING)
 			.map(export -> {
 				export.complete(size, ttl);
+				usageEvents.pdfExported(export);
 				return true;
 			})
 			.orElse(false);

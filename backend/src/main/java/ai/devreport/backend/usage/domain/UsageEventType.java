@@ -1,0 +1,11 @@
+package ai.devreport.backend.usage.domain;
+
+public enum UsageEventType {
+	PROJECT_CREATED,
+	FILE_UPLOADED,
+	GENERATION_REQUESTED,
+	GENERATION_COMPLETED,
+	GENERATION_FAILED,
+	REPORT_EDITED,
+	PDF_EXPORTED
+}

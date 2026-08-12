@@ -147,5 +147,7 @@ Issue #30, ReportDocument와 Report envelope는 #31에서 확정한다.
 Backend가 관리하는 생성 상태는 `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`를 기본으로 한다.
 제품 개선과 장애 분석에는 프로젝트 생성, 파일 업로드, 생성 요청·완료·실패,
 보고서 편집, PDF 출력의 비식별 이벤트만 사용한다. 원본 파일, 프롬프트,
-개인정보는 이벤트 metadata나 로그에 저장하지 않으며 구체적인 보존·삭제 정책은
-Issue #42에서 확정한다.
+개인정보는 이벤트 metadata나 로그에 저장하지 않는다. 사용 이벤트는 허용된 수치·내부 코드만
+최대 90일 보관한다. 회원·프로젝트 삭제 시 외래 키 CASCADE로 이벤트도 함께 삭제하고,
+파일·보고서·생성 작업·PDF 내보내기를 개별 삭제하면 해당 `file_id`, `report_id`, `job_id`,
+`export_id`만 `NULL`로 변경한 채 이벤트는 보존한다.

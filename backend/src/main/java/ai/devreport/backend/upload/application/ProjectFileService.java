@@ -31,6 +31,7 @@ import java.util.zip.ZipFile;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
+import ai.devreport.backend.usage.application.UsageEventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,15 +63,17 @@ public class ProjectFileService {
 	private final GenerationJobRepository generationJobs;
 	private final ProjectService projects;
 	private final SafeZipExtractor zipExtractor;
+	private final UsageEventService usageEvents;
 	private final Path uploadRoot;
 
 	ProjectFileService(UploadedFileRepository files, GenerationJobRepository generationJobs, ProjectService projects,
-		SafeZipExtractor zipExtractor,
+		SafeZipExtractor zipExtractor, UsageEventService usageEvents,
 		@Value("${storage.upload-path}") String uploadPath) {
 		this.files = files;
 		this.generationJobs = generationJobs;
 		this.projects = projects;
 		this.zipExtractor = zipExtractor;
+		this.usageEvents = usageEvents;
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
 	}
 
@@ -106,7 +109,9 @@ public class ProjectFileService {
 				extractionTemporary = null;
 				deleteDirectoryOnRollback(extracted);
 			}
-			return files.save(uploadedFile);
+			UploadedFile saved = files.save(uploadedFile);
+			usageEvents.fileUploaded(ownerId, saved);
+			return saved;
 		} catch (ProjectFileException exception) {
 			throw exception;
 		} catch (IOException exception) {
