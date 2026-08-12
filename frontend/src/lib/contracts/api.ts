@@ -1327,6 +1327,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
+        /** @description 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED) */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description PDF 출력 URL이 설정되지 않았거나 올바르지 않음 (EXPORT_PRINT_URL_NOT_CONFIGURED) */
+        503: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
       }
     }
     delete?: never
@@ -1373,6 +1391,107 @@ export interface paths {
           }
         }
         /** @description 작업이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}/render-data': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** PDF 출력용 보고서 스냅샷 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header: {
+          'X-Render-Token': string
+        }
+        path: {
+          exportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description PDF 출력용 요청 시점 스냅샷 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ReportRenderDataResponse']
+          }
+        }
+        /** @description 유효하지 않거나 만료된 출력 토큰 또는 작업 없음 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}/files/{fileId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** PDF 출력용 이미지 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header: {
+          'X-Render-Token': string
+        }
+        path: {
+          exportId: string
+          fileId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 보고서 스냅샷에 포함된 이미지 파일 */
+        200: {
+          headers: {
+            'Content-Disposition'?: string
+            [name: string]: unknown
+          }
+          content: {
+            'image/png': string
+            'image/jpeg': string
+          }
+        }
+        /** @description 유효하지 않거나 만료된 출력 토큰·작업·이미지 */
         404: {
           headers: {
             [name: string]: unknown
@@ -1666,6 +1785,21 @@ export interface components {
       startedAt?: string | null
       /** Format: date-time */
       completedAt?: string | null
+    }
+    ReportRenderDataResponse: {
+      /** Format: uuid */
+      exportId: string
+      /** Format: uuid */
+      reportId: string
+      /** Format: uuid */
+      projectId: string
+      /** Format: int64 */
+      reportVersion: number
+      document: components['schemas']['report-document.schema']
+      templateId: string
+      templateVersion: number
+      presentationSettings: components['schemas']['ReportPresentationSettings']
+      imageFileIds: string[]
     }
     ErrorResponse: {
       code: string
