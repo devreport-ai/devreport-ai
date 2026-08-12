@@ -28,7 +28,7 @@ const POLL_MAX_MS = 15_000
  *
  * 아래 간격으로 60회면 약 14분이다.
  */
-const MAX_POLL_COUNT = 60
+export const MAX_POLL_COUNT = 60
 
 /**
  * 지수 백오프 간격.
@@ -39,8 +39,25 @@ const MAX_POLL_COUNT = 60
  * 지수에서 1을 빼는 이유: 이 함수는 첫 응답을 받은 뒤에 처음 불린다. 그 시점의
  * `dataUpdateCount` 가 이미 1 이라 그대로 쓰면 첫 재조회가 2초가 아닌 3초가 된다.
  */
-function pollIntervalMs(dataUpdateCount: number): number {
+export function pollIntervalMs(dataUpdateCount: number): number {
   return Math.min(POLL_START_MS * 1.5 ** Math.max(0, dataUpdateCount - 1), POLL_MAX_MS)
+}
+
+/**
+ * 다음 조회까지 기다릴 시간. 더 물어보지 않아야 하면 `false`.
+ *
+ * `refetchInterval` 콜백에서 떼어낸 이유는 이 판단이 틀리면 무한 폴링이나 조기 중단이
+ * 되는데, 훅째로 돌리면 실제 타이머를 기다려야 해서 확인이 어렵기 때문이다.
+ */
+export function nextPollInterval(state: {
+  error: unknown
+  status?: GenerationJobResponse['status']
+  dataUpdateCount: number
+}): number | false {
+  if (state.error) return false
+  if (state.status && isTerminalStatus(state.status)) return false
+  if (state.dataUpdateCount >= MAX_POLL_COUNT) return false
+  return pollIntervalMs(state.dataUpdateCount)
 }
 
 export const generationKeys = {
@@ -72,14 +89,12 @@ export function useGenerationJob(jobId: string | null) {
     queryKey: generationKeys.job(jobId ?? ''),
     queryFn: () => apiFetch<GenerationJobResponse>(`/api/generations/${jobId}`),
     enabled: jobId !== null,
-    refetchInterval: (query) => {
-      // 재시도까지 실패해 error 가 남았는데 계속 물어보면 같은 실패만 반복한다.
-      if (query.state.error) return false
-      const status = query.state.data?.status
-      if (status && isTerminalStatus(status)) return false
-      if (query.state.dataUpdateCount >= MAX_POLL_COUNT) return false
-      return pollIntervalMs(query.state.dataUpdateCount)
-    },
+    refetchInterval: (query) =>
+      nextPollInterval({
+        error: query.state.error,
+        status: query.state.data?.status,
+        dataUpdateCount: query.state.dataUpdateCount,
+      }),
   })
 
   const pollCount = usePollCount(jobId)
