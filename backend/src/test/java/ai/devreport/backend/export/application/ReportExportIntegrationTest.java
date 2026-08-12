@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -88,6 +89,7 @@ class ReportExportIntegrationTest {
 
 	@BeforeEach
 	void stubRenderer() throws Exception {
+		when(renderer.isConfigured()).thenReturn(true);
 		when(renderer.path(any(UUID.class))).thenAnswer(invocation -> exportRoot.resolve("pdfs")
 			.resolve(invocation.getArgument(0, UUID.class) + ".pdf"));
 		doAnswer(invocation -> {
@@ -126,6 +128,22 @@ class ReportExportIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("REPORT_TEMPLATE_NOT_SELECTED"));
+	}
+
+	@Test
+	void rejectsExportWhenPrintUrlIsNotConfigured() throws Exception {
+		String token = signupAndLogin("export-url-owner@example.com");
+		UUID projectId = createProject(token);
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"출력 URL 없음"},"sections":[]}
+			"""));
+		selectTemplate(report);
+		when(renderer.isConfigured()).thenReturn(false);
+
+		mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isServiceUnavailable())
+			.andExpect(jsonPath("$.code").value("EXPORT_PRINT_URL_NOT_CONFIGURED"));
 	}
 
 	@Test
@@ -287,6 +305,43 @@ class ReportExportIntegrationTest {
 		mvc.perform(get("/api/report-exports/{exportId}/render-data", export.getId())
 				.header("X-Render-Token", input.renderToken()))
 			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void protectsSnapshotImagesUntilExportFinishes() throws Exception {
+		String token = signupAndLogin("export-file-owner@example.com");
+		UUID projectId = createProject(token);
+		String imageId = upload(token, projectId, "screen.png", "image/png", png());
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"파일 보호"},"sections":[{"id":"section","title":"본문",
+			"blocks":[{"id":"image","type":"image","fileId":"%s","alt":"화면"}]}]}
+			""".formatted(imageId)));
+		selectTemplate(report);
+		Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("reportId", report.getId().toString());
+		snapshot.put("projectId", projectId.toString());
+		snapshot.put("reportVersion", report.getVersion());
+		snapshot.put("document", report.getDocument());
+		snapshot.put("templateId", report.getTemplateId());
+		snapshot.put("templateVersion", report.getTemplateVersion());
+		snapshot.put("presentationSettings", report.getPresentationSettings());
+		ReportExport export = exports.saveAndFlush(new ReportExport(report.getId(), snapshot));
+
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("FILE_IN_USE"));
+
+		exportService.start(export.getId()).orElseThrow();
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("FILE_IN_USE"));
+
+		exportService.complete(export.getId(), 1);
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
 	}
 
 	private void selectTemplate(Report report) {

@@ -55,7 +55,7 @@ tasks.register('installChromium', JavaExec) {
 	description = 'Installs the Chromium binary required by PDF export.'
 	classpath = sourceSets.main.runtimeClasspath
 	mainClass = 'com.microsoft.playwright.CLI'
-	args 'install', 'chromium'
+	args 'install', '--with-deps', 'chromium'
 }
 
 tasks.named('processResources') {

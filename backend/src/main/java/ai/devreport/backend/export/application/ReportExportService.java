@@ -76,6 +76,10 @@ public class ReportExportService {
 			throw new ReportExportException(HttpStatus.CONFLICT, "REPORT_TEMPLATE_NOT_SELECTED",
 				"PDF를 생성하려면 보고서 템플릿을 먼저 선택해야 합니다.");
 		}
+		if (!renderer.isConfigured()) {
+			throw new ReportExportException(HttpStatus.SERVICE_UNAVAILABLE, "EXPORT_PRINT_URL_NOT_CONFIGURED",
+				"PDF 출력 URL이 설정되지 않았거나 올바르지 않습니다.");
+		}
 		ReportExport export = exports.save(new ReportExport(report.getId(), snapshot(report)));
 		events.publishEvent(new ReportExportQueuedEvent(export.getId()));
 		return export;

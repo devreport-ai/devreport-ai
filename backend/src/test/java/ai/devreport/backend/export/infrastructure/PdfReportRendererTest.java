@@ -19,6 +19,16 @@ class PdfReportRendererTest {
 	Path exportRoot;
 
 	@Test
+	void requiresAnHttpPrintUrlWithAnExportIdPlaceholder() {
+		assertThat(new PdfReportRenderer(exportRoot.toString(), "", Duration.ofSeconds(1)).isConfigured())
+			.isFalse();
+		assertThat(new PdfReportRenderer(exportRoot.toString(), "ftp://localhost/print/{exportId}", Duration.ofSeconds(1))
+			.isConfigured()).isFalse();
+		assertThat(new PdfReportRenderer(exportRoot.toString(),
+			"http://localhost/print/report-exports/{exportId}", Duration.ofSeconds(1)).isConfigured()).isTrue();
+	}
+
+	@Test
 	void rendersAnHtmlPageAfterItSignalsReady() throws Exception {
 		UUID exportId = UUID.randomUUID();
 		HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);

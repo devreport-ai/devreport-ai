@@ -47,7 +47,7 @@ storage:
   export-ttl: ${EXPORT_TTL:24h}
 
 export:
-  print-url: ${EXPORT_PRINT_URL:http://localhost:3000/print/report-exports/{exportId}}
+  print-url: ${EXPORT_PRINT_URL:}
   render-token-ttl: ${EXPORT_RENDER_TOKEN_TTL:1m}
   render-timeout: ${EXPORT_RENDER_TIMEOUT:30s}
 

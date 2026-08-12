@@ -1,6 +1,7 @@
 package ai.devreport.backend.export.infrastructure;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,16 +66,29 @@ public class PdfReportRenderer {
 		}
 	}
 
+	public boolean isConfigured() {
+		if (printUrl == null || printUrl.isBlank() || !printUrl.contains(EXPORT_ID_PLACEHOLDER)) {
+			return false;
+		}
+		try {
+			URI uri = URI.create(printUrl.replace(EXPORT_ID_PLACEHOLDER, UUID.randomUUID().toString()));
+			return ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+				&& uri.getHost() != null && !uri.getHost().isBlank();
+		} catch (IllegalArgumentException exception) {
+			return false;
+		}
+	}
+
 	private void renderPage(Path output, UUID exportId, String renderToken) throws IOException {
+		if (!isConfigured()) {
+			throw new IOException("EXPORT_PRINT_URL이 없거나 올바르지 않습니다.");
+		}
 		try (Playwright playwright = Playwright.create()) {
 			Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
 			try {
 				BrowserContext context = browser.newContext();
 				try {
 					Page page = context.newPage();
-					if (!printUrl.contains(EXPORT_ID_PLACEHOLDER)) {
-						throw new IOException("EXPORT_PRINT_URL에 {exportId}가 필요합니다.");
-					}
 					String url = printUrl.replace(EXPORT_ID_PLACEHOLDER, exportId.toString());
 					page.navigate(withRenderToken(url, renderToken),
 						new Page.NavigateOptions().setTimeout(renderTimeout.toMillis()));

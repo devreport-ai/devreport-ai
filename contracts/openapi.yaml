@@ -402,6 +402,7 @@ components:
           format: uuid
         reportVersion:
           type: integer
+          format: int64
           minimum: 0
         document:
           $ref: "report-document.schema.json"
@@ -1229,6 +1230,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: PDF 출력 URL이 설정되지 않았거나 올바르지 않음 (EXPORT_PRINT_URL_NOT_CONFIGURED)
           content:
             application/json:
               schema:

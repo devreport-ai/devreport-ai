@@ -156,13 +156,16 @@ document, templateId, templateVersion, presentationSettings
 ```
 
 작업이 `PROCESSING`이 되면 Backend는 원문을 저장하지 않은 단기 render token을 발급한다.
-Chromium은 `EXPORT_PRINT_URL`의 `{exportId}`를 치환한 URL에 다음 fragment를 붙여 접속한다.
+`EXPORT_PRINT_URL`은 `{exportId}`를 포함한 Frontend 출력 route URL로 필수 설정이며, 없거나
+올바르지 않으면 PDF 요청을 접수하지 않는다. Chromium은 `{exportId}`를 치환한 URL에
+다음 fragment를 붙여 접속한다.
 
 ```text
 /print/report-exports/{exportId}#token={renderToken}
 ```
 
-Frontend 출력 route는 token을 `X-Render-Token` header로 사용해 아래 endpoint를 호출한다.
+Frontend 출력 route는 fragment의 `token` 값을 읽어 매 요청의 `X-Render-Token` header로
+변환한 뒤 아래 endpoint를 호출한다.
 
 ```text
 GET /api/report-exports/{exportId}/render-data

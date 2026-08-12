@@ -107,6 +107,7 @@ class UsageEventIntegrationTest {
 
 	@BeforeEach
 	void stubRenderer() throws Exception {
+		when(renderer.isConfigured()).thenReturn(true);
 		when(renderer.path(any(UUID.class))).thenAnswer(invocation -> storageRoot.resolve("exports")
 			.resolve(invocation.getArgument(0, UUID.class) + ".pdf"));
 		doAnswer(invocation -> {

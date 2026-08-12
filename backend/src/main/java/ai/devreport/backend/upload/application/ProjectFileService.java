@@ -4,6 +4,8 @@ import ai.devreport.backend.upload.domain.ProjectFileException;
 import ai.devreport.backend.upload.domain.UploadedFile;
 import ai.devreport.backend.upload.infrastructure.SafeZipExtractor;
 import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
+import ai.devreport.backend.export.domain.ReportExport;
+import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +25,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipException;
@@ -58,22 +61,26 @@ public class ProjectFileService {
 	private static final byte[] JPEG_SIGNATURE = {(byte) 0xff, (byte) 0xd8, (byte) 0xff};
 	private static final Set<String> ZIP_MIME_TYPES = Set.of("application/zip", "application/x-zip-compressed");
 	private static final Set<String> IMAGE_MIME_TYPES = Set.of("image/jpeg", "image/png");
+	private static final Set<ReportExport.Status> ACTIVE_EXPORT_STATUSES =
+		Set.of(ReportExport.Status.PENDING, ReportExport.Status.PROCESSING);
 
 	private final UploadedFileRepository files;
 	private final GenerationJobRepository generationJobs;
 	private final ProjectService projects;
 	private final SafeZipExtractor zipExtractor;
 	private final UsageEventService usageEvents;
+	private final ReportExportRepository exports;
 	private final Path uploadRoot;
 
 	ProjectFileService(UploadedFileRepository files, GenerationJobRepository generationJobs, ProjectService projects,
-		SafeZipExtractor zipExtractor, UsageEventService usageEvents,
+		SafeZipExtractor zipExtractor, UsageEventService usageEvents, ReportExportRepository exports,
 		@Value("${storage.upload-path}") String uploadPath) {
 		this.files = files;
 		this.generationJobs = generationJobs;
 		this.projects = projects;
 		this.zipExtractor = zipExtractor;
 		this.usageEvents = usageEvents;
+		this.exports = exports;
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
 	}
 
@@ -190,7 +197,12 @@ public class ProjectFileService {
 		if (generationJobs.existsByProjectIdAndStatusIn(projectId,
 			Set.of(GenerationJob.Status.PENDING, GenerationJob.Status.PROCESSING))) {
 			throw new ProjectFileException(HttpStatus.CONFLICT, "FILE_IN_USE",
-				"보고서 생성 중에는 프로젝트 파일을 삭제할 수 없습니다.");
+				"보고서 생성 또는 PDF 내보내기 중에는 프로젝트 파일을 삭제할 수 없습니다.");
+		}
+		if (exports.findAllByProjectIdAndStatusIn(projectId, ACTIVE_EXPORT_STATUSES).stream()
+			.anyMatch(export -> referencesImage(export.getSnapshot(), fileId))) {
+			throw new ProjectFileException(HttpStatus.CONFLICT, "FILE_IN_USE",
+				"보고서 생성 또는 PDF 내보내기 중에는 프로젝트 파일을 삭제할 수 없습니다.");
 		}
 		UploadedFile uploadedFile = files.findByIdAndProjectId(fileId, projectId)
 			.orElseThrow(ProjectFileService::fileNotFound);
@@ -230,6 +242,30 @@ public class ProjectFileService {
 			file.getProjectId().equals(projectId)
 				&& IMAGE_MIME_TYPES.contains(file.getContentType())
 				&& isStoredFileConsistent(file));
+	}
+
+	private static boolean referencesImage(Map<String, Object> snapshot, UUID fileId) {
+		return snapshot != null && referencesImageValue(snapshot.get("document"), fileId);
+	}
+
+	private static boolean referencesImageValue(Object value, UUID fileId) {
+		if (value instanceof Map<?, ?> map) {
+			if ("image".equals(map.get("type")) && fileId.toString().equals(String.valueOf(map.get("fileId")))) {
+				return true;
+			}
+			for (Object item : map.values()) {
+				if (referencesImageValue(item, fileId)) {
+					return true;
+				}
+			}
+		} else if (value instanceof Iterable<?> values) {
+			for (Object item : values) {
+				if (referencesImageValue(item, fileId)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static String originalName(MultipartFile file) {
