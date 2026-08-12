@@ -5,6 +5,7 @@ import ai.devreport.backend.export.domain.ReportExport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.LockModeType;
@@ -26,6 +27,11 @@ public interface ReportExportRepository extends JpaRepository<ReportExport, UUID
 	Optional<ReportExport> findForUpdateById(UUID id);
 
 	List<ReportExport> findAllByStatus(ReportExport.Status status);
+
+	@Query("select export from ReportExport export, Report report "
+		+ "where export.reportId = report.id and report.projectId = :projectId "
+		+ "and export.status in :statuses")
+	List<ReportExport> findAllByProjectIdAndStatusIn(UUID projectId, Set<ReportExport.Status> statuses);
 
 	List<ReportExport> findAllByStatusAndExpiresAtBefore(ReportExport.Status status, Instant expiresAt,
 		Pageable pageable);

@@ -37,7 +37,8 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 
 ## 환경변수
 
-`JWT_SECRET`을 먼저 설정해야 실행할 수 있다. 나머지 환경변수는 기본값을 사용하거나 필요한 경우 변경한다.
+`JWT_SECRET`과 `EXPORT_PRINT_URL`을 먼저 설정해야 실행할 수 있다. 나머지 환경변수는
+기본값을 사용하거나 필요한 경우 변경한다.
 
 | 변수 | 기본값 |
 | --- | --- |
@@ -54,6 +55,9 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `UPLOAD_PATH` | `./uploads` |
 | `EXPORT_PATH` | `./generated-reports` |
 | `EXPORT_TTL` | `24h` |
+| `EXPORT_PRINT_URL` | 필수 (`{exportId}`를 포함한 Frontend 출력 route URL) |
+| `EXPORT_RENDER_TOKEN_TTL` | `1m` |
+| `EXPORT_RENDER_TIMEOUT` | `30s` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
@@ -127,9 +131,28 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 - `POST /api/reports/{reportId}/exports`: PDF 생성 작업 접수
 - `GET /api/report-exports/{exportId}`: 생성 상태·실패 원인·만료 시각 조회
 - `GET /api/report-exports/{exportId}/download`: 소유자만 완성된 PDF 다운로드
+- `GET /api/report-exports/{exportId}/render-data`: 출력 토큰으로 요청 시점 보고서 snapshot 조회
+- `GET /api/report-exports/{exportId}/files/{fileId}`: snapshot에 포함된 이미지의 출력 토큰 조회
 - PDF는 `EXPORT_PATH/{exportId}.pdf`에 저장하고 `EXPORT_TTL` 후 만료 처리
+- PDF 요청 시 보고서 문서·버전·템플릿·표현 설정을 snapshot으로 고정한다.
+- `EXPORT_PRINT_URL`의 `{exportId}` route를 고정 Chromium으로 연다. 설정이 없거나
+  `{exportId}`를 포함하지 않은 URL이면 `503 EXPORT_PRINT_URL_NOT_CONFIGURED`로
+  PDF 요청을 접수하지 않는다.
+- Chromium은 URL fragment에 `#token=<renderToken>`을 붙인다. Frontend 출력 route는
+  fragment의 `token` 값을 읽어 `render-data`와 `files` API 요청마다
+  `X-Render-Token` header로 전달해야 한다.
+- 출력 route는 모든 폰트·이미지 로딩 후 `<html data-print-state="ready">`를 설정해야 한다.
+- PDF는 A4·print background·CSS `@page` 크기 우선으로 생성한다.
 - 서버 재시작 시 대기 작업은 재실행하고 처리 중 작업은 `EXPORT_INTERRUPTED`로 실패 처리
-- 다른 사용자의 작업은 404, 준비 전·실패 작업은 409, 만료는 410으로 응답
+- 템플릿 미선택은 409 `REPORT_TEMPLATE_NOT_SELECTED`, 다른 사용자의 작업은 404,
+  준비 전·실패 작업은 409, 만료는 410으로 응답
+
+Chromium binary는 Playwright 버전에 맞춰 설치한다.
+
+```bash
+cd backend
+./gradlew installChromium
+```
 
 ## 파일 업로드
 

@@ -5,6 +5,11 @@ import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
 import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,15 +21,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.application.ReportService;
+import ai.devreport.backend.report.infrastructure.ReportRepository;
 import com.jayway.jsonpath.JsonPath;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +43,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -62,9 +70,12 @@ class ReportExportIntegrationTest {
 	ReportExportRepository exports;
 
 	@Autowired
-	ReportExportService exportService;
+	ReportRepository reportRepository;
 
 	@Autowired
+	ReportExportService exportService;
+
+	@MockitoBean
 	PdfReportRenderer renderer;
 
 	@Autowired
@@ -74,6 +85,26 @@ class ReportExportIntegrationTest {
 	static void storageProperties(DynamicPropertyRegistry registry) {
 		registry.add("storage.export-path", () -> exportRoot.resolve("pdfs").toString());
 		registry.add("storage.upload-path", () -> exportRoot.resolve("uploads").toString());
+	}
+
+	@BeforeEach
+	void stubRenderer() throws Exception {
+		when(renderer.isConfigured()).thenReturn(true);
+		when(renderer.path(any(UUID.class))).thenAnswer(invocation -> exportRoot.resolve("pdfs")
+			.resolve(invocation.getArgument(0, UUID.class) + ".pdf"));
+		doAnswer(invocation -> {
+			Path path = renderer.path(invocation.getArgument(0, UUID.class));
+			Files.createDirectories(path.getParent());
+			Files.writeString(path, "%PDF-test");
+			return path;
+		}).when(renderer).render(any(UUID.class), anyString());
+		when(renderer.delete(any(UUID.class))).thenAnswer(invocation -> {
+			try {
+				return Files.deleteIfExists(renderer.path(invocation.getArgument(0, UUID.class)));
+			} catch (java.io.IOException exception) {
+				return false;
+			}
+		});
 	}
 
 	@AfterEach
@@ -86,6 +117,36 @@ class ReportExportIntegrationTest {
 	}
 
 	@Test
+	void rejectsExportWithoutSelectedTemplate() throws Exception {
+		String token = signupAndLogin("export-template-owner@example.com");
+		UUID projectId = createProject(token);
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"템플릿 없음"},"sections":[]}
+			"""));
+
+		mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("REPORT_TEMPLATE_NOT_SELECTED"));
+	}
+
+	@Test
+	void rejectsExportWhenPrintUrlIsNotConfigured() throws Exception {
+		String token = signupAndLogin("export-url-owner@example.com");
+		UUID projectId = createProject(token);
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"출력 URL 없음"},"sections":[]}
+			"""));
+		selectTemplate(report);
+		when(renderer.isConfigured()).thenReturn(false);
+
+		mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isServiceUnavailable())
+			.andExpect(jsonPath("$.code").value("EXPORT_PRINT_URL_NOT_CONFIGURED"));
+	}
+
+	@Test
 	void createsDownloadsAndProtectsSampleReportPdf() throws Exception {
 		String ownerToken = signupAndLogin("export-owner@example.com");
 		String otherToken = signupAndLogin("export-other@example.com");
@@ -94,6 +155,7 @@ class ReportExportIntegrationTest {
 		String sample = new ClassPathResource("sample-report.json").getContentAsString(StandardCharsets.UTF_8);
 		Report report = reportService.create(projectId, objectMapper.readTree(sample.replace(
 			"00000000-0000-4000-8000-000000000001", imageId)));
+		selectTemplate(report);
 
 		String response = mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
 				.header("Authorization", bearer(ownerToken)))
@@ -118,12 +180,6 @@ class ReportExportIntegrationTest {
 				"attachment; filename=\"report-" + exportId + ".pdf\""))
 			.andReturn().getResponse().getContentAsByteArray();
 		assertThat(pdf).startsWith("%PDF-".getBytes(StandardCharsets.US_ASCII));
-		try (PDDocument document = Loader.loadPDF(pdf)) {
-			assertThat(new PDFTextStripper().getText(document))
-				.contains("Spring Boot 실습보고서", "본 실습에서는 REST API를 구현하였다.",
-					"애플리케이션 실행 화면", "검증 결과", "전체 테스트가 통과했다.")
-				.doesNotContain("overview-features");
-		}
 
 		Path storage = exportRoot.resolve("pdfs");
 		Files.delete(storage.resolve(exportId + ".pdf"));
@@ -152,11 +208,12 @@ class ReportExportIntegrationTest {
 		Report report = reportService.create(projectId, objectMapper.readTree("""
 			{"metadata":{"title":"오류 처리"},"sections":[]}
 			"""));
+		selectTemplate(report);
 		ReportExport failed = new ReportExport(report.getId());
 		failed.fail("PDF_GENERATION_FAILED", "PDF 생성에 실패했습니다.");
 		exports.save(failed);
 		ReportExport expired = new ReportExport(report.getId());
-		expired.start();
+		expired.start("expired", Instant.now().plusSeconds(60));
 		expired.complete(1, Duration.ofSeconds(-1));
 		exports.save(expired);
 
@@ -181,12 +238,13 @@ class ReportExportIntegrationTest {
 		Report report = reportService.create(projectId, objectMapper.readTree("""
 			{"metadata":{"title":"정리 대상"},"sections":[]}
 			"""));
+		selectTemplate(report);
 		ReportExport expired = new ReportExport(report.getId());
-		expired.start();
+		expired.start("expired", Instant.now().plusSeconds(60));
 		expired.complete(1, Duration.ofSeconds(-1));
 		exports.save(expired);
 		ReportExport interrupted = new ReportExport(report.getId());
-		interrupted.start();
+		interrupted.start("interrupted", Instant.now().plusSeconds(60));
 		exports.save(interrupted);
 		Files.createDirectories(exportRoot.resolve("pdfs"));
 		Files.writeString(renderer.path(expired.getId()), "expired");
@@ -202,6 +260,93 @@ class ReportExportIntegrationTest {
 		ReportExport recovered = exports.findById(interrupted.getId()).orElseThrow();
 		assertThat(recovered.getStatus()).isEqualTo(ReportExport.Status.FAILED);
 		assertThat(recovered.getFailureCode()).isEqualTo("EXPORT_INTERRUPTED");
+	}
+
+	@Test
+	void exposesOnlySnapshotImagesWithAValidRenderToken() throws Exception {
+		String token = signupAndLogin("export-render-owner@example.com");
+		UUID projectId = createProject(token);
+		String imageId = upload(token, projectId, "screen.png", "image/png", png());
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"출력 데이터"},"sections":[{"id":"section","title":"본문",
+			"blocks":[{"id":"image","type":"image","fileId":"%s","alt":"화면"}]}]}
+			""".formatted(imageId)));
+		selectTemplate(report);
+		Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("reportId", report.getId().toString());
+		snapshot.put("projectId", projectId.toString());
+		snapshot.put("reportVersion", report.getVersion());
+		snapshot.put("document", report.getDocument());
+		snapshot.put("templateId", report.getTemplateId());
+		snapshot.put("templateVersion", report.getTemplateVersion());
+		snapshot.put("presentationSettings", report.getPresentationSettings());
+		ReportExport export = exports.save(new ReportExport(report.getId(), snapshot));
+		ReportExportService.ExportInput input = exportService.start(export.getId()).orElseThrow();
+
+		mvc.perform(get("/api/report-exports/{exportId}/render-data", export.getId())
+				.header("X-Render-Token", input.renderToken()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.reportId").value(report.getId().toString()))
+			.andExpect(jsonPath("$.projectId").value(projectId.toString()))
+			.andExpect(jsonPath("$.reportVersion").value(0))
+			.andExpect(jsonPath("$.templateId").value("modern"))
+			.andExpect(jsonPath("$.imageFileIds[0]").value(imageId));
+
+		mvc.perform(get("/api/report-exports/{exportId}/files/{fileId}", export.getId(), imageId)
+				.header("X-Render-Token", input.renderToken()))
+			.andExpect(status().isOk())
+			.andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE));
+		mvc.perform(get("/api/report-exports/{exportId}/render-data", export.getId())
+				.header("X-Render-Token", "invalid-token"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("EXPORT_RENDER_NOT_FOUND"));
+
+		exportService.complete(export.getId(), 1);
+		mvc.perform(get("/api/report-exports/{exportId}/render-data", export.getId())
+				.header("X-Render-Token", input.renderToken()))
+			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void protectsSnapshotImagesUntilExportFinishes() throws Exception {
+		String token = signupAndLogin("export-file-owner@example.com");
+		UUID projectId = createProject(token);
+		String imageId = upload(token, projectId, "screen.png", "image/png", png());
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"파일 보호"},"sections":[{"id":"section","title":"본문",
+			"blocks":[{"id":"image","type":"image","fileId":"%s","alt":"화면"}]}]}
+			""".formatted(imageId)));
+		selectTemplate(report);
+		Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("reportId", report.getId().toString());
+		snapshot.put("projectId", projectId.toString());
+		snapshot.put("reportVersion", report.getVersion());
+		snapshot.put("document", report.getDocument());
+		snapshot.put("templateId", report.getTemplateId());
+		snapshot.put("templateVersion", report.getTemplateVersion());
+		snapshot.put("presentationSettings", report.getPresentationSettings());
+		ReportExport export = exports.saveAndFlush(new ReportExport(report.getId(), snapshot));
+
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("FILE_IN_USE"));
+
+		exportService.start(export.getId()).orElseThrow();
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("FILE_IN_USE"));
+
+		exportService.complete(export.getId(), 1);
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, imageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+	}
+
+	private void selectTemplate(Report report) {
+		report.update(report.getDocument(), "modern", 1, Map.of());
+		reportRepository.saveAndFlush(report);
 	}
 
 	private void awaitStatus(String token, String exportId, String expected) throws Exception {

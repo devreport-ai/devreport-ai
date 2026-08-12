@@ -2,9 +2,8 @@
 
 이 문서는 DevReport AI MVP의 사용자 흐름과 서비스별 책임을 정의한다.
 
-> 구현 상태: 이 문서는 목표 흐름이다. 생성 입력은 #34, 파일 참조 검증은 #37,
-> AI 오류 변환은 #30,
-> Frontend route 기반 Chromium PDF는 #40에서 구현한다.
+> 구현 상태: 생성 입력은 #34, 파일 참조 검증은 #37, AI 오류 변환은 #30에서 관리한다.
+> Backend의 Chromium PDF pipeline과 출력 API는 #40에서 구현하며, Frontend 출력 route는 #39의 범위다.
 
 ## 서비스 흐름
 
@@ -30,7 +29,7 @@ Frontend는 AI Service나 Gemini를 직접 호출하지 않는다. AI Service의
 10. Frontend가 `POST /api/reports/{reportId}/exports`로 PDF 생성을 요청하고 `exportId`를 받는다.
 11. Frontend가 export 상태를 polling하고 실패·만료 상태를 처리한다.
 12. 완료되면 download endpoint에서 PDF를 받는다. Backend는 Frontend의 출력 전용 route를
-    Headless Chromium으로 렌더링한다.
+    고정 Chromium으로 렌더링하고, 요청 시점 snapshot을 사용한다.
 
 ## 콘텐츠와 표현 분리
 
@@ -79,7 +78,9 @@ Report
 - AI 응답의 JSON Schema와 파일 참조 검증
 - Report와 표현 상태 저장·수정, 자동 저장 충돌 처리
 - 비식별 사용 이벤트 기록
-- 고정 Headless Chromium 환경의 최종 PDF 생성
+- 요청 시점 Report·템플릿 snapshot과 단기 출력 토큰 발급
+- 출력 데이터·이미지 endpoint의 token 검증
+- 고정 Playwright Chromium 환경의 최종 PDF 생성
 
 ### AI Service
 
@@ -143,6 +144,38 @@ Issue #30, ReportDocument와 Report envelope는 #31에서 확정한다.
   저장하지 않고 충돌 정보와 `409 Conflict`를 반환한다.
 - A4 Preview와 출력 전용 route는 같은 템플릿 표현 규칙을 사용한다.
 - 최종 PDF는 사용자 브라우저 print가 아니라 Backend의 고정 Chromium 환경에서 생성한다.
+
+### PDF 출력 계약
+
+PDF 요청 시 선택된 템플릿이 없으면 `409 REPORT_TEMPLATE_NOT_SELECTED`를 반환한다. 접수된
+작업은 다음 정보를 snapshot으로 고정한다.
+
+```text
+reportId, projectId, reportVersion
+document, templateId, templateVersion, presentationSettings
+```
+
+작업이 `PROCESSING`이 되면 Backend는 원문을 저장하지 않은 단기 render token을 발급한다.
+`EXPORT_PRINT_URL`은 `{exportId}`를 포함한 Frontend 출력 route URL로 필수 설정이며, 없거나
+올바르지 않으면 PDF 요청을 접수하지 않는다. Chromium은 `{exportId}`를 치환한 URL에
+다음 fragment를 붙여 접속한다.
+
+```text
+/print/report-exports/{exportId}#token={renderToken}
+```
+
+Frontend 출력 route는 fragment의 `token` 값을 읽어 매 요청의 `X-Render-Token` header로
+변환한 뒤 아래 endpoint를 호출한다.
+
+```text
+GET /api/report-exports/{exportId}/render-data
+GET /api/report-exports/{exportId}/files/{fileId}
+```
+
+두 endpoint 모두 Bearer JWT 대신 render token으로 인증하며, snapshot에 포함된 이미지 외에는
+조회할 수 없다. 출력 페이지가 문서·폰트·이미지를 모두 준비하면
+`<html data-print-state="ready">`를 설정하고, Chromium은 이 상태를 확인한 뒤 A4 PDF를 생성한다.
+작업 완료·실패·서버 재시작 시 token은 폐기한다.
 
 Backend가 관리하는 생성 상태는 `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`를 기본으로 한다.
 제품 개선과 장애 분석에는 프로젝트 생성, 파일 업로드, 생성 요청·완료·실패,
