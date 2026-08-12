@@ -1,0 +1,201 @@
+/**
+ * 블록 편집 폼 — 클릭한 블록을 그 자리에서 textarea/입력칸으로 고친다.
+ * 원문(인라인 마크다운 포함)을 그대로 편집하고, 확인 시 updateBlock 으로 반영된다.
+ */
+import { useState } from 'react'
+import type { ReportBlock } from '../../lib/contracts/types'
+
+export function BlockEditor({
+  block,
+  onApply,
+  onCancel,
+}: {
+  block: ReportBlock
+  onApply: (block: ReportBlock) => void
+  onCancel: () => void
+}) {
+  const [draft, setDraft] = useState<ReportBlock>(block)
+
+  return (
+    <div className="space-y-2 rounded border border-blue-400 bg-blue-50/50 p-2">
+      <Fields draft={draft} onChange={setDraft} />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onApply(draft)}
+          className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
+        >
+          확인
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded border border-gray-300 px-3 py-1 text-sm"
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function Fields({
+  draft,
+  onChange,
+}: {
+  draft: ReportBlock
+  onChange: (block: ReportBlock) => void
+}) {
+  switch (draft.type) {
+    case 'paragraph':
+      return (
+        <Textarea
+          label="내용"
+          value={draft.content}
+          onChange={(content) => onChange({ ...draft, content })}
+        />
+      )
+    case 'bulletList':
+      return (
+        <Textarea
+          label="항목 (한 줄에 하나)"
+          value={draft.items.join('\n')}
+          onChange={(text) => onChange({ ...draft, items: text.split('\n') })}
+        />
+      )
+    case 'code':
+      return (
+        <>
+          <Input
+            label="언어"
+            value={draft.language ?? ''}
+            onChange={(language) => onChange({ ...draft, language: language || undefined })}
+          />
+          <Textarea
+            label="코드"
+            mono
+            value={draft.code}
+            onChange={(code) => onChange({ ...draft, code })}
+          />
+        </>
+      )
+    case 'table':
+      return <TableFields draft={draft} onChange={onChange} />
+    case 'image':
+      return (
+        <>
+          <Input
+            label="대체 텍스트"
+            value={draft.alt}
+            onChange={(alt) => onChange({ ...draft, alt })}
+          />
+          <Input
+            label="캡션"
+            value={draft.caption ?? ''}
+            onChange={(caption) => onChange({ ...draft, caption: caption || undefined })}
+          />
+        </>
+      )
+    case 'callout':
+      return (
+        <>
+          <Input
+            label="제목"
+            value={draft.title ?? ''}
+            onChange={(title) => onChange({ ...draft, title: title || undefined })}
+          />
+          <Textarea
+            label="내용"
+            value={draft.content}
+            onChange={(content) => onChange({ ...draft, content })}
+          />
+        </>
+      )
+    case 'pageBreak':
+      return <p className="text-sm text-gray-500">페이지 나누기는 편집할 내용이 없습니다.</p>
+  }
+}
+
+function TableFields({
+  draft,
+  onChange,
+}: {
+  draft: Extract<ReportBlock, { type: 'table' }>
+  onChange: (block: ReportBlock) => void
+}) {
+  return (
+    <div className="space-y-1 overflow-x-auto">
+      <div className="flex gap-1">
+        {draft.columns.map((col, c) => (
+          <input
+            key={c}
+            aria-label={`열 제목 ${c + 1}`}
+            value={col}
+            onChange={(e) => onChange({ ...draft, columns: draft.columns.with(c, e.target.value) })}
+            className="w-32 rounded border border-gray-300 px-2 py-1 text-sm font-semibold"
+          />
+        ))}
+      </div>
+      {draft.rows.map((row, r) => (
+        <div key={r} className="flex gap-1">
+          {row.map((cell, c) => (
+            <input
+              key={c}
+              aria-label={`${r + 1}행 ${c + 1}열`}
+              value={cell}
+              onChange={(e) =>
+                onChange({ ...draft, rows: draft.rows.with(r, row.with(c, e.target.value)) })
+              }
+              className="w-32 rounded border border-gray-300 px-2 py-1 text-sm"
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="block text-sm">
+      <span className="text-gray-600">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
+      />
+    </label>
+  )
+}
+
+function Textarea({
+  label,
+  value,
+  mono,
+  onChange,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="block text-sm">
+      <span className="text-gray-600">{label}</span>
+      <textarea
+        value={value}
+        rows={Math.min(12, Math.max(3, value.split('\n').length + 1))}
+        onChange={(e) => onChange(e.target.value)}
+        className={`mt-0.5 w-full rounded border border-gray-300 px-2 py-1 ${mono ? 'font-mono text-xs' : ''}`}
+      />
+    </label>
+  )
+}

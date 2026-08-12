@@ -89,6 +89,9 @@ export function useGenerationJob(jobId: string | null) {
     queryKey: generationKeys.job(jobId ?? ''),
     queryFn: () => apiFetch<GenerationJobResponse>(`/api/generations/${jobId}`),
     enabled: jobId !== null,
+    // 탭이 백그라운드여도 폴링을 계속한다. 안 그러면 다른 탭에 다녀오는 동안
+    // 완료를 놓친다. 상한(MAX_POLL_COUNT)이 있어 무한 폴링은 아니다.
+    refetchIntervalInBackground: true,
     refetchInterval: (query) =>
       nextPollInterval({
         error: query.state.error,
