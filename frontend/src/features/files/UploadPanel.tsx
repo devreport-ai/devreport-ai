@@ -13,8 +13,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { fileKeys, uploadProjectFile } from './api'
 import { toDisplayMessage } from '../../lib/api/errors'
 
-/** 계약이 허용하는 확장자. 파일 선택창에서 미리 걸러 준다(서버 검증을 대체하지는 않는다). */
-const ACCEPT = '.pdf,.docx,.txt,.md,.zip,.jpg,.jpeg,.png'
+/**
+ * 파일 선택창에서 미리 걸러 줄 확장자.
+ *
+ * 계약은 업로드 자체는 PDF·DOCX 도 허용하지만 AI 가 읽지 않는다. 고를 수 있게 두면
+ * "올렸는데 왜 반영이 안 되지" 가 되므로 목록에서 뺀다. 서버 검증을 대체하지는 않는다.
+ */
+const ACCEPT = '.zip,.md,.txt,.png,.jpg,.jpeg'
 
 /** 계약상 파일당 상한. 서버가 413 으로 거절하기 전에 미리 알려 주면 기다림을 아낀다. */
 const MAX_BYTES = 20 * 1024 * 1024
@@ -42,10 +47,16 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)))
   }
 
-  const runUpload = async (item: UploadItem) => {
+  /** 서버에 새 파일이 생겼으니 아래 파일 목록을 다시 부른다. */
+  const refreshFileList = () => {
+    void client.invalidateQueries({ queryKey: fileKeys.all(projectId) })
+  }
+
+  /** @returns 업로드 성공 여부. 호출부가 목록 갱신 여부를 판단하는 데 쓴다. */
+  const runUpload = async (item: UploadItem): Promise<boolean> => {
     if (item.file.size > MAX_BYTES) {
       update(item.key, { state: 'error', message: '20 MiB 를 넘는 파일은 올릴 수 없습니다.' })
-      return
+      return false
     }
 
     update(item.key, { state: 'uploading', progress: 0, message: undefined })
@@ -54,8 +65,10 @@ export function UploadPanel({ projectId }: { projectId: string }) {
         onProgress: (ratio) => update(item.key, { progress: ratio }),
       })
       update(item.key, { state: 'done', progress: 1 })
+      return true
     } catch (error) {
       update(item.key, { state: 'error', message: toDisplayMessage(error) })
+      return false
     }
   }
 
@@ -75,10 +88,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     event.target.value = ''
 
     // 병렬 업로드. 하나가 실패해도 나머지는 계속 올라가야 하므로 allSettled 를 쓴다.
-    void Promise.allSettled(next.map(runUpload)).then(() => {
-      // 하나라도 성공했으면 목록을 다시 부른다.
-      void client.invalidateQueries({ queryKey: fileKeys.all(projectId) })
-    })
+    void Promise.allSettled(next.map(runUpload)).then(refreshFileList)
   }
 
   const completed = items.filter((i) => i.state === 'done').length
@@ -88,16 +98,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     <section>
       <h2 className="text-lg font-semibold">파일 업로드</h2>
 
-      <p className="mt-1 text-sm text-gray-600">
-        PDF · DOCX · TXT · MD · ZIP · JPG · PNG, 파일당 20 MiB 까지.
-      </p>
-      <p className="mt-1 text-sm text-amber-700">
-        AI 분석에는 ZIP · MD · TXT · PNG · JPG 만 사용됩니다. PDF 와 DOCX 는 보관만 됩니다.
-      </p>
-      <p className="mt-1 text-sm text-gray-600">
-        ZIP 은 소스코드용입니다. 해제 후 100 MiB · 1,000개까지이며 <code>.env</code>, 인증서, 키,
-        실행 파일이 들어 있으면 거부됩니다. 스크린샷은 PNG · JPG 로 따로 올려 주세요.
-      </p>
+      <p className="mt-1 text-sm text-gray-600">ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</p>
 
       <label
         htmlFor="file-input"
@@ -151,7 +152,11 @@ export function UploadPanel({ projectId }: { projectId: string }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => void runUpload(item)}
+                      onClick={() =>
+                        void runUpload(item).then((ok) => {
+                          if (ok) refreshFileList()
+                        })
+                      }
                       className="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
                     >
                       다시 시도

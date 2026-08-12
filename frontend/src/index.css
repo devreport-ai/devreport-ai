@@ -19,11 +19,13 @@
  * 지금 브라우저 인쇄를 눌러도 화면 UI 가 그대로 찍히지 않도록 최소한만 잡아 둔다.
  */
 @media print {
-  /* 버튼·입력처럼 조작용 요소는 종이에 남을 이유가 없다. */
+  /*
+   * 조작용 요소만 숨긴다.
+   * input·select·textarea 까지 숨기면 사용자가 입력한 값도 종이에서 사라진다.
+   * 숨겨야 할 입력이 생기면 data-print="hide" 를 붙인다.
+   */
   button,
-  input,
-  select,
-  textarea {
+  [data-print='hide'] {
     display: none;
   }
 }

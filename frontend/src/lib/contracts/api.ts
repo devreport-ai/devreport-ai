@@ -1610,7 +1610,13 @@ export interface components {
     )
     GenerationRequest: {
       fileIds: string[]
-      metadata: Record<string, never>
+      metadata: {
+        title: string
+        author?: string
+        course?: string
+        /** Format: date */
+        date?: string
+      }
       instructions: string
     }
     JobIdResponse: {

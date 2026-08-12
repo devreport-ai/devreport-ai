@@ -14,6 +14,9 @@ import type { FileIdResponse } from '../contracts/types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+/** 업로드 상한. 20 MiB 를 느린 회선에서 올리는 경우를 감안한 값이다. */
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000
+
 export interface UploadOptions {
   /** 0~1. 서버가 전체 크기를 알려주지 않으면 호출되지 않는다. */
   onProgress?: (ratio: number) => void
@@ -48,6 +51,8 @@ export function uploadProjectFile(
     form.append('file', file)
 
     const xhr = new XMLHttpRequest()
+    // 이 값을 안 주면 기본값 0(무제한)이라 아래 ontimeout 이 영원히 실행되지 않는다.
+    xhr.timeout = UPLOAD_TIMEOUT_MS
     xhr.open('POST', `${BASE_URL}/api/projects/${projectId}/files`)
     xhr.responseType = 'text'
     xhr.setRequestHeader('Accept', 'application/json')

@@ -38,6 +38,16 @@ describe('isAiInputFile', () => {
   it('대문자 확장자도 인식한다', () => {
     expect(isAiInputFile(file('SHOT.PNG', 'image/png'))).toBe(true)
   })
+
+  it('확장자가 없으면 MIME 으로 판단하되 계약에 있는 형식만 통과시킨다', () => {
+    // text/ 프리픽스로 보면 계약에 없는 text/html 까지 통과해 버린다.
+    expect(isAiInputFile(file('README', 'text/markdown'))).toBe(true)
+    expect(isAiInputFile(file('page', 'text/html'))).toBe(false)
+  })
+
+  it('Content-Type 에 파라미터가 붙어도 인식한다', () => {
+    expect(isAiInputFile(file('notes', 'text/plain; charset=utf-8'))).toBe(true)
+  })
 })
 
 describe('isTerminalStatus', () => {

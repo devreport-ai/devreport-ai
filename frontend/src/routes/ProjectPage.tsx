@@ -13,7 +13,7 @@ import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
 import { useGenerationJob, useStartGeneration } from '../features/generation/api'
 import { toDisplayMessage } from '../lib/api/errors'
-import { isAiInputFile, toGenerationRequest, type FileResponse } from '../lib/contracts/types'
+import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
   const { projectId = '' } = useParams()
@@ -52,23 +52,27 @@ export default function ProjectPage() {
   const handleGenerate = (event: React.FormEvent) => {
     event.preventDefault()
     startGeneration.mutate(
-      toGenerationRequest({
+      {
         fileIds: selectedIds,
         metadata: {
           title: title.trim(),
+          // 빈 문자열을 보내면 표지에 빈 줄이 생긴다. 값이 있을 때만 키를 넣는다.
           ...(author.trim() && { author: author.trim() }),
           ...(course.trim() && { course: course.trim() }),
           ...(date && { date }),
         },
         instructions: instructions.trim(),
-      }),
+      },
       { onSuccess: ({ jobId: id }) => setJobId(id) },
     )
   }
 
-  const running = jobId !== null && job.data !== undefined && !isFinished(job.data.status)
-  // instructions 만 계약상 필수(minLength 1)다. metadata 는 object 라 내부 필수 항목이 없다.
-  const canSubmit = selectedIds.length > 0 && instructions.trim() !== '' && !running
+  // timedOut 을 빼면 상한에 걸린 뒤에도 running 이 true 로 굳어 버튼이 영구 비활성이 된다.
+  const running =
+    jobId !== null && job.data !== undefined && !isFinished(job.data.status) && !job.timedOut
+  // 계약상 필수는 fileIds(1개 이상)·metadata.title·instructions 세 가지다.
+  const canSubmit =
+    selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== '' && !running
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6">
@@ -95,7 +99,12 @@ export default function ProjectPage() {
                 file={file}
                 checked={selectedIds.includes(file.id)}
                 onToggle={() => toggle(file.id)}
-                onDelete={() => deleteFile.mutate(file.id)}
+                onDelete={() =>
+                  deleteFile.mutate(file.id, {
+                    // 지운 파일이 선택 목록에 남으면 없는 fileId 로 생성 요청이 나간다.
+                    onSuccess: () => setSelectedIds((prev) => prev.filter((id) => id !== file.id)),
+                  })
+                }
               />
             ))}
           </ul>
@@ -117,7 +126,7 @@ export default function ProjectPage() {
       <form onSubmit={handleGenerate} className="space-y-4">
         <h2 className="text-lg font-semibold">보고서 정보</h2>
 
-        <Field id="title" label="제목" value={title} onChange={setTitle} />
+        <Field id="title" label="제목" required value={title} onChange={setTitle} />
         <Field id="author" label="작성자" value={author} onChange={setAuthor} />
         <Field id="course" label="과목" value={course} onChange={setCourse} />
         <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
@@ -274,6 +283,17 @@ function GenerationStatus({
 
   const data = job.data
   if (!data) return null
+
+  if (job.timedOut) {
+    return (
+      <div role="alert" className="space-y-2">
+        <p className="font-medium text-red-600">
+          생성이 너무 오래 걸려 상태 확인을 멈췄습니다. 작업은 서버에서 계속될 수 있습니다.
+        </p>
+        <RetryButton onClick={onRetry} />
+      </div>
+    )
+  }
 
   if (data.status === 'FAILED' || data.status === 'CANCELED') {
     return (

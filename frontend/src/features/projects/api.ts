@@ -20,12 +20,12 @@ import type {
  */
 export const projectKeys = {
   all: ['projects'] as const,
-  list: (page: number) => ['projects', 'list', page] as const,
+  list: (page: number, size: number) => ['projects', 'list', page, size] as const,
 }
 
 export function useProjects(page = 0, size = 20) {
   return useQuery({
-    queryKey: projectKeys.list(page),
+    queryKey: projectKeys.list(page, size),
     queryFn: () => apiFetch<ProjectPageResponse>(`/api/projects?page=${page}&size=${size}`),
   })
 }

@@ -33,12 +33,18 @@ afterEach(() => {
 })
 
 describe('UploadPanel', () => {
-  it('AI 입력 형식 제한을 화면에 안내한다', () => {
-    // 안내가 없으면 사용자는 "PDF 올렸는데 왜 반영이 안 되지" 를 겪는다.
+  it('올릴 수 있는 형식과 크기를 안내한다', () => {
     renderWithProviders(<UploadPanel projectId="p1" />)
 
-    expect(screen.getByText(/PDF 와 DOCX 는 보관만 됩니다/)).toBeInTheDocument()
-    expect(screen.getByText(/\.env/)).toBeInTheDocument()
+    expect(screen.getByText('ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.')).toBeInTheDocument()
+  })
+
+  it('AI 가 읽지 않는 PDF·DOCX 는 파일 선택창에서 고를 수 없다', () => {
+    // 고를 수 있게 두면 "올렸는데 왜 반영이 안 되지" 가 된다.
+    renderWithProviders(<UploadPanel projectId="p1" />)
+
+    const accept = document.getElementById('file-input')?.getAttribute('accept')
+    expect(accept).toBe('.zip,.md,.txt,.png,.jpg,.jpeg')
   })
 
   it('업로드 중 진행률을 보여주고 끝나면 완료로 바꾼다', async () => {

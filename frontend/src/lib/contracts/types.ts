@@ -26,26 +26,10 @@ export type GenerationRequest = Schemas['GenerationRequest']
 /**
  * 생성 요청에 실을 metadata.
  *
- * TODO(contract): 계약이 `metadata` 를 `type: object` 로만 두고 형태를 정의하지 않았다.
- * 생성된 타입이 `Record<string, never>` 라 아무것도 넣을 수 없다.
- * `ReportDocument.metadata`(`{ title, author?, course?, date? }`)가 이 값으로 채워지는
- * 유일한 대상이므로 같은 모양으로 보낸다. 계약에 스키마 반영을 요청해야 한다.
+ * 결과물의 `ReportDocument.metadata` 와 같은 형태이며 그대로 보고서 표지에 쓰인다.
+ * 계약이 두 곳을 같은 스키마로 맞춰 두었으므로 여기서는 생성된 타입을 그대로 쓴다.
  */
-export interface GenerationMetadata {
-  title: string
-  author?: string
-  course?: string
-  date?: string
-}
-
-/** 위 TODO 가 해결되면 이 함수를 지우고 타입을 그대로 쓴다. */
-export function toGenerationRequest(input: {
-  fileIds: string[]
-  metadata: GenerationMetadata
-  instructions: string
-}): GenerationRequest {
-  return input as unknown as GenerationRequest
-}
+export type GenerationMetadata = GenerationRequest['metadata']
 export type GenerationJobResponse = Schemas['GenerationJobResponse']
 export type JobIdResponse = Schemas['JobIdResponse']
 
@@ -62,14 +46,25 @@ export function isTerminalStatus(status: GenerationJobResponse['status']): boole
  * 업로드 API 는 PDF·DOCX 도 받지만 AI 생성 입력에서는 제외된다
  * (`contracts/report-generation.md`). 올려는 두되 분석 대상으로는 못 고르게 해야
  * "PDF 올렸는데 왜 반영이 안 되지" 를 막을 수 있다.
+ *
+ * MIME 을 `text/` 프리픽스로 보면 계약에 없는 `text/html` 까지 통과한다.
+ * 계약이 정한 형식만 그대로 나열한다.
  */
-const AI_INPUT_MIME_PREFIXES = ['image/png', 'image/jpeg', 'text/', 'application/zip']
+const AI_INPUT_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'text/plain',
+  'text/markdown',
+  'application/zip',
+]
 const AI_INPUT_EXTENSIONS = ['.zip', '.md', '.txt', '.png', '.jpg', '.jpeg']
 
 /** 이 파일을 AI 분석 대상으로 고를 수 있는가. */
 export function isAiInputFile(file: Pick<FileResponse, 'contentType' | 'originalName'>): boolean {
   const name = file.originalName.toLowerCase()
   if (AI_INPUT_EXTENSIONS.some((ext) => name.endsWith(ext))) return true
-  // 확장자가 없거나 특이한 경우를 대비해 MIME 으로도 한 번 본다.
-  return AI_INPUT_MIME_PREFIXES.some((prefix) => file.contentType.startsWith(prefix))
+  // 확장자가 없는 경우를 대비해 MIME 으로도 한 번 본다.
+  // `text/plain; charset=utf-8` 처럼 파라미터가 붙어 오므로 앞부분만 떼어 비교한다.
+  const mime = file.contentType.split(';')[0].trim().toLowerCase()
+  return AI_INPUT_MIME_TYPES.includes(mime)
 }
