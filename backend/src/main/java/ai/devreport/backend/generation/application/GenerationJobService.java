@@ -17,6 +17,7 @@ import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.domain.ReportDocument;
 import ai.devreport.backend.report.application.ReportService;
 import ai.devreport.backend.upload.application.ProjectFileService;
+import ai.devreport.backend.usage.application.UsageEventService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -37,15 +38,17 @@ public class GenerationJobService {
 	private final ApplicationEventPublisher events;
 	private final ReportService reports;
 	private final ProjectFileService files;
+	private final UsageEventService usageEvents;
 	private final ObjectMapper objectMapper;
 
 	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events,
-		ReportService reports, ProjectFileService files, ObjectMapper objectMapper) {
+		ReportService reports, ProjectFileService files, UsageEventService usageEvents, ObjectMapper objectMapper) {
 		this.jobs = jobs;
 		this.projects = projects;
 		this.events = events;
 		this.reports = reports;
 		this.files = files;
+		this.usageEvents = usageEvents;
 		this.objectMapper = objectMapper;
 	}
 
@@ -67,6 +70,7 @@ public class GenerationJobService {
 			}
 			throw exception;
 		}
+		usageEvents.generationRequested(ownerId, job);
 		events.publishEvent(new GenerationQueuedEvent(job.getId()));
 		return job;
 	}
@@ -98,16 +102,23 @@ public class GenerationJobService {
 		jobs.findById(jobId).filter(job -> job.getStatus() == GenerationJob.Status.PROCESSING).ifPresent(job -> {
 			Report report = reports.create(job.getProjectId(), objectMapper.valueToTree(result));
 			job.complete(result, report.getId());
+			usageEvents.generationCompleted(job);
 		});
 	}
 
 	void fail(UUID jobId, String code, String message) {
-		jobs.findById(jobId).ifPresent(job -> job.fail(code, message));
+		jobs.findById(jobId).filter(job -> job.getStatus() == GenerationJob.Status.PENDING
+			|| job.getStatus() == GenerationJob.Status.PROCESSING).ifPresent(job -> {
+			job.fail(code, message);
+			usageEvents.generationFailed(job, code);
+		});
 	}
 
 	List<UUID> recover() {
-		jobs.findAllByStatus(GenerationJob.Status.PROCESSING).forEach(job ->
-			job.fail("GENERATION_INTERRUPTED", "서버 재시작으로 보고서 생성이 중단되었습니다."));
+		jobs.findAllByStatus(GenerationJob.Status.PROCESSING).forEach(job -> {
+			job.fail("GENERATION_INTERRUPTED", "서버 재시작으로 보고서 생성이 중단되었습니다.");
+			usageEvents.generationFailed(job, "GENERATION_INTERRUPTED");
+		});
 		return jobs.findAllByStatus(GenerationJob.Status.PENDING).stream().map(GenerationJob::getId).toList();
 	}
 

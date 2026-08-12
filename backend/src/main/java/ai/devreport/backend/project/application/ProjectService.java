@@ -2,6 +2,7 @@ package ai.devreport.backend.project.application;
 
 import ai.devreport.backend.project.domain.Project;
 import ai.devreport.backend.project.infrastructure.ProjectRepository;
+import ai.devreport.backend.usage.application.UsageEventService;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,13 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
 	private final ProjectRepository projects;
+	private final UsageEventService usageEvents;
 
-	ProjectService(ProjectRepository projects) {
+	ProjectService(ProjectRepository projects, UsageEventService usageEvents) {
 		this.projects = projects;
+		this.usageEvents = usageEvents;
 	}
 
 	public Project create(UUID ownerId, String name) {
-		return projects.save(new Project(ownerId, name));
+		Project project = projects.save(new Project(ownerId, name));
+		usageEvents.projectCreated(ownerId, project);
+		return project;
 	}
 
 	@Transactional(readOnly = true)

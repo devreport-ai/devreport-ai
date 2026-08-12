@@ -45,3 +45,8 @@ storage:
   upload-path: ${UPLOAD_PATH:./uploads}
   export-path: ${EXPORT_PATH:./generated-reports}
   export-ttl: ${EXPORT_TTL:24h}
+
+usage-events:
+  retention: ${USAGE_EVENTS_RETENTION:90d}
+  purge-cron: ${USAGE_EVENTS_PURGE_CRON:0 30 3 * * *}
+  purge-zone: ${USAGE_EVENTS_PURGE_ZONE:Asia/Seoul}

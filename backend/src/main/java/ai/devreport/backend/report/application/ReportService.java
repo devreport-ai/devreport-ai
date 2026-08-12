@@ -6,6 +6,7 @@ import ai.devreport.backend.report.infrastructure.ReportDocumentSchemaValidator;
 import ai.devreport.backend.report.infrastructure.ReportRepository;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.upload.application.ProjectFileService;
+import ai.devreport.backend.usage.application.UsageEventService;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -34,14 +35,16 @@ public class ReportService {
 	private final ReportDocumentSchemaValidator validator;
 	private final ProjectService projects;
 	private final ProjectFileService files;
+	private final UsageEventService usageEvents;
 	private final ObjectMapper objectMapper;
 
 	ReportService(ReportRepository reports, ReportDocumentSchemaValidator validator, ProjectService projects,
-		ProjectFileService files, ObjectMapper objectMapper) {
+		ProjectFileService files, UsageEventService usageEvents, ObjectMapper objectMapper) {
 		this.reports = reports;
 		this.validator = validator;
 		this.projects = projects;
 		this.files = files;
+		this.usageEvents = usageEvents;
 		this.objectMapper = objectMapper;
 	}
 
@@ -67,7 +70,9 @@ public class ReportService {
 				"템플릿과 표현 설정이 올바르지 않습니다.");
 		}
 		requireValid(report.getProjectId(), document);
+		long previousVersion = report.getVersion();
 		report.update(toMap(document), templateId, templateVersion, presentationSettings);
+		usageEvents.reportEdited(ownerId, report, previousVersion);
 		return report;
 	}
 
