@@ -70,8 +70,9 @@ describe('nextPollInterval', () => {
 
   it('상한까지의 총 대기 시간이 10분을 넘는다', () => {
     // 규칙이 타임아웃 상한을 요구한다. 값을 바꿀 때 실제 시간이 얼마인지 드러나게 둔다.
+    // count 가 MAX_POLL_COUNT 면 nextPollInterval 이 false 라 그 간격은 예약되지 않는다.
     let total = 0
-    for (let count = 1; count <= MAX_POLL_COUNT; count += 1) total += pollIntervalMs(count)
+    for (let count = 1; count < MAX_POLL_COUNT; count += 1) total += pollIntervalMs(count)
     expect(total).toBeGreaterThan(10 * 60 * 1000)
     expect(total).toBeLessThan(20 * 60 * 1000)
   })
