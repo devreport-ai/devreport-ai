@@ -87,7 +87,14 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ai.devreport.backend.report.domain.ReportException.class)
 	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.domain.ReportException exception) {
 		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
-			exception.code(), exception.getMessage(), null));
+			exception.code(), exception.getMessage(), exception.details()));
+	}
+
+	@ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+	ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+		org.springframework.dao.OptimisticLockingFailureException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(
+			"REPORT_VERSION_CONFLICT", "보고서가 다른 변경으로 갱신되었습니다.", null));
 	}
 
 	@ExceptionHandler(ai.devreport.backend.export.domain.ReportExportException.class)

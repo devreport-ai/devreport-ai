@@ -1,5 +1,6 @@
 package ai.devreport.backend.report.api;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,13 +27,26 @@ class ReportController {
 	}
 
 	@GetMapping("/{reportId}")
-	Map<String, Object> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId) {
-		return reports.get(AuthenticatedUser.id(jwt), reportId).getDocument();
+	ReportResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId) {
+		return ReportResponse.from(reports.get(AuthenticatedUser.id(jwt), reportId));
 	}
 
 	@PutMapping("/{reportId}")
-	Map<String, Object> update(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId,
-		@RequestBody JsonNode document) {
-		return reports.update(AuthenticatedUser.id(jwt), reportId, document).getDocument();
+	ReportResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId,
+		@RequestBody ReportUpdateRequest request) {
+		return ReportResponse.from(reports.update(AuthenticatedUser.id(jwt), reportId, request.document(),
+			request.templateId(), request.templateVersion(), request.presentationSettings(), request.expectedVersion()));
+	}
+
+	record ReportUpdateRequest(JsonNode document, String templateId, Integer templateVersion,
+		Map<String, Object> presentationSettings, Long expectedVersion) {
+	}
+
+	record ReportResponse(UUID id, Map<String, Object> document, String templateId, Integer templateVersion,
+		Map<String, Object> presentationSettings, long version, Instant updatedAt) {
+		static ReportResponse from(ai.devreport.backend.report.domain.Report report) {
+			return new ReportResponse(report.getId(), report.getDocument(), report.getTemplateId(),
+				report.getTemplateVersion(), report.getPresentationSettings(), report.getVersion(), report.getUpdatedAt());
+		}
 	}
 }

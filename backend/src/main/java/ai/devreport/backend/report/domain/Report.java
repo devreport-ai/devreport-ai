@@ -1,6 +1,7 @@
 package ai.devreport.backend.report.domain;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,6 +28,16 @@ public class Report {
 	@Column(nullable = false, columnDefinition = "jsonb")
 	private Map<String, Object> document;
 
+	@Column(name = "template_id", length = 64)
+	private String templateId;
+
+	@Column(name = "template_version")
+	private Integer templateVersion;
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "presentation_settings", nullable = false, columnDefinition = "jsonb")
+	private Map<String, Object> presentationSettings;
+
 	@Version
 	@Column(nullable = false)
 	private long version;
@@ -44,12 +55,17 @@ public class Report {
 		this.id = UUID.randomUUID();
 		this.projectId = projectId;
 		this.document = document;
+		this.presentationSettings = new LinkedHashMap<>();
 		this.createdAt = Instant.now();
 		this.updatedAt = createdAt;
 	}
 
-	public void update(Map<String, Object> document) {
+	public void update(Map<String, Object> document, String templateId, Integer templateVersion,
+		Map<String, Object> presentationSettings) {
 		this.document = document;
+		this.templateId = templateId;
+		this.templateVersion = templateVersion;
+		this.presentationSettings = presentationSettings;
 		this.updatedAt = Instant.now();
 	}
 
@@ -63,6 +79,18 @@ public class Report {
 
 	public Map<String, Object> getDocument() {
 		return document;
+	}
+
+	public String getTemplateId() {
+		return templateId;
+	}
+
+	public Integer getTemplateVersion() {
+		return templateVersion;
+	}
+
+	public Map<String, Object> getPresentationSettings() {
+		return presentationSettings;
 	}
 
 	public long getVersion() {

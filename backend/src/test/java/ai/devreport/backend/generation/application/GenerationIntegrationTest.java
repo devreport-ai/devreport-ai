@@ -121,7 +121,7 @@ class GenerationIntegrationTest {
 		mvc.perform(get("/api/reports/{reportId}", completed.getReportId())
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.metadata.title").value("Spring Boot 실습보고서"));
+			.andExpect(jsonPath("$.document.metadata.title").value("Spring Boot 실습보고서"));
 
 		aiService.prepare(true);
 		String failedJobId = createGeneration(token, projectId, """

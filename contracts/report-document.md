@@ -45,9 +45,8 @@ heading, 목록, 표, fenced code, Markdown image는 대응 block으로 표현�
 
 ## Report envelope
 
-목표 Report API는 `document`, `templateId`, `templateVersion`,
-`presentationSettings`를 분리해 반환한다. 현재 raw `ReportDocument` 응답을 envelope로
-전환하는 구현은 #32에서 진행한다. 템플릿 미선택 상태에서는 `templateId`와
+Report API는 `document`, `templateId`, `templateVersion`,
+`presentationSettings`를 분리해 반환한다. 템플릿 미선택 상태에서는 `templateId`와
 `templateVersion`이 모두 `null`이다.
 
 `presentationSettings`에는 템플릿이 정의한 scalar 값만 저장한다. 중첩 객체·배열이나

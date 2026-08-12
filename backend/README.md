@@ -113,9 +113,11 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 
 ## 보고서
 
-- `GET /api/reports/{reportId}`: 소유한 프로젝트의 ReportDocument 조회
-- `PUT /api/reports/{reportId}`: JSON Schema가 유효한 ReportDocument로 수정
-- JSONB 문서와 낙관적 잠금 버전, 생성·수정 시각을 함께 관리
+- `GET /api/projects/{projectId}/reports`: 수정 시각과 ID 내림차순의 프로젝트 보고서 목록 조회
+- `GET /api/reports/{reportId}`: 소유한 프로젝트의 Report envelope 조회
+- `PUT /api/reports/{reportId}`: `expectedVersion`을 포함한 Report envelope 수정
+- JSONB 문서·템플릿·표현 설정과 낙관적 잠금 버전, 생성·수정 시각을 함께 관리
+- 오래된 `expectedVersion`은 저장하지 않고 409 `REPORT_VERSION_CONFLICT` 반환
 - 다른 사용자의 보고서는 존재 여부를 노출하지 않고 404 `REPORT_NOT_FOUND` 반환
 - 스키마 불일치는 400 `REPORT_DOCUMENT_INVALID` 반환
 
