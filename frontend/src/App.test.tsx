@@ -8,6 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import App from './App'
 import { renderWithProviders } from './test/renderWithProviders'
+import { clearTokens, setTokens } from './lib/auth/tokenStore'
+
+/** 보호된 화면을 테스트할 때 쓰는 로그인 상태. */
+function loginAs() {
+  setTokens({ accessToken: 'test-access', refreshToken: 'test-refresh' })
+}
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -25,16 +31,19 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  clearTokens()
 })
 
 describe('App 라우팅', () => {
-  it('/ 로 들어가면 프로젝트 목록 화면을 보여준다', async () => {
+  it('로그인 상태로 / 에 들어가면 프로젝트 목록 화면을 보여준다', async () => {
+    loginAs()
     renderWithProviders(<App />, { route: '/' })
 
     expect(await screen.findByRole('heading', { name: 'DevReport AI' })).toBeInTheDocument()
   })
 
-  it('/reports/:reportId 로 들어가면 보고서 화면을 보여준다', async () => {
+  it('로그인 상태로 /reports/:reportId 에 들어가면 보고서 화면을 보여준다', async () => {
+    loginAs()
     renderWithProviders(<App />, { route: '/reports/abc-123' })
 
     expect(await screen.findByRole('heading', { name: '보고서' })).toBeInTheDocument()
@@ -48,5 +57,19 @@ describe('App 라우팅', () => {
     expect(
       await screen.findByRole('heading', { name: '페이지를 찾을 수 없습니다' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('라우트 보호 (이슈 #61)', () => {
+  it('미로그인으로 보호된 화면에 가면 로그인 화면으로 보낸다', async () => {
+    renderWithProviders(<App />, { route: '/projects/abc' })
+
+    expect(await screen.findByRole('heading', { name: '로그인' })).toBeInTheDocument()
+  })
+
+  it('로그인·회원가입 화면은 미로그인으로도 볼 수 있다', async () => {
+    renderWithProviders(<App />, { route: '/signup' })
+
+    expect(await screen.findByRole('heading', { name: '회원가입' })).toBeInTheDocument()
   })
 })

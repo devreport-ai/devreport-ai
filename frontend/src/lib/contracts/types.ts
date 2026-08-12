@@ -12,6 +12,12 @@ import type { components } from './api'
 
 type Schemas = components['schemas']
 
+export type SignupRequest = Schemas['SignupRequest']
+export type LoginRequest = Schemas['LoginRequest']
+export type TokenResponse = Schemas['TokenResponse']
+export type RefreshTokenRequest = Schemas['RefreshTokenRequest']
+export type UserResponse = Schemas['UserResponse']
+
 export type ProjectResponse = Schemas['ProjectResponse']
 export type ProjectPageResponse = Schemas['ProjectPageResponse']
 export type ProjectRequest = Schemas['ProjectRequest']

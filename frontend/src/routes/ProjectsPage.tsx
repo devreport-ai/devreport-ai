@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { useLogout, useMe } from '../features/auth/api'
 import { useCreateProject, useProjects } from '../features/projects/api'
 import { toDisplayMessage } from '../lib/api/errors'
 
@@ -13,6 +14,8 @@ export default function ProjectsPage() {
   const [name, setName] = useState('')
   const { data, isPending, error } = useProjects()
   const createProject = useCreateProject()
+  const me = useMe()
+  const logout = useLogout()
 
   const handleCreate = (event: React.FormEvent) => {
     event.preventDefault()
@@ -33,7 +36,20 @@ export default function ProjectsPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">DevReport AI</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">DevReport AI</h1>
+        <div className="flex items-center gap-3 text-sm text-gray-600">
+          {me.data && <span>{me.data.name}</span>}
+          <button
+            type="button"
+            onClick={() => logout.mutate()}
+            disabled={logout.isPending}
+            className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-40"
+          >
+            로그아웃
+          </button>
+        </div>
+      </div>
 
       <form onSubmit={handleCreate} className="mt-6 flex gap-2">
         <label htmlFor="project-name" className="sr-only">

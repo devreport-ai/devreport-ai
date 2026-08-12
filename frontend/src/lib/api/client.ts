@@ -8,12 +8,14 @@
  *
  * 본문이 있는 응답과 없는 응답을 두 함수로 나눠 둔 이유는 아래 apiFetch 주석 참고.
  *
- * 이번 범위에서 일부러 넣지 않은 것 (이슈 #50 참고):
- *  - Authorization 헤더 주입 / 401 재발급 → 로그인 화면이 없어 검증할 수 없다.
- *    회원가입·로그인 이슈에서 이 파일에 추가한다.
- *  - 계약 기반 타입 생성 → 계약이 아직 움직이고 있어 후속 이슈로 미뤘다.
+ * 인증 처리(이슈 #61 에서 추가):
+ *  - 토큰이 있으면 모든 요청에 Authorization: Bearer 를 자동으로 붙인다.
+ *  - 401 을 받으면 Refresh Token 으로 한 번만 재발급하고 원 요청을 다시 보낸다.
+ *    재발급까지 실패하면 원래의 401 을 그대로 던진다 — 화면은 로그인으로 보낸다.
  */
 import { ApiError, isErrorResponse, toFallbackErrorResponse, type ErrorResponse } from './errors'
+import { getAccessToken } from '../auth/tokenStore'
+import { refreshSession } from '../auth/session'
 
 /**
  * 개발 중에는 빈 문자열이다.
@@ -108,27 +110,42 @@ export async function apiFetchNoContent(
 async function request(path: string, options: ApiRequestOptions): Promise<Response> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, headers, signal, ...rest } = options
 
-  // 타임아웃과 호출부가 넘긴 취소 신호를 함께 걸어둔다.
-  // 화면을 벗어날 때 호출부가 요청을 끊을 수 있어야 폴링이 새지 않는다.
-  const timeoutSignal = AbortSignal.timeout(timeoutMs)
-  const mergedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
+  const send = async (): Promise<Response> => {
+    // 타임아웃과 호출부가 넘긴 취소 신호를 함께 걸어둔다.
+    // 화면을 벗어날 때 호출부가 요청을 끊을 수 있어야 폴링이 새지 않는다.
+    // 재시도마다 새로 만든다 — 재발급에 시간을 썼어도 재시도는 온전한 제한을 갖는다.
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const mergedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
 
-  let response: Response
-  try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      ...rest,
-      signal: mergedSignal,
-      headers: buildHeaders(headers),
-    })
-  } catch (cause) {
-    rethrowIfAbortOrTimeout(cause)
+    try {
+      return await fetch(`${BASE_URL}${path}`, {
+        ...rest,
+        signal: mergedSignal,
+        // 헤더도 재시도마다 다시 만든다. 재발급으로 토큰이 바뀌었기 때문이다.
+        headers: buildHeaders(headers),
+      })
+    } catch (cause) {
+      rethrowIfAbortOrTimeout(cause)
 
-    // 여기까지 왔으면 서버가 응답을 못 준 경우다(네트워크 끊김 등).
-    // 서버가 거절한 것과는 성격이 다르므로 상태코드를 0 으로 표시해 구분한다.
-    throw new ApiError(
-      0,
-      toFallbackErrorResponse('서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.'),
-    )
+      // 여기까지 왔으면 서버가 응답을 못 준 경우다(네트워크 끊김 등).
+      // 서버가 거절한 것과는 성격이 다르므로 상태코드를 0 으로 표시해 구분한다.
+      throw new ApiError(
+        0,
+        toFallbackErrorResponse('서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.'),
+      )
+    }
+  }
+
+  let response = await send()
+
+  // Access Token 만료(401)면 재발급 후 원 요청을 딱 한 번 다시 보낸다.
+  // 인증 API 자신은 제외한다 — 로그인 실패(401)에 재발급을 시도하는 건 무의미하고,
+  // 재발급 요청이 401 일 때 또 재발급하면 무한 반복이다.
+  if (response.status === 401 && !path.startsWith('/api/auth/')) {
+    const refreshed = await refreshSession()
+    if (refreshed) {
+      response = await send()
+    }
   }
 
   if (!response.ok) {
@@ -183,6 +200,13 @@ function buildHeaders(headers: HeadersInit | undefined): Headers {
   // JSON 이 아닌 응답을 받아야 하는 경우가 있다.
   if (!normalized.has('Accept')) {
     normalized.set('Accept', 'application/json')
+  }
+
+  // 로그인 상태면 인증 헤더를 붙인다. security: [] 인 인증 API 에도 붙지만
+  // 서버는 무시하므로 해가 없고, 경로별 분기를 두는 것보다 단순하다.
+  const accessToken = getAccessToken()
+  if (accessToken !== null && !normalized.has('Authorization')) {
+    normalized.set('Authorization', `Bearer ${accessToken}`)
   }
 
   return normalized
