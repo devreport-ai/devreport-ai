@@ -83,11 +83,36 @@
     border: none;
     margin: 0;
   }
+
+  /* 블록별 페이지 나누기 규칙 (#39): 표의 행·코드·이미지·콜아웃은 중간에서 자르지 않고,
+     섹션 제목이 페이지 끝에 홀로 남지 않게 한다 */
+  .report-sheet tr,
+  .report-sheet figure,
+  .report-sheet pre,
+  .report-sheet .rpt-callout {
+    break-inside: avoid; /* 페이지보다 길면 브라우저가 어쩔 수 없이 자른다 */
+  }
+  .report-sheet h2 {
+    break-after: avoid;
+  }
+  .report-sheet thead {
+    display: table-header-group; /* 표가 페이지를 넘어가면 머리행을 반복한다 */
+  }
+}
+
+/* ── 출력 전용 페이지 (#39) — Chromium 이 preferCSSPageSize 로 찍는다 ── */
+@page {
+  size: A4;
+  margin: 0; /* 여백은 .report-sheet 의 padding 이 담당한다 */
+}
+.print-page {
+  box-shadow: none;
+  margin: 0;
 }
 
 /* ── 템플릿: 기본 ── */
 .tpl-default {
-  font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 11pt;
   line-height: 1.7;
 }
@@ -205,7 +230,7 @@
 
 /* ── 템플릿: 컴팩트 ── */
 .tpl-compact {
-  font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 9.5pt;
   line-height: 1.45;
 }

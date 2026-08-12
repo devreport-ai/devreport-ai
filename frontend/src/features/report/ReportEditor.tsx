@@ -27,6 +27,7 @@ import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
 import { useImageUrls } from './useImageUrls'
 import type { Report, ReportBlock, ReportSection } from '../../lib/contracts/types'
+import 'pretendard/dist/web/variable/pretendardvariable.css'
 import './report-document.css'
 
 export function ReportEditor({
