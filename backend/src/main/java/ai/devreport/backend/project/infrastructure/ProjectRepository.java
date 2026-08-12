@@ -31,5 +31,9 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 	Optional<Project> findOwnedForUpdate(UUID id, UUID ownerId);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select project from Project project where project.id = :id and project.deletedAt is null")
+	Optional<Project> findForUpdate(UUID id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Project> findByIdAndOwnerIdAndDeletedAtIsNotNull(UUID id, UUID ownerId);
 }

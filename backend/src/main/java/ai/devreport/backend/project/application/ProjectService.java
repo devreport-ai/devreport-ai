@@ -54,6 +54,10 @@ public class ProjectService {
 		projects.findOwnedForUpdate(projectId, ownerId).orElseThrow(ProjectNotFoundException::new);
 	}
 
+	public void lock(UUID projectId) {
+		projects.findForUpdate(projectId).orElseThrow(ProjectNotFoundException::new);
+	}
+
 	public List<Project> findExpired(Instant deletedBefore, Pageable pageable) {
 		return projects.findAllByDeletedAtBefore(deletedBefore, pageable);
 	}

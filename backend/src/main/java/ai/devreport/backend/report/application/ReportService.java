@@ -4,6 +4,7 @@ import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.domain.ReportException;
 import ai.devreport.backend.report.infrastructure.ReportDocumentSchemaValidator;
 import ai.devreport.backend.report.infrastructure.ReportRepository;
+import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.upload.application.ProjectFileService;
 
 import java.util.HashSet;
@@ -25,13 +26,15 @@ public class ReportService {
 
 	private final ReportRepository reports;
 	private final ReportDocumentSchemaValidator validator;
+	private final ProjectService projects;
 	private final ProjectFileService files;
 	private final ObjectMapper objectMapper;
 
-	ReportService(ReportRepository reports, ReportDocumentSchemaValidator validator, ProjectFileService files,
-		ObjectMapper objectMapper) {
+	ReportService(ReportRepository reports, ReportDocumentSchemaValidator validator, ProjectService projects,
+		ProjectFileService files, ObjectMapper objectMapper) {
 		this.reports = reports;
 		this.validator = validator;
+		this.projects = projects;
 		this.files = files;
 		this.objectMapper = objectMapper;
 	}
@@ -43,12 +46,14 @@ public class ReportService {
 
 	public Report update(UUID ownerId, UUID reportId, JsonNode document) {
 		Report report = get(ownerId, reportId);
+		projects.lock(report.getProjectId());
 		requireValid(report.getProjectId(), document);
 		report.update(toMap(document));
 		return report;
 	}
 
 	public Report create(UUID projectId, JsonNode document) {
+		projects.lock(projectId);
 		requireValid(projectId, document);
 		return reports.save(new Report(projectId, toMap(document)));
 	}
