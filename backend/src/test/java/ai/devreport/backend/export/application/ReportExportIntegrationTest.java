@@ -6,6 +6,7 @@ import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -32,6 +33,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -71,6 +73,7 @@ class ReportExportIntegrationTest {
 	@DynamicPropertySource
 	static void storageProperties(DynamicPropertyRegistry registry) {
 		registry.add("storage.export-path", () -> exportRoot.resolve("pdfs").toString());
+		registry.add("storage.upload-path", () -> exportRoot.resolve("uploads").toString());
 	}
 
 	@AfterEach
@@ -87,8 +90,10 @@ class ReportExportIntegrationTest {
 		String ownerToken = signupAndLogin("export-owner@example.com");
 		String otherToken = signupAndLogin("export-other@example.com");
 		UUID projectId = createProject(ownerToken);
+		String imageId = upload(ownerToken, projectId, "screen.png", "image/png", png());
 		String sample = new ClassPathResource("sample-report.json").getContentAsString(StandardCharsets.UTF_8);
-		Report report = reportService.create(projectId, objectMapper.readTree(sample));
+		Report report = reportService.create(projectId, objectMapper.readTree(sample.replace(
+			"00000000-0000-4000-8000-000000000001", imageId)));
 
 		String response = mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
 				.header("Authorization", bearer(ownerToken)))
@@ -223,6 +228,16 @@ class ReportExportIntegrationTest {
 		return UUID.fromString(JsonPath.read(response, "$.projectId"));
 	}
 
+	private String upload(String token, UUID projectId, String name, String contentType, byte[] content)
+		throws Exception {
+		String response = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(new MockMultipartFile("file", name, contentType, content))
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(response, "$.fileId");
+	}
+
 	private String signupAndLogin(String email) throws Exception {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -242,5 +257,9 @@ class ReportExportIntegrationTest {
 
 	private static String bearer(String token) {
 		return "Bearer " + token;
+	}
+
+	private static byte[] png() {
+		return new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 	}
 }

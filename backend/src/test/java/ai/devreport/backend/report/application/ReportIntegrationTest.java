@@ -6,13 +6,19 @@ import ai.devreport.backend.report.infrastructure.ReportRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 
 import com.jayway.jsonpath.JsonPath;
@@ -21,7 +27,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {
@@ -33,6 +43,8 @@ import tools.jackson.databind.ObjectMapper;
 })
 @AutoConfigureMockMvc
 class ReportIntegrationTest {
+	@TempDir
+	static Path uploadRoot;
 
 	@Autowired
 	MockMvc mvc;
@@ -45,6 +57,11 @@ class ReportIntegrationTest {
 
 	@Autowired
 	ObjectMapper objectMapper;
+
+	@DynamicPropertySource
+	static void storageProperties(DynamicPropertyRegistry registry) {
+		registry.add("storage.upload-path", () -> uploadRoot.toString());
+	}
 
 	@Test
 	void readsAndUpdatesOwnedSchemaValidReport() throws Exception {
@@ -97,6 +114,42 @@ class ReportIntegrationTest {
 		assertThat(reports.count()).isEqualTo(1);
 	}
 
+	@Test
+	void rejectsInvalidImageReferencesOnCreateAndUpdate() throws Exception {
+		String token = signupAndLogin("report-image-owner@example.com").token();
+		String otherToken = signupAndLogin("report-image-other@example.com").token();
+		UUID projectId = createProject(token, "이미지 프로젝트");
+		UUID otherProjectId = createProject(otherToken, "다른 이미지 프로젝트");
+		String imageId = upload(token, projectId.toString(), "screen.png", "image/png", png());
+		String textId = upload(token, projectId.toString(), "notes.txt", "text/plain",
+			"메모".getBytes(StandardCharsets.UTF_8));
+		String foreignImageId = upload(otherToken, otherProjectId.toString(), "foreign.png", "image/png", png());
+		String deletedImageId = upload(token, projectId.toString(), "deleted.png", "image/png", png());
+		mvc.perform(delete("/api/projects/{projectId}/files/{fileId}", projectId, deletedImageId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isNoContent());
+		String missingImageId = upload(token, projectId.toString(), "missing.png", "image/png", png());
+		Files.delete(uploadRoot.resolve(projectId.toString()).resolve(missingImageId));
+
+		Report report = reportService.create(projectId, objectMapper.readTree(validDocument("초안")));
+		mvc.perform(put("/api/reports/{reportId}", report.getId())
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(imageDocument(imageId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.sections[0].blocks[0].fileId").value(imageId));
+
+		for (String invalidFileId : List.of(textId, foreignImageId, deletedImageId, missingImageId,
+			UUID.randomUUID().toString())) {
+			mvc.perform(put("/api/reports/{reportId}", report.getId())
+					.header("Authorization", bearer(token))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(imageDocument(invalidFileId)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("REPORT_DOCUMENT_INVALID"));
+		}
+	}
+
 	private UUID createProject(String token, String name) throws Exception {
 		String body = mvc.perform(post("/api/projects")
 				.header("Authorization", bearer(token))
@@ -105,6 +158,16 @@ class ReportIntegrationTest {
 			.andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString();
 		return UUID.fromString(JsonPath.read(body, "$.projectId"));
+	}
+
+	private String upload(String token, String projectId, String name, String contentType, byte[] content)
+		throws Exception {
+		String body = mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+				.file(new MockMultipartFile("file", name, contentType, content))
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(body, "$.fileId");
 	}
 
 	private Credentials signupAndLogin(String email) throws Exception {
@@ -129,6 +192,17 @@ class ReportIntegrationTest {
 			{"metadata":{"title":"%s"},"sections":[{"id":"intro",
 			"title":"서론","blocks":[{"id":"intro-summary","type":"paragraph","content":"본문"}]}]}
 			""".formatted(title);
+	}
+
+	private static String imageDocument(String fileId) {
+		return """
+			{"metadata":{"title":"이미지 보고서"},"sections":[{"id":"images",
+			"title":"이미지","blocks":[{"id":"screen","type":"image","fileId":"%s","alt":"화면"}]}]}
+			""".formatted(fileId);
+	}
+
+	private static byte[] png() {
+		return new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 	}
 
 	private static String bearer(String token) {
