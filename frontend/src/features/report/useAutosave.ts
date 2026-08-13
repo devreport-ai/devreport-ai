@@ -23,7 +23,7 @@ export interface AutosaveInput {
   /**
    * 서버가 알고 있는 마지막 상태(GET 응답). 여기서 어긋난 것이 저장 대상이다.
    * 현재 입력값으로 초기화하면 생성 흐름에서 고른 템플릿이 "이미 저장됨" 취급되어
-   * 편집 전까지 저장이 안 나가고 새로고침 시 선택이 사라진다.
+   * 편집 전까지 저장이 안 나가고 PDF 내보내기가 409 로 막힌다.
    */
   server: {
     document: ReportDocument
@@ -33,9 +33,20 @@ export interface AutosaveInput {
   }
 }
 
-export function useAutosave(input: AutosaveInput): { status: SaveStatus } {
+export function useAutosave(input: AutosaveInput): {
+  status: SaveStatus
+  /** 서버에 저장 확정된 templateId. PDF 내보내기는 이것이 선택값과 일치해야 안전하다. */
+  savedTemplateId: string | null
+  savedTemplateVersion: number | null
+  /** 서버에 저장 확정된 document. */
+  savedDocument: ReportDocument
+} {
   const { reportId, document, templateId, templateVersion, presentationSettings } = input
   const [status, setStatus] = useState<SaveStatus>('idle')
+  const [savedTemplateId, setSavedTemplateId] = useState(input.server.templateId)
+  const [savedTemplateVersion, setSavedTemplateVersion] = useState(input.server.templateVersion)
+  // 렌더에서 dirty 를 판정하려면 ref 가 아니라 state 가 필요하다 (ref 읽기는 lint 금지)
+  const [savedDocument, setSavedDocument] = useState(input.server.document)
 
   // 마지막으로 저장에 성공한 내용과 version. state 로 두면 저장 성공마다
   // effect 가 다시 돌아 불필요한 저장이 이어지므로 ref 로 둔다.
@@ -65,6 +76,9 @@ export function useAutosave(input: AutosaveInput): { status: SaveStatus } {
       }).then(
         (report) => {
           saved.current = { document, templateId, templateVersion, version: report.version }
+          setSavedTemplateId(report.templateId)
+          setSavedTemplateVersion(report.templateVersion)
+          setSavedDocument(document)
           setStatus('saved')
         },
         (error: unknown) => {
@@ -82,5 +96,5 @@ export function useAutosave(input: AutosaveInput): { status: SaveStatus } {
     return () => clearTimeout(timer)
   }, [reportId, document, templateId, templateVersion, presentationSettings])
 
-  return { status }
+  return { status, savedTemplateId, savedTemplateVersion, savedDocument }
 }

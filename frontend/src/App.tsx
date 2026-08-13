@@ -12,6 +12,7 @@ import { Route, Routes } from 'react-router'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { LoginPage } from './routes/LoginPage'
 import { SignupPage } from './routes/SignupPage'
+import PrintPage from './routes/PrintPage'
 import ProjectsPage from './routes/ProjectsPage'
 import ProjectPage from './routes/ProjectPage'
 import ReportPage from './routes/ReportPage'
@@ -22,6 +23,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+
+      {/* 출력 전용(#39). Bearer 대신 render token 인증이라 RequireAuth 를 안 거친다 */}
+      <Route path="/print/:exportId" element={<PrintPage />} />
 
       <Route
         path="/"

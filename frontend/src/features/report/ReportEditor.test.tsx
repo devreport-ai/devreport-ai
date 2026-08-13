@@ -103,8 +103,8 @@ describe('ReportEditor', () => {
   })
 
   it('생성 흐름에서 고른 템플릿은 편집 없이도 자동 저장된다', async () => {
-    // 저장 기준을 입력값으로 잡으면 "이미 저장됨" 취급되어 PUT 이 안 나가고
-    // 새로고침 시 선택이 사라진다 (리뷰 지적·실측 버그)
+    // 저장 기준을 입력값으로 잡으면 "이미 저장됨" 취급되어 PUT 이 안 나가고,
+    // 서버 templateId 가 null 인 채라 PDF 내보내기가 409 로 막힌다 (실제 있었던 버그)
     vi.useFakeTimers()
     try {
       renderWithProviders(<ReportEditor report={report()} initialTemplateId="compact" />)
