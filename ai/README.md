@@ -72,6 +72,9 @@ AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 
 실제 문서·코드·이미지 분석과 Gemini 호출은 후속 작업에서 추가한다. 상세 계약은
 [`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
 
+생성 API의 multipart 본문은 ASGI 수신 단계에서 최대 100 MiB로 제한한다. `Content-Length`
+요청은 파싱 전에 즉시 거부하며, chunked 요청도 수신 바이트가 한도를 넘는 즉시 거부한다.
+
 ### 5. 테스트 및 린트
 
 ```bash
