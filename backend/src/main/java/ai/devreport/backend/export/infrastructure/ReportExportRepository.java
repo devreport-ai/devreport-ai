@@ -28,6 +28,16 @@ public interface ReportExportRepository extends JpaRepository<ReportExport, UUID
 
 	List<ReportExport> findAllByStatus(ReportExport.Status status);
 
+	@Query("select count(export) from ReportExport export, Report report, Project project "
+		+ "where export.reportId = report.id and report.projectId = project.id "
+		+ "and project.ownerId = :ownerId and export.status in :statuses")
+	long countByOwnerIdAndStatusIn(UUID ownerId, Set<ReportExport.Status> statuses);
+
+	@Query("select count(export) from ReportExport export, Report report, Project project "
+		+ "where export.reportId = report.id and report.projectId = project.id "
+		+ "and project.ownerId = :ownerId and export.createdAt >= :from")
+	long countByOwnerIdAndCreatedAtOnOrAfter(UUID ownerId, Instant from);
+
 	@Query("select export from ReportExport export, Report report "
 		+ "where export.reportId = report.id and report.projectId = :projectId "
 		+ "and export.status in :statuses")

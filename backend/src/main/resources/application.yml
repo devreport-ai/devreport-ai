@@ -55,3 +55,22 @@ usage-events:
   retention: ${USAGE_EVENTS_RETENTION:90d}
   purge-cron: ${USAGE_EVENTS_PURGE_CRON:0 30 3 * * *}
   purge-zone: ${USAGE_EVENTS_PURGE_ZONE:Asia/Seoul}
+
+usage-limits:
+  day-zone: ${USAGE_LIMITS_DAY_ZONE:Asia/Seoul}
+  upload:
+    max-total-bytes: ${USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES:524288000}
+    max-files: ${USAGE_LIMITS_UPLOAD_MAX_FILES:100}
+  generation:
+    daily-limit: ${USAGE_LIMITS_GENERATION_DAILY_LIMIT:10}
+    concurrent-limit: ${USAGE_LIMITS_GENERATION_CONCURRENT_LIMIT:2}
+  export:
+    daily-limit: ${USAGE_LIMITS_EXPORT_DAILY_LIMIT:20}
+    concurrent-limit: ${USAGE_LIMITS_EXPORT_CONCURRENT_LIMIT:1}
+  rate-limit:
+    window: ${USAGE_LIMITS_RATE_WINDOW:1m}
+    signup: ${USAGE_LIMITS_RATE_SIGNUP:10}
+    login: ${USAGE_LIMITS_RATE_LOGIN:20}
+    refresh: ${USAGE_LIMITS_RATE_REFRESH:30}
+    upload: ${USAGE_LIMITS_RATE_UPLOAD:30}
+    generation: ${USAGE_LIMITS_RATE_GENERATION:10}

@@ -3,6 +3,7 @@ package ai.devreport.backend.auth.api;
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthService;
 import ai.devreport.backend.auth.domain.User;
+import ai.devreport.backend.usage.application.RateLimitService;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,24 +30,29 @@ import org.springframework.web.bind.annotation.RestController;
 class AuthController {
 
 	private final AuthService authService;
+	private final RateLimitService rateLimits;
 
-	AuthController(AuthService authService) {
+	AuthController(AuthService authService, RateLimitService rateLimits) {
 		this.authService = authService;
+		this.rateLimits = rateLimits;
 	}
 
 	@PostMapping("/signup")
 	@ResponseStatus(HttpStatus.CREATED)
-	UserResponse signup(@Valid @RequestBody SignupRequest request) {
+	UserResponse signup(HttpServletRequest servletRequest, @Valid @RequestBody SignupRequest request) {
+		rateLimits.checkSignup(servletRequest.getRemoteAddr());
 		return UserResponse.from(authService.signup(request.email(), request.password(), request.name()));
 	}
 
 	@PostMapping("/login")
-	TokenResponse login(@Valid @RequestBody LoginRequest request) {
+	TokenResponse login(HttpServletRequest servletRequest, @Valid @RequestBody LoginRequest request) {
+		rateLimits.checkLogin(servletRequest.getRemoteAddr());
 		return TokenResponse.from(authService.login(request.email(), request.password()));
 	}
 
 	@PostMapping("/refresh")
-	TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
+	TokenResponse refresh(HttpServletRequest servletRequest, @Valid @RequestBody RefreshRequest request) {
+		rateLimits.checkRefresh(servletRequest.getRemoteAddr());
 		return TokenResponse.from(authService.refresh(request.refreshToken()));
 	}
 

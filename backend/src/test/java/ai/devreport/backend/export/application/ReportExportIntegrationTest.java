@@ -25,10 +25,13 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.application.ReportService;
 import ai.devreport.backend.report.infrastructure.ReportRepository;
+import ai.devreport.backend.usage.application.UsageLimitProperties;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,6 +83,9 @@ class ReportExportIntegrationTest {
 
 	@Autowired
 	ObjectMapper objectMapper;
+
+	@Autowired
+	UsageLimitProperties usageLimits;
 
 	@DynamicPropertySource
 	static void storageProperties(DynamicPropertyRegistry registry) {
@@ -229,6 +235,71 @@ class ReportExportIntegrationTest {
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isGone())
 			.andExpect(jsonPath("$.code").value("EXPORT_EXPIRED"));
+	}
+
+	@Test
+	void limitsConcurrentPdfExportsForOneUser() throws Exception {
+		String token = signupAndLogin("export-concurrency@example.com");
+		UUID projectId = createProject(token);
+		Report report = reportService.create(projectId, objectMapper.readTree("""
+			{"metadata":{"title":"동시 PDF"},"sections":[]}
+			"""));
+		selectTemplate(report);
+		CountDownLatch renderStarted = new CountDownLatch(1);
+		CountDownLatch releaseRender = new CountDownLatch(1);
+		doAnswer(invocation -> {
+			renderStarted.countDown();
+			assertThat(releaseRender.await(2, TimeUnit.SECONDS)).isTrue();
+			Path path = renderer.path(invocation.getArgument(0, UUID.class));
+			Files.createDirectories(path.getParent());
+			Files.writeString(path, "%PDF-test");
+			return path;
+		}).when(renderer).render(any(UUID.class), anyString());
+
+		try {
+			String firstResponse = mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isAccepted())
+				.andReturn().getResponse().getContentAsString();
+			String firstExportId = JsonPath.read(firstResponse, "$.exportId");
+			assertThat(renderStarted.await(2, TimeUnit.SECONDS)).isTrue();
+
+			mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("PDF_CONCURRENCY_LIMIT_EXCEEDED"));
+
+			releaseRender.countDown();
+			awaitStatus(token, firstExportId, "COMPLETED");
+		} finally {
+			releaseRender.countDown();
+		}
+	}
+
+	@Test
+	void limitsDailyPdfExportsAfterACompletedRequest() throws Exception {
+		long originalLimit = usageLimits.getExport().getDailyLimit();
+		usageLimits.getExport().setDailyLimit(1);
+		try {
+			String token = signupAndLogin("export-daily@example.com");
+			UUID projectId = createProject(token);
+			Report report = reportService.create(projectId, objectMapper.readTree("""
+				{"metadata":{"title":"일일 PDF"},"sections":[]}
+				"""));
+			selectTemplate(report);
+			String response = mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isAccepted())
+				.andReturn().getResponse().getContentAsString();
+			awaitStatus(token, JsonPath.read(response, "$.exportId"), "COMPLETED");
+
+			mvc.perform(post("/api/reports/{reportId}/exports", report.getId())
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("PDF_DAILY_LIMIT_EXCEEDED"));
+		} finally {
+			usageLimits.getExport().setDailyLimit(originalLimit);
+		}
 	}
 
 	@Test
