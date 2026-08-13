@@ -2,8 +2,13 @@ package ai.devreport.backend.usage.infrastructure;
 
 import ai.devreport.backend.usage.domain.UsageEvent;
 
+import java.sql.Types;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlParameterValue;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -41,10 +46,16 @@ class UsageEventRepositoryImpl implements UsageEventRepositoryCustom {
 
 	@Override
 	public int insertIgnoringDuplicate(UsageEvent event) {
-		return jdbc.update(isPostgresql() ? POSTGRESQL_INSERT : H2_INSERT,
+		boolean postgresql = isPostgresql();
+		return jdbc.update(postgresql ? POSTGRESQL_INSERT : H2_INSERT,
 			event.getId(), event.getEventType().name(), event.getDeduplicationKey(), event.getUserId(),
 			event.getProjectId(), event.getFileId(), event.getReportId(), event.getJobId(), event.getExportId(),
-			metadata(event), event.getOccurredAt());
+			metadata(event), postgresql ? postgresqlOccurredAt(event) : event.getOccurredAt());
+	}
+
+	private static SqlParameterValue postgresqlOccurredAt(UsageEvent event) {
+		OffsetDateTime occurredAt = OffsetDateTime.ofInstant(event.getOccurredAt(), ZoneOffset.UTC);
+		return new SqlParameterValue(Types.TIMESTAMP_WITH_TIMEZONE, occurredAt);
 	}
 
 	private boolean isPostgresql() {
