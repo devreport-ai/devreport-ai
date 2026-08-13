@@ -26,7 +26,7 @@ SECOND_SOURCE_CONTENT = b"class Service {}"
 def valid_request() -> dict[str, object]:
     return {
         "fileIds": [str(FILE_ID)],
-        "metadata": {"author": "김예찬"},
+        "metadata": {"title": "Spring Boot 실습보고서", "author": "김예찬"},
         "instructions": "과제 요구사항에 맞춰 보고서를 작성해 주세요.",
     }
 
@@ -71,6 +71,33 @@ def test_generate_returns_schema_valid_sample_report():
 
 def test_generate_rejects_empty_file_ids_with_common_error_payload():
     request = valid_request() | {"fileIds": []}
+
+    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_metadata_without_title():
+    request = valid_request() | {"metadata": {"author": "김예찬"}}
+
+    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_unknown_metadata_field():
+    request = valid_request() | {"metadata": {"title": "보고서", "unknown": "value"}}
+
+    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_metadata_with_invalid_date():
+    request = valid_request() | {"metadata": {"title": "보고서", "date": "2026-99-99"}}
 
     response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
 

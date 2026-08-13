@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import date as CalendarDate
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -10,15 +11,12 @@ MAX_BUNDLE_TOTAL_SIZE = 100 * 1024 * 1024
 
 
 class GenerationRequest(BaseModel):
-    """AI-01 동안 Backend GenerationRequest와 호환되는 임시 내부 요청 계약.
-
-    실제 파일 bundle의 multipart 계약은 Backend-AI 공동 task에서 이 모델을 대체한다.
-    """
+    """Backend가 AI 보고서 생성에 전달하는 요청 메타데이터."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     file_ids: list[UUID] = Field(alias="fileIds", min_length=1)
-    metadata: dict[str, Any]
+    metadata: ReportMetadata
     instructions: str
 
     @field_validator("instructions")
@@ -27,6 +25,17 @@ class GenerationRequest(BaseModel):
         if not value.strip():
             raise ValueError("instructions must not be blank")
         return value
+
+
+class ReportMetadata(BaseModel):
+    """ReportDocument metadata와 동일한 생성 요청 메타데이터 계약."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1)
+    author: str | None = None
+    course: str | None = None
+    date: CalendarDate | None = None
 
 
 class ManifestFile(BaseModel):

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 from app.core.config import Settings, get_settings
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.generation import GenerationManifest, GenerationRequest
+from app.services.bundle_normalizer import BundleNormalizer
 from app.services.mock_report_generator import MockReportGenerator
 from app.services.multipart_bundle_validator import MultipartBundleValidator
 
@@ -30,6 +31,7 @@ async def generate_report(
     generation_request = parse_json_model(request, GenerationRequest)
     generation_manifest = parse_json_model(await manifest.read(), GenerationManifest)
     MultipartBundleValidator.validate(generation_manifest, files or [], generation_request.file_ids)
+    await BundleNormalizer().normalize(generation_manifest, files or [])
 
     if not settings.mock_report:
         raise AIServiceError(
