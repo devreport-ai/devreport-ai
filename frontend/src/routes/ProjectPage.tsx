@@ -9,6 +9,7 @@
  */
 import { useState } from 'react'
 import { useParams } from 'react-router'
+import { AppNav } from '../components/AppNav'
 import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
 import { useGenerationJob, useStartGeneration } from '../features/generation/api'
@@ -68,95 +69,103 @@ export default function ProjectPage() {
     selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== '' && !running
 
   return (
-    <main className="mx-auto max-w-3xl space-y-8 p-6">
-      <UploadPanel projectId={projectId} />
+    <div className="min-h-screen bg-gray-50">
+      <AppNav screen="보고서 만들기" />
+      <main className="mx-auto max-w-3xl space-y-5 p-6">
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <UploadPanel projectId={projectId} />
+        </section>
 
-      <section>
-        <h2 className="text-lg font-semibold">분석할 파일 선택</h2>
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="text-lg font-semibold">분석할 파일 선택</h2>
 
-        {files.isPending && <p className="mt-2 text-gray-500">불러오는 중…</p>}
-        {files.error && (
-          <p role="alert" className="mt-2 text-red-600">
-            {toDisplayMessage(files.error)}
-          </p>
-        )}
-        {files.data && items.length === 0 && (
-          <p className="mt-2 text-gray-500">아직 올린 파일이 없습니다.</p>
-        )}
-
-        {items.length > 0 && (
-          <ul className="mt-2 divide-y divide-gray-200">
-            {items.map((file) => (
-              <FileRow
-                key={file.id}
-                file={file}
-                checked={selectedIds.includes(file.id)}
-                onToggle={() => toggle(file.id)}
-                onDelete={() =>
-                  deleteFile.mutate(file.id, {
-                    // 지운 파일이 선택 목록에 남으면 없는 fileId 로 생성 요청이 나간다.
-                    onSuccess: () => setSelectedIds((prev) => prev.filter((id) => id !== file.id)),
-                  })
-                }
-              />
-            ))}
-          </ul>
-        )}
-
-        {deleteFile.error && (
-          <p role="alert" className="mt-2 text-sm text-red-600">
-            {toDisplayMessage(deleteFile.error)}
-          </p>
-        )}
-
-        {items.length > 0 && selectable.length === 0 && (
-          <p className="mt-2 text-sm text-amber-700">
-            AI 가 분석할 수 있는 파일이 없습니다. ZIP · MD · TXT · PNG · JPG 를 올려 주세요.
-          </p>
-        )}
-      </section>
-
-      {jobId !== null ? (
-        <TemplateChoicePanel job={job} onRetry={() => setJobId(null)} />
-      ) : (
-        <form onSubmit={handleGenerate} className="space-y-4">
-          <h2 className="text-lg font-semibold">보고서 정보</h2>
-
-          <Field id="title" label="제목" required value={title} onChange={setTitle} />
-          <Field id="author" label="작성자" value={author} onChange={setAuthor} />
-          <Field id="course" label="과목" value={course} onChange={setCourse} />
-          <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
-
-          <div>
-            <label htmlFor="instructions" className="block text-sm font-medium">
-              작성 지시사항 <span className="text-red-600">*</span>
-            </label>
-            <textarea
-              id="instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              rows={4}
-              placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={!canSubmit || startGeneration.isPending}
-            className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
-          >
-            {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
-          </button>
-
-          {startGeneration.error && (
-            <p role="alert" className="text-sm text-red-600">
-              {toDisplayMessage(startGeneration.error)}
+          {files.isPending && <p className="mt-2 text-gray-500">불러오는 중…</p>}
+          {files.error && (
+            <p role="alert" className="mt-2 text-red-600">
+              {toDisplayMessage(files.error)}
             </p>
           )}
-        </form>
-      )}
-    </main>
+          {files.data && items.length === 0 && (
+            <p className="mt-2 text-gray-500">아직 올린 파일이 없습니다.</p>
+          )}
+
+          {items.length > 0 && (
+            <ul className="mt-2 divide-y divide-gray-200">
+              {items.map((file) => (
+                <FileRow
+                  key={file.id}
+                  file={file}
+                  checked={selectedIds.includes(file.id)}
+                  onToggle={() => toggle(file.id)}
+                  onDelete={() =>
+                    deleteFile.mutate(file.id, {
+                      // 지운 파일이 선택 목록에 남으면 없는 fileId 로 생성 요청이 나간다.
+                      onSuccess: () =>
+                        setSelectedIds((prev) => prev.filter((id) => id !== file.id)),
+                    })
+                  }
+                />
+              ))}
+            </ul>
+          )}
+
+          {deleteFile.error && (
+            <p role="alert" className="mt-2 text-sm text-red-600">
+              {toDisplayMessage(deleteFile.error)}
+            </p>
+          )}
+
+          {items.length > 0 && selectable.length === 0 && (
+            <p className="mt-2 text-sm text-amber-700">
+              AI 가 분석할 수 있는 파일이 없습니다. ZIP · MD · TXT · PNG · JPG 를 올려 주세요.
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          {jobId !== null ? (
+            <TemplateChoicePanel job={job} onRetry={() => setJobId(null)} />
+          ) : (
+            <form onSubmit={handleGenerate} className="space-y-4">
+              <h2 className="text-lg font-semibold">보고서 정보</h2>
+
+              <Field id="title" label="제목" required value={title} onChange={setTitle} />
+              <Field id="author" label="작성자" value={author} onChange={setAuthor} />
+              <Field id="course" label="과목" value={course} onChange={setCourse} />
+              <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
+
+              <div>
+                <label htmlFor="instructions" className="block text-sm font-medium">
+                  작성 지시사항 <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  id="instructions"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  rows={4}
+                  placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!canSubmit || startGeneration.isPending}
+                className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
+              >
+                {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
+              </button>
+
+              {startGeneration.error && (
+                <p role="alert" className="text-sm text-red-600">
+                  {toDisplayMessage(startGeneration.error)}
+                </p>
+              )}
+            </form>
+          )}
+        </section>
+      </main>
+    </div>
   )
 }
 

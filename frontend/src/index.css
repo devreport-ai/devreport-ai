@@ -18,6 +18,19 @@
  * 인쇄 기본값. 실제 A4 출력 페이지는 #39 에서 다루지만,
  * 지금 브라우저 인쇄를 눌러도 화면 UI 가 그대로 찍히지 않도록 최소한만 잡아 둔다.
  */
+/* 선택·포커스 상태는 검정으로 통일한다 */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: #111;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 0;
+  border-color: #111;
+}
+
 @media print {
   /*
    * 조작용 요소만 숨긴다.

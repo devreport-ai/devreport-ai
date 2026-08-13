@@ -95,7 +95,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
   const failed = items.filter((i) => i.state === 'error')
 
   return (
-    <section>
+    <div>
       <h2 className="text-lg font-semibold">파일 업로드</h2>
 
       <p className="mt-1 text-sm text-gray-600">ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</p>
@@ -168,6 +168,6 @@ export function UploadPanel({ projectId }: { projectId: string }) {
           </ul>
         </>
       )}
-    </section>
+    </div>
   )
 }

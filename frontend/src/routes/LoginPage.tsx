@@ -37,48 +37,53 @@ export function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-sm space-y-6 p-6">
-      <h1 className="text-2xl font-bold">로그인</h1>
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+      <div className="w-full max-w-sm space-y-6 rounded-lg border border-gray-200 bg-white p-8">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-[#ea002c]">DEVREPORT AI</p>
+          <h1 className="mt-1 text-2xl font-bold">로그인</h1>
+        </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <AuthField
-          id="email"
-          label="이메일"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          error={submitted ? errors.email : null}
-        />
-        <AuthField
-          id="password"
-          label="비밀번호"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          error={submitted ? errors.password : null}
-        />
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <AuthField
+            id="email"
+            label="이메일"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            error={submitted ? errors.email : null}
+          />
+          <AuthField
+            id="password"
+            label="비밀번호"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            error={submitted ? errors.password : null}
+          />
 
-        <button
-          type="submit"
-          disabled={login.isPending}
-          className="w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
-        >
-          {login.isPending ? '로그인 중…' : '로그인'}
-        </button>
+          <button
+            type="submit"
+            disabled={login.isPending}
+            className="w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
+          >
+            {login.isPending ? '로그인 중…' : '로그인'}
+          </button>
 
-        {login.error && (
-          <p role="alert" className="text-sm text-red-600">
-            {toDisplayMessage(login.error)}
-          </p>
-        )}
-      </form>
+          {login.error && (
+            <p role="alert" className="text-sm text-red-600">
+              {toDisplayMessage(login.error)}
+            </p>
+          )}
+        </form>
 
-      <p className="text-sm text-gray-600">
-        계정이 없나요?{' '}
-        <Link to="/signup" className="underline">
-          회원가입
-        </Link>
-      </p>
+        <p className="text-sm text-gray-600">
+          계정이 없나요?{' '}
+          <Link to="/signup" className="underline">
+            회원가입
+          </Link>
+        </p>
+      </div>
     </main>
   )
 }
