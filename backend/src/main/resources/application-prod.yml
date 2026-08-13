@@ -1,0 +1,3 @@
+auth:
+  refresh-token-cookie:
+    secure: true

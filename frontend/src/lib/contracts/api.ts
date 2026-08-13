@@ -71,7 +71,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** 로그인 */
+    /**
+     * 로그인
+     * @description Access Token은 JSON 본문으로, Refresh Token은 HttpOnly 쿠키로 반환한다.
+     */
     post: {
       parameters: {
         query?: never
@@ -88,6 +91,8 @@ export interface paths {
         /** @description 로그인 성공 */
         200: {
           headers: {
+            /** @description HttpOnly Refresh Token 쿠키 (`refresh_token`). */
+            'Set-Cookie'?: string
             [name: string]: unknown
           }
           content: {
@@ -96,6 +101,15 @@ export interface paths {
         }
         /** @description 인증 실패 */
         401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer */
+        403: {
           headers: {
             [name: string]: unknown
           }
@@ -120,7 +134,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Access Token 재발급 */
+    /**
+     * Access Token 재발급
+     * @description 요청 본문 없이 HttpOnly Refresh Token 쿠키를 읽어 토큰을 회전한다.
+     */
     post: {
       parameters: {
         query?: never
@@ -128,15 +145,13 @@ export interface paths {
         path?: never
         cookie?: never
       }
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['RefreshTokenRequest']
-        }
-      }
+      requestBody?: never
       responses: {
         /** @description 토큰 재발급 성공 */
         200: {
           headers: {
+            /** @description 회전된 HttpOnly Refresh Token 쿠키 (`refresh_token`). */
+            'Set-Cookie'?: string
             [name: string]: unknown
           }
           content: {
@@ -145,6 +160,15 @@ export interface paths {
         }
         /** @description Refresh Token 무효 또는 만료 */
         401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
           headers: {
             [name: string]: unknown
           }
@@ -169,7 +193,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** 로그아웃 */
+    /**
+     * 로그아웃
+     * @description HttpOnly Refresh Token 쿠키를 폐기하고 만료된 쿠키를 반환한다.
+     */
     post: {
       parameters: {
         query?: never
@@ -177,18 +204,25 @@ export interface paths {
         path?: never
         cookie?: never
       }
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['RefreshTokenRequest']
-        }
-      }
+      requestBody?: never
       responses: {
         /** @description 로그아웃 성공 */
         204: {
           headers: {
+            /** @description 삭제된 Refresh Token 쿠키 (`Max-Age=0`). */
+            'Set-Cookie'?: string
             [name: string]: unknown
           }
           content?: never
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
         }
       }
     }
@@ -1605,12 +1639,8 @@ export interface components {
       /** Format: password */
       password: string
     }
-    RefreshTokenRequest: {
-      refreshToken: string
-    }
     TokenResponse: {
       accessToken: string
-      refreshToken: string
       /** @example Bearer */
       tokenType: string
       /**

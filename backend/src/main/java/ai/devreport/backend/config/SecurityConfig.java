@@ -1,6 +1,8 @@
 package ai.devreport.backend.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -25,6 +27,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
 @Configuration
@@ -33,8 +38,9 @@ public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-		RateLimitService rateLimits) throws Exception {
+		RateLimitService rateLimits, CorsConfigurationSource corsConfigurationSource) throws Exception {
 		return http
+			.cors(cors -> cors.configurationSource(corsConfigurationSource))
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(authorize -> authorize
@@ -53,6 +59,30 @@ public class SecurityConfig {
 					writeError(response, objectMapper, HttpServletResponse.SC_FORBIDDEN,
 						"FORBIDDEN", "접근 권한이 없습니다.")))
 			.build();
+	}
+
+	@Bean
+	CorsConfigurationSource corsConfigurationSource(@Value("${cors.allowed-origins}") String allowedOrigins) {
+		List<String> origins = Arrays.stream(allowedOrigins.split(","))
+			.map(String::trim)
+			.filter(origin -> !origin.isEmpty())
+			.toList();
+		if (origins.isEmpty()) {
+			throw new IllegalStateException("CORS 허용 Origin을 하나 이상 지정해야 합니다.");
+		}
+		if (origins.contains("*")) {
+			throw new IllegalStateException("CORS 허용 Origin에 *를 사용할 수 없습니다.");
+		}
+
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(origins);
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Render-Token"));
+		configuration.setAllowCredentials(true);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
 	}
 
 	@Bean

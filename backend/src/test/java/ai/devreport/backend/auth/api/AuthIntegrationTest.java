@@ -10,16 +10,20 @@ import ai.devreport.backend.auth.infrastructure.UserRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -29,6 +33,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:h2:mem:auth;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
@@ -39,6 +44,8 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 @AutoConfigureMockMvc
 class AuthIntegrationTest {
+
+	private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
 
 	@Autowired
 	MockMvc mvc;
@@ -105,16 +112,24 @@ class AuthIntegrationTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
-		String loginBody = mvc.perform(post("/api/auth/login")
+		MvcResult loginResult = mvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{"email":"user@example.com","password":"password123"}
 					"""))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.tokenType").value("Bearer"))
-			.andReturn().getResponse().getContentAsString();
+			.andExpect(jsonPath("$.refreshToken").doesNotExist())
+			.andReturn();
+		String loginBody = loginResult.getResponse().getContentAsString();
 		String accessToken = JsonPath.read(loginBody, "$.accessToken");
-		String firstRefreshToken = JsonPath.read(loginBody, "$.refreshToken");
+		Cookie firstRefreshCookie = loginResult.getResponse().getCookie(REFRESH_TOKEN_COOKIE);
+		assertThat(firstRefreshCookie).isNotNull();
+		assertThat(firstRefreshCookie.isHttpOnly()).isTrue();
+		assertThat(firstRefreshCookie.getSecure()).isFalse();
+		assertThat(firstRefreshCookie.getPath()).isEqualTo("/api/auth");
+		assertThat(loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+			.contains("SameSite=Lax", "Max-Age=1209600");
 
 		mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + accessToken))
 			.andExpect(status().isOk())
@@ -148,35 +163,104 @@ class AuthIntegrationTest {
 		mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + wrongIssuerToken))
 			.andExpect(status().isUnauthorized());
 
-		String refreshBody = mvc.perform(post("/api/auth/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"refreshToken\":\"%s\"}".formatted(firstRefreshToken)))
-			.andExpect(status().isOk())
-			.andReturn().getResponse().getContentAsString();
-		String secondRefreshToken = JsonPath.read(refreshBody, "$.refreshToken");
-
 		mvc.perform(post("/api/auth/refresh")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"refreshToken\":\"%s\"}".formatted(firstRefreshToken)))
+				.content("{\"refreshToken\":\"%s\"}".formatted(firstRefreshCookie.getValue())))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
 
-		mvc.perform(post("/api/auth/logout")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"refreshToken\":\"%s\"}".formatted(secondRefreshToken)))
-			.andExpect(status().isNoContent());
-		mvc.perform(post("/api/auth/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"refreshToken\":\"%s\"}".formatted(secondRefreshToken)))
+		MvcResult refreshResult = mvc.perform(post("/api/auth/refresh").cookie(firstRefreshCookie))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.refreshToken").doesNotExist())
+			.andReturn();
+		Cookie secondRefreshCookie = refreshResult.getResponse().getCookie(REFRESH_TOKEN_COOKIE);
+		assertThat(secondRefreshCookie).isNotNull();
+		assertThat(secondRefreshCookie.getValue()).isNotEqualTo(firstRefreshCookie.getValue());
+
+		mvc.perform(post("/api/auth/refresh").cookie(firstRefreshCookie))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+
+		MvcResult logoutResult = mvc.perform(post("/api/auth/logout").cookie(secondRefreshCookie))
+			.andExpect(status().isNoContent())
+			.andReturn();
+		assertThat(logoutResult.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+			.contains("Max-Age=0", "HttpOnly", "Path=/api/auth");
+		mvc.perform(post("/api/auth/refresh").cookie(secondRefreshCookie))
 			.andExpect(status().isUnauthorized());
 
 		User user = users.findByEmail("user@example.com").orElseThrow();
 		String expiredRawToken = "expired-refresh-token";
 		refreshTokens.save(new RefreshToken(user, AuthService.hash(expiredRawToken), Instant.now().minusSeconds(1)));
 		mvc.perform(post("/api/auth/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"refreshToken\":\"%s\"}".formatted(expiredRawToken)))
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, expiredRawToken)))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+	}
+
+	@Test
+	void rejectsDisallowedOriginButAllowsConfiguredCredentialedOrigin() throws Exception {
+		mvc.perform(options("/api/auth/refresh")
+				.header("Origin", "http://localhost:3000")
+				.header("Access-Control-Request-Method", "POST")
+				.header("Access-Control-Request-Headers", "content-type"))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+			.andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"origin@example.com","password":"password123","name":"Origin"}
+					"""))
+			.andExpect(status().isCreated());
+		MvcResult loginResult = mvc.perform(post("/api/auth/login")
+				.header("Origin", "http://localhost:3000")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"origin@example.com","password":"password123"}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+			.andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+			.andReturn();
+		Cookie refreshCookie = loginResult.getResponse().getCookie(REFRESH_TOKEN_COOKIE);
+		assertThat(refreshCookie).isNotNull();
+
+		mvc.perform(post("/api/auth/refresh")
+				.header("Origin", "https://evil.example")
+				.cookie(refreshCookie))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void validatesRefererWhenOriginHeaderIsAbsent() throws Exception {
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "https://evil.example/attack")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("CSRF_ORIGIN_INVALID"));
+
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "not-a-valid-url")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isForbidden());
+
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "http://localhost:3000/login")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+	}
+
+	@Test
+	void logoutClearsCookieEvenWhenServerTokenIsMissing() throws Exception {
+		MvcResult result = mvc.perform(post("/api/auth/logout")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "already-revoked")))
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+			.contains("Max-Age=0", "Path=/api/auth");
 	}
 }
