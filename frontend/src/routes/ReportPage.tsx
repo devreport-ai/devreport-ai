@@ -29,5 +29,9 @@ export default function ReportPage() {
   // 생성 흐름(#36)이 넘긴 템플릿 선택값. 새로고침하면 사라지지만 그때는 저장된 값을 쓴다.
   const initialTemplateId = (location.state as { templateId?: string } | null)?.templateId
 
-  return <ReportEditor report={report.data} initialTemplateId={initialTemplateId} />
+  // key 로 보고서마다 편집기를 새로 마운트한다. 같은 인스턴스가 다른 보고서를 받으면
+  // 편집 상태와 저장 기준(expectedVersion)이 이전 것으로 남아 409 를 만든다 (리뷰 지적)
+  return (
+    <ReportEditor key={report.data.id} report={report.data} initialTemplateId={initialTemplateId} />
+  )
 }
