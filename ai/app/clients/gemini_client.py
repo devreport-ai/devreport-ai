@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from time import sleep
 from typing import Any, Protocol
 
 import httpx
 
 from app.core.errors import AIServiceError, ErrorCode
+from app.schemas.analysis import ImageEvidence
 
 
 class GeminiModels(Protocol):
@@ -37,7 +38,7 @@ class GeminiClient:
         self._client_factory = client_factory or create_sdk_client
         self._sleeper = sleeper
 
-    def generate_json(self, prompt: str) -> str:
+    def generate_json(self, prompt: str, images: Sequence[ImageEvidence] = ()) -> str:
         if not self._api_key:
             raise AIServiceError(ErrorCode.AI_UNAVAILABLE, "Gemini API Key가 설정되지 않았습니다.")
 
@@ -47,7 +48,7 @@ class GeminiClient:
             raise AIServiceError(
                 ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
             ) from exception
-        response = self._generate_with_retries(client, prompt)
+        response = self._generate_with_retries(client, content_parts(prompt, images))
 
         text = getattr(response, "text", None)
         if not isinstance(text, str) or not text.strip():
@@ -62,13 +63,13 @@ class GeminiClient:
             ) from exception
         return text
 
-    def _generate_with_retries(self, client: GeminiSdkClient, prompt: str) -> Any:
+    def _generate_with_retries(self, client: GeminiSdkClient, contents: Any) -> Any:
         last_exception: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 return client.models.generate_content(
                     model=self._model,
-                    contents=prompt,
+                    contents=contents,
                     config=response_config(),
                 )
             except Exception as exception:
@@ -116,3 +117,16 @@ def response_config() -> Any:
     from google.genai import types
 
     return types.GenerateContentConfig(response_mime_type="application/json")
+
+
+def content_parts(prompt: str, images: Sequence[ImageEvidence]) -> Any:
+    """텍스트만 있으면 문자열을 유지하고, 이미지는 요청 수명 안의 bytes로만 전달한다."""
+    if not images:
+        return prompt
+
+    from google.genai import types
+
+    return [
+        *(types.Part.from_bytes(data=image.content, mime_type=image.mime_type) for image in images),
+        prompt,
+    ]
