@@ -11,6 +11,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiFetch, apiFetchNoContent } from './client'
 import { ApiError } from './errors'
+import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore'
+
+/** 계약 모양의 실패 응답 본문. */
+function errorBody(code: string) {
+  return { code, message: '실패', details: null, timestamp: '2026-08-12T00:00:00+09:00' }
+}
 
 /** 성공 응답을 흉내 낸다. */
 function jsonResponse(body: unknown, status = 200) {
@@ -201,5 +207,110 @@ describe('에러 응답 해석', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect((error as ApiError).code).toBe('UNKNOWN_ERROR')
+  })
+})
+
+/**
+ * 인증 주입과 401 재발급 (이슈 #61).
+ *
+ * "만료된 Access Token 이 한 번만 재발급되고 원 요청이 재시도됨" 을 여기서 고정한다.
+ */
+describe('인증', () => {
+  it('로그인 상태면 Authorization 헤더가 자동으로 붙는다', async () => {
+    setAccessToken('my-access')
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+
+    await apiFetch('/api/projects')
+
+    expect(lastRequestHeaders(fetchMock).get('Authorization')).toBe('Bearer my-access')
+    clearAccessToken()
+  })
+
+  it('로그아웃 상태면 Authorization 헤더가 없다', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+
+    await apiFetch('/api/projects')
+
+    expect(lastRequestHeaders(fetchMock).get('Authorization')).toBeNull()
+  })
+
+  it('401 이면 재발급 후 새 토큰으로 원 요청을 한 번 다시 보낸다', async () => {
+    setAccessToken('expired')
+
+    fetchMock.mockImplementation((url: string) => {
+      // 재발급 요청은 성공시킨다.
+      if (url.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(
+          jsonResponse({
+            accessToken: 'fresh',
+            tokenType: 'Bearer',
+            expiresIn: 900,
+          }),
+        )
+      }
+      // 원 요청: 첫 번째는 만료(401), 재시도는 성공.
+      const auth = (fetchMock.mock.calls.at(-1)?.[1] as RequestInit).headers as Headers
+      if (auth.get('Authorization') === 'Bearer expired') {
+        return Promise.resolve(jsonResponse(errorBody('UNAUTHORIZED'), 401))
+      }
+      return Promise.resolve(jsonResponse({ ok: true }))
+    })
+
+    await expect(apiFetch('/api/projects')).resolves.toEqual({ ok: true })
+
+    // 원 요청(401) → 재발급 → 원 요청 재시도 = 3회. 그 이상 반복하면 안 된다.
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    // 재시도에는 새 토큰이 실려야 한다. 옛 토큰이면 또 401 이다.
+    expect(lastRequestHeaders(fetchMock).get('Authorization')).toBe('Bearer fresh')
+    clearAccessToken()
+  })
+
+  it('재발급까지 실패하면 원래의 401 을 그대로 던진다', async () => {
+    setAccessToken('expired')
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(jsonResponse(errorBody('INVALID_REFRESH_TOKEN'), 401))
+      }
+      return Promise.resolve(jsonResponse(errorBody('UNAUTHORIZED'), 401))
+    })
+
+    await expect(apiFetch('/api/projects')).rejects.toMatchObject({ status: 401 })
+    // 재발급 실패는 로그아웃 상태로 정리돼야 한다. 화면은 이 변화를 보고 로그인으로 보낸다.
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('만료 후 /api/auth/me 도 재발급 대상이다', async () => {
+    // /api/auth/ 전체를 제외하면 me 가 살아날 수 있는 401 에서 즉시 실패한다 (리뷰 지적)
+    setAccessToken('expired')
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(
+          jsonResponse({ accessToken: 'fresh', tokenType: 'Bearer', expiresIn: 900 }),
+        )
+      }
+      const auth = (fetchMock.mock.calls.at(-1)?.[1] as RequestInit).headers as Headers
+      if (auth.get('Authorization') === 'Bearer expired') {
+        return Promise.resolve(jsonResponse(errorBody('UNAUTHORIZED'), 401))
+      }
+      return Promise.resolve(jsonResponse({ id: 'u1', email: 'a@b.c', name: '이름' }))
+    })
+
+    await expect(apiFetch('/api/auth/me')).resolves.toMatchObject({ name: '이름' })
+    clearAccessToken()
+  })
+
+  it('인증 API 자신의 401 에는 재발급을 시도하지 않는다', async () => {
+    // 로그인 실패(비밀번호 오류)에 재발급을 시도하는 건 무의미하고,
+    // 재발급 401 에 또 재발급하면 무한 반복이다.
+    setAccessToken('a')
+    fetchMock.mockResolvedValue(jsonResponse(errorBody('INVALID_CREDENTIALS'), 401))
+
+    await expect(apiFetch('/api/auth/login', { method: 'POST', body: '{}' })).rejects.toMatchObject(
+      { status: 401 },
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    clearAccessToken()
   })
 })

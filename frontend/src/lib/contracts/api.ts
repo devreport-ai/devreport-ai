@@ -54,6 +54,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
+        /** @description IP별 회원가입 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
       }
     }
     delete?: never
@@ -117,6 +126,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
+        /** @description IP별 로그인 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
       }
     }
     delete?: never
@@ -169,6 +187,15 @@ export interface paths {
         }
         /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
         403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description IP별 refresh 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
           headers: {
             [name: string]: unknown
           }
@@ -776,7 +803,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
-        /** @description 파일 크기 또는 ZIP 해제 제한 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED) */
+        /** @description 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED) */
         413: {
           headers: {
             [name: string]: unknown
@@ -796,6 +823,15 @@ export interface paths {
         }
         /** @description ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT) */
         422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 업로드 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
           headers: {
             [name: string]: unknown
           }
@@ -1093,6 +1129,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
+        /** @description 사용자별 rate limit·일일·동시 생성 quota 초과 (RATE_LIMIT_EXCEEDED, GENERATION_DAILY_LIMIT_EXCEEDED, GENERATION_CONCURRENCY_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
       }
     }
     delete?: never
@@ -1214,7 +1259,7 @@ export interface paths {
       }
       requestBody?: never
       responses: {
-        /** @description 보고서 조회 성공 */
+        /** @description 보고서 조회 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
         200: {
           headers: {
             [name: string]: unknown
@@ -1259,7 +1304,7 @@ export interface paths {
         }
       }
       responses: {
-        /** @description 보고서 수정 성공 */
+        /** @description 보고서 수정 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
         200: {
           headers: {
             [name: string]: unknown
@@ -1363,6 +1408,15 @@ export interface paths {
         }
         /** @description 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED) */
         409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 PDF 일일·동시 quota 초과 (PDF_DAILY_LIMIT_EXCEEDED, PDF_CONCURRENCY_LIMIT_EXCEEDED) */
+        429: {
           headers: {
             [name: string]: unknown
           }

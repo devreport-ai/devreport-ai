@@ -10,6 +10,8 @@
  * 같은 폴더 안에 용도별 함수가 둘인 것이다.
  */
 import { ApiError, isErrorResponse, toFallbackErrorResponse } from './errors'
+import { getAccessToken } from '../auth/tokenStore'
+import { refreshSession } from '../auth/session'
 import type { FileIdResponse } from '../contracts/types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -29,13 +31,31 @@ export interface UploadOptions {
  *
  * 여러 개를 올릴 때는 호출부가 이 함수를 병렬로 부른다 (이슈 #36).
  *
+ * 401 처리는 `apiFetch` 와 같은 규칙이다 — 재발급 후 딱 한 번 다시 보낸다.
+ * XHR 이라 client.ts 의 재시도를 못 타므로 여기서 같은 규칙을 반복한다.
+ *
  * @throws {ApiError} 서버가 거절했거나 연결에 실패했을 때
  * @throws {DOMException} 호출자가 취소했을 때 (AbortError) — `apiFetch` 와 같은 규칙
  */
-export function uploadProjectFile(
+export async function uploadProjectFile(
   projectId: string,
   file: File,
   options: UploadOptions = {},
+): Promise<FileIdResponse> {
+  try {
+    return await sendUpload(projectId, file, options)
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401) throw error
+    const refreshed = await refreshSession()
+    if (!refreshed) throw error
+    return sendUpload(projectId, file, options)
+  }
+}
+
+function sendUpload(
+  projectId: string,
+  file: File,
+  options: UploadOptions,
 ): Promise<FileIdResponse> {
   const { onProgress, signal } = options
 
@@ -56,6 +76,12 @@ export function uploadProjectFile(
     xhr.open('POST', `${BASE_URL}/api/projects/${projectId}/files`)
     xhr.responseType = 'text'
     xhr.setRequestHeader('Accept', 'application/json')
+
+    // client.ts 의 buildHeaders 와 같은 규칙. 로그인 상태면 인증 헤더를 붙인다.
+    const accessToken = getAccessToken()
+    if (accessToken !== null) {
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`)
+    }
 
     // Content-Type 을 직접 지정하지 않는다. FormData 를 넘기면 브라우저가
     // multipart 경계 문자열을 포함한 헤더를 알아서 만든다. 직접 쓰면 경계가 빠져 깨진다.

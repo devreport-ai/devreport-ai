@@ -9,6 +9,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { AuthBootstrap } from './features/auth/AuthBootstrap'
 import { queryClient } from './lib/queryClient'
 import './index.css'
 
@@ -26,7 +27,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <AuthBootstrap>
+          <App />
+        </AuthBootstrap>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
