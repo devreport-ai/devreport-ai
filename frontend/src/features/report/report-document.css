@@ -114,6 +114,95 @@
   background: #f0f0f0;
 }
 
+/* ── 템플릿: GitHub 문서 (github-markdown-css 참고, MIT) ── */
+.tpl-github {
+  font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.6;
+  color: #1f2328;
+}
+.tpl-github h1 {
+  font-size: 20pt;
+  padding-bottom: 2mm;
+  border-bottom: 0.3mm solid #d1d9e0;
+}
+.tpl-github h2 {
+  font-size: 13.5pt;
+  padding-bottom: 1.5mm;
+  border-bottom: 0.3mm solid #d1d9e0;
+}
+.tpl-github .rpt-meta {
+  font-size: 9.5pt;
+  color: #59636e;
+}
+.tpl-github pre {
+  background: #f6f8fa;
+  border-radius: 2mm;
+  font-size: 9pt;
+}
+.tpl-github th,
+.tpl-github td {
+  border-color: #d1d9e0;
+}
+.tpl-github th {
+  background: #f6f8fa;
+}
+.tpl-github tbody tr:nth-child(even) td {
+  background: #f6f8fa;
+}
+.tpl-github .rpt-callout {
+  border-color: #0969da;
+  background: #ddf4ff;
+  border-radius: 0 2mm 2mm 0;
+}
+.tpl-github .rpt-callout-title {
+  color: #0969da;
+}
+
+/* ── 템플릿: LaTeX 학술 (latex-css 참고, MIT) ──
+   주의: 서버 Chromium 에는 한글 명조가 없다. 이 템플릿을 확정하면 명조 웹폰트
+   (예: Noto Serif KR) 추가가 필요하다. */
+.tpl-latex {
+  font-family: 'AppleMyungjo', 'Nanum Myeongjo', 'Noto Serif KR', serif;
+  font-size: 11pt;
+  line-height: 1.8;
+}
+.tpl-latex h1 {
+  font-size: 19pt;
+  text-align: center;
+  font-weight: 600;
+}
+.tpl-latex .rpt-meta {
+  text-align: center;
+  font-size: 10pt;
+  font-style: italic;
+  color: #333;
+}
+.tpl-latex h2 {
+  font-size: 13pt;
+}
+.tpl-latex pre {
+  background: none;
+  border: 0.3mm solid #999;
+  font-size: 9pt;
+}
+.tpl-latex table {
+  border-top: 0.6mm solid #111;
+  border-bottom: 0.6mm solid #111;
+}
+.tpl-latex th,
+.tpl-latex td {
+  border: none;
+}
+.tpl-latex th {
+  border-bottom: 0.3mm solid #111;
+}
+.tpl-latex .rpt-callout {
+  border: 0.3mm solid #111;
+  border-left-width: 0.3mm;
+  background: none;
+}
+
 /* ── 템플릿: 컴팩트 ── */
 .tpl-compact {
   font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;

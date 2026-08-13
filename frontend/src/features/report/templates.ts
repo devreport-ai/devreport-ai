@@ -16,6 +16,8 @@ export interface ReportTemplate {
 
 export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   { id: 'default', version: 1, name: '기본', className: 'tpl-default' },
+  { id: 'github', version: 1, name: 'GitHub 문서', className: 'tpl-github' },
+  { id: 'latex', version: 1, name: 'LaTeX 학술', className: 'tpl-latex' },
   { id: 'compact', version: 1, name: '컴팩트', className: 'tpl-compact' },
 ] as const
 
