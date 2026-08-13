@@ -3,7 +3,6 @@ package ai.devreport.backend.upload.api;
 import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.upload.application.ProjectTrashService;
 import ai.devreport.backend.upload.domain.UploadedFile;
-import ai.devreport.backend.usage.application.RateLimitService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -299,7 +298,7 @@ class ProjectFileIntegrationTest {
 	@Test
 	void closesOpenedFileWhenResponseHeadersCannotBeBuilt() throws Exception {
 		ProjectFileService service = mock(ProjectFileService.class);
-		ProjectFileController controller = new ProjectFileController(service, mock(RateLimitService.class));
+		ProjectFileController controller = new ProjectFileController(service);
 		UUID ownerId = UUID.randomUUID();
 		UUID projectId = UUID.randomUUID();
 		UUID fileId = UUID.randomUUID();

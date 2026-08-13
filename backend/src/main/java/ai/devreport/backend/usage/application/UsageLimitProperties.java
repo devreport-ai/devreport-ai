@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -160,6 +161,15 @@ public class UsageLimitProperties {
 		@NotNull
 		private Duration window = Duration.ofMinutes(1);
 
+		@NotNull
+		private Duration retention = Duration.ofDays(1);
+
+		@NotBlank
+		private String cleanupCron = "0 0 * * * *";
+
+		@NotBlank
+		private String cleanupZone = "Asia/Seoul";
+
 		@Min(1)
 		private int signup = 10;
 
@@ -180,12 +190,42 @@ public class UsageLimitProperties {
 			return window != null && window.toSeconds() > 0;
 		}
 
+		@AssertTrue(message = "usage-limits.rate-limit.retention must be at least the rate-limit window")
+		public boolean isRetentionValid() {
+			return retention != null && !retention.isNegative() && !retention.isZero()
+				&& window != null && retention.compareTo(window) >= 0;
+		}
+
 		public Duration getWindow() {
 			return window;
 		}
 
 		public void setWindow(Duration window) {
 			this.window = window;
+		}
+
+		public Duration getRetention() {
+			return retention;
+		}
+
+		public void setRetention(Duration retention) {
+			this.retention = retention;
+		}
+
+		public String getCleanupCron() {
+			return cleanupCron;
+		}
+
+		public void setCleanupCron(String cleanupCron) {
+			this.cleanupCron = cleanupCron;
+		}
+
+		public String getCleanupZone() {
+			return cleanupZone;
+		}
+
+		public void setCleanupZone(String cleanupZone) {
+			this.cleanupZone = cleanupZone;
 		}
 
 		public int getSignup() {

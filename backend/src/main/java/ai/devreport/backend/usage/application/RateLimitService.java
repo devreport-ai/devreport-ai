@@ -9,6 +9,7 @@ import ai.devreport.backend.usage.domain.UsageLimitException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +80,14 @@ public class RateLimitService {
 	@Transactional
 	public void checkGeneration(UUID userId) {
 		check("generation", "user:" + userId, properties.getRateLimit().getGeneration());
+	}
+
+	@Scheduled(cron = "${usage-limits.rate-limit.cleanup-cron:0 0 * * * *}",
+		zone = "${usage-limits.rate-limit.cleanup-zone:Asia/Seoul}")
+	@Transactional
+	public void cleanupExpiredBuckets() {
+		Instant cutoff = Instant.now().minus(properties.getRateLimit().getRetention());
+		jdbc.update("DELETE FROM rate_limit_buckets WHERE window_started_at < ?", cutoff);
 	}
 
 	private void check(String endpoint, String scope, int limit) {

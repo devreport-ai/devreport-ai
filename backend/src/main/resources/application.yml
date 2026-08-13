@@ -22,6 +22,7 @@ spring:
 
 server:
   port: ${BACKEND_PORT:8080}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
 
 management:
   endpoint:
@@ -69,6 +70,9 @@ usage-limits:
     concurrent-limit: ${USAGE_LIMITS_EXPORT_CONCURRENT_LIMIT:1}
   rate-limit:
     window: ${USAGE_LIMITS_RATE_WINDOW:1m}
+    retention: ${USAGE_LIMITS_RATE_RETENTION:1d}
+    cleanup-cron: "${USAGE_LIMITS_RATE_CLEANUP_CRON:0 0 * * * *}"
+    cleanup-zone: ${USAGE_LIMITS_RATE_CLEANUP_ZONE:Asia/Seoul}
     signup: ${USAGE_LIMITS_RATE_SIGNUP:10}
     login: ${USAGE_LIMITS_RATE_LOGIN:20}
     refresh: ${USAGE_LIMITS_RATE_REFRESH:30}

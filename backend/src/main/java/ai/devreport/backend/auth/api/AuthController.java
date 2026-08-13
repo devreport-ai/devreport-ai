@@ -40,19 +40,19 @@ class AuthController {
 	@PostMapping("/signup")
 	@ResponseStatus(HttpStatus.CREATED)
 	UserResponse signup(HttpServletRequest servletRequest, @Valid @RequestBody SignupRequest request) {
-		rateLimits.checkSignup(servletRequest.getRemoteAddr());
+		rateLimits.checkSignup(clientIp(servletRequest));
 		return UserResponse.from(authService.signup(request.email(), request.password(), request.name()));
 	}
 
 	@PostMapping("/login")
 	TokenResponse login(HttpServletRequest servletRequest, @Valid @RequestBody LoginRequest request) {
-		rateLimits.checkLogin(servletRequest.getRemoteAddr());
+		rateLimits.checkLogin(clientIp(servletRequest));
 		return TokenResponse.from(authService.login(request.email(), request.password()));
 	}
 
 	@PostMapping("/refresh")
 	TokenResponse refresh(HttpServletRequest servletRequest, @Valid @RequestBody RefreshRequest request) {
-		rateLimits.checkRefresh(servletRequest.getRemoteAddr());
+		rateLimits.checkRefresh(clientIp(servletRequest));
 		return TokenResponse.from(authService.refresh(request.refreshToken()));
 	}
 
@@ -76,6 +76,11 @@ class AuthController {
 
 	private static AuthException unauthorized() {
 		return new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다.");
+	}
+
+	private static String clientIp(HttpServletRequest request) {
+		// Spring's configured forwarded-header strategy resolves the trusted proxy address.
+		return request.getRemoteAddr();
 	}
 
 	record SignupRequest(

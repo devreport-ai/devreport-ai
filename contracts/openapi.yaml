@@ -4,6 +4,11 @@ jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: DevReport AI API
   version: 0.1.0
+  description: |
+    인증 요청의 IP별 rate limit은 Spring의 `server.forward-headers-strategy=framework`로
+    해석된 클라이언트 IP를 사용한다. 배포 시 신뢰된 reverse proxy 또는 ingress만
+    `Forwarded`/`X-Forwarded-For`를 정규화해 전달하고, 외부에서 전달된 forwarded header는
+    제거해야 한다.
 
 servers:
   - url: http://localhost:8080

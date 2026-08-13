@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import jakarta.servlet.http.HttpServletResponse;
 
 import ai.devreport.backend.common.error.ErrorResponse;
+import ai.devreport.backend.usage.application.RateLimitService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,7 +32,8 @@ public class SecurityConfig {
 	public static final String JWT_ISSUER = "devreport-ai";
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
+		RateLimitService rateLimits) throws Exception {
 		return http
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -44,6 +47,7 @@ public class SecurityConfig {
 				.authenticationEntryPoint((request, response, exception) ->
 					writeError(response, objectMapper, HttpServletResponse.SC_UNAUTHORIZED,
 						"UNAUTHORIZED", "인증이 필요합니다.")))
+			.addFilterAfter(new UploadRateLimitFilter(rateLimits, objectMapper), BearerTokenAuthenticationFilter.class)
 			.exceptionHandling(exceptions -> exceptions
 				.accessDeniedHandler((request, response, exception) ->
 					writeError(response, objectMapper, HttpServletResponse.SC_FORBIDDEN,

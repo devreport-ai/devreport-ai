@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -86,10 +88,36 @@ class UsageLimitIntegrationTest {
 	}
 
 	@Test
-	void rateLimitUsesDatabaseBucketAndReturnsCommonError() {
+	void rejectsUploadRateLimitBeforeMultipartParsing() throws Exception {
+		int originalLimit = properties.getRateLimit().getUpload();
+		properties.getRateLimit().setUpload(1);
+		try {
+			String token = signupAndLogin("upload-rate-owner@example.com");
+			String projectId = createProject(token);
+			upload(token, projectId, new byte[] {1});
+
+			mvc.perform(multipart("/api/projects/{projectId}/files", projectId)
+					.file(new MockMultipartFile("file", "rejected.txt", "text/plain", new byte[] {2, 3}))
+					.header("Authorization", bearer(token)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
+				.andExpect(jsonPath("$.details.retryAfterSeconds").isNumber());
+
+			UUID project = UUID.fromString(projectId);
+			assertThat(files.findAllByProjectId(project, org.springframework.data.domain.PageRequest.of(0, 10))
+				.getContent()).hasSize(1);
+		} finally {
+			properties.getRateLimit().setUpload(originalLimit);
+		}
+	}
+
+	@Test
+	void rateLimitUsesDatabaseBucketAndReturnsCommonError() throws Exception {
 		int originalLimit = properties.getRateLimit().getSignup();
 		properties.getRateLimit().setSignup(1);
 		String remoteAddress = "test-ip-" + UUID.randomUUID();
+		String firstClientIp = "203.0.113.10";
+		String secondClientIp = "203.0.113.11";
 		try {
 			rateLimits.checkSignup(remoteAddress);
 
@@ -102,8 +130,62 @@ class UsageLimitIntegrationTest {
 				});
 			assertThat(jdbc.queryForObject("SELECT request_count FROM rate_limit_buckets WHERE bucket_key = ?",
 				Integer.class, "signup:ip:" + remoteAddress)).isEqualTo(1);
+
+			mvc.perform(post("/api/auth/signup")
+					.header("Forwarded", "for=" + firstClientIp)
+					.with(request -> {
+						request.setRemoteAddr("10.0.0.10");
+						return request;
+					})
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"rate-limit-first@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+				.andExpect(status().isCreated());
+			mvc.perform(post("/api/auth/signup")
+					.header("Forwarded", "for=" + firstClientIp)
+					.with(request -> {
+						request.setRemoteAddr("10.0.0.10");
+						return request;
+					})
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"rate-limit-second@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
+				.andExpect(jsonPath("$.details.retryAfterSeconds").isNumber());
+			mvc.perform(post("/api/auth/signup")
+					.header("Forwarded", "for=" + secondClientIp)
+					.with(request -> {
+						request.setRemoteAddr("10.0.0.10");
+						return request;
+					})
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"rate-limit-third@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+				.andExpect(status().isCreated());
 		} finally {
 			properties.getRateLimit().setSignup(originalLimit);
+		}
+	}
+
+	@Test
+	void removesExpiredRateLimitBuckets() {
+		Duration originalRetention = properties.getRateLimit().getRetention();
+		String expiredKey = "cleanup-expired-" + UUID.randomUUID();
+		String currentKey = "cleanup-current-" + UUID.randomUUID();
+		properties.getRateLimit().setRetention(Duration.ofMinutes(1));
+		try {
+			jdbc.update("INSERT INTO rate_limit_buckets (bucket_key, window_started_at, request_count) VALUES (?, ?, 1)",
+				expiredKey, Instant.now().minus(Duration.ofHours(1)));
+			jdbc.update("INSERT INTO rate_limit_buckets (bucket_key, window_started_at, request_count) VALUES (?, ?, 1)",
+				currentKey, Instant.now());
+
+			rateLimits.cleanupExpiredBuckets();
+
+			assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM rate_limit_buckets WHERE bucket_key = ?",
+				Integer.class, expiredKey)).isZero();
+			assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM rate_limit_buckets WHERE bucket_key = ?",
+				Integer.class, currentKey)).isOne();
+		} finally {
+			properties.getRateLimit().setRetention(originalRetention);
+			jdbc.update("DELETE FROM rate_limit_buckets WHERE bucket_key IN (?, ?)", expiredKey, currentKey);
 		}
 	}
 

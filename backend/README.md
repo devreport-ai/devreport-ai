@@ -182,20 +182,27 @@ quota와 동시성 검사를 중복 통과할 수 없다. 파일 quota는 휴지
 | 업로드·AI 생성 요청 | 1분당 사용자별 30·10회 | 429 `RATE_LIMIT_EXCEEDED` |
 
 rate limit bucket은 `rate_limit_buckets`에 저장되며 Backend 재시작 뒤에도 현재 윈도우가
-유지된다. 제한을 거부하는 시점은 업로드 임시 파일, `GenerationJob`, PDF export가
+유지된다. 오래된 bucket은 `USAGE_LIMITS_RATE_RETENTION` 기간과
+`USAGE_LIMITS_RATE_CLEANUP_CRON` 주기에 따라 정리된다. 제한을 거부하는 시점은 업로드 임시 파일, `GenerationJob`, PDF export가
 생성되기 전이므로 초과 요청이 원본 파일·작업·임시 bundle을 남기지 않는다.
 
 Gemini 사용량은 `usage_events`의 `GENERATION_REQUESTED`, `GENERATION_COMPLETED`,
 `GENERATION_FAILED` 수로 추적한다. 일별 지표는 다음처럼 계산한다.
 
 ```sql
+WITH day_boundary AS (
+	SELECT date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE :dayZone) AS day_start
+)
 SELECT
   COUNT(*) FILTER (WHERE event_type = 'GENERATION_REQUESTED') AS requests,
   COUNT(*) FILTER (WHERE event_type = 'GENERATION_COMPLETED') AS completed,
   COUNT(*) FILTER (WHERE event_type = 'GENERATION_FAILED') AS failed
-FROM usage_events
-WHERE occurred_at >= CURRENT_DATE;
+FROM usage_events, day_boundary
+WHERE occurred_at >= (day_start AT TIME ZONE :dayZone)
+  AND occurred_at < ((day_start + INTERVAL '1 day') AT TIME ZONE :dayZone);
 ```
+
+`:dayZone`에는 `USAGE_LIMITS_DAY_ZONE`(기본값 `Asia/Seoul`)을 바인딩한다.
 
 실패율은 `failed / (completed + failed)`로 계산하고, 예상 비용은
 `requests * 0.05 USD`로 계산한다.

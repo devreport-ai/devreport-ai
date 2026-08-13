@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.devreport.backend.integration.ai.AiHealthResponse;
 import ai.devreport.backend.integration.ai.AiServiceClient;
@@ -183,6 +184,9 @@ class GenerationIntegrationTest {
 			{"fileIds":["%s"],"metadata":{},"instructions":"두 번째 생성"}
 			""".formatted(secondFileId));
 		awaitActive(secondJobId);
+		awaitGenerationCalls(2);
+		long jobsBeforeRejectedRequest = jobs.count();
+		int generationCallsBeforeRejectedRequest = aiService.generationCalls();
 
 		mvc.perform(post("/api/projects/{projectId}/generations", thirdProjectId)
 				.header("Authorization", bearer(token))
@@ -192,6 +196,8 @@ class GenerationIntegrationTest {
 					""".formatted(thirdFileId)))
 			.andExpect(status().isTooManyRequests())
 			.andExpect(jsonPath("$.code").value("GENERATION_CONCURRENCY_LIMIT_EXCEEDED"));
+		assertThat(jobs.count()).isEqualTo(jobsBeforeRejectedRequest);
+		assertThat(aiService.generationCalls()).isEqualTo(generationCallsBeforeRejectedRequest);
 
 		aiService.release();
 		awaitStatus(token, firstJobId, "COMPLETED");
@@ -213,6 +219,8 @@ class GenerationIntegrationTest {
 			assertThat(aiService.awaitStarted()).isTrue();
 			aiService.release();
 			awaitStatus(token, firstJobId, "COMPLETED");
+		long jobsBeforeRejectedRequest = jobs.count();
+		int generationCallsBeforeRejectedRequest = aiService.generationCalls();
 
 			mvc.perform(post("/api/projects/{projectId}/generations", projectId)
 					.header("Authorization", bearer(token))
@@ -222,6 +230,8 @@ class GenerationIntegrationTest {
 						""".formatted(fileId)))
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("GENERATION_DAILY_LIMIT_EXCEEDED"));
+			assertThat(jobs.count()).isEqualTo(jobsBeforeRejectedRequest);
+			assertThat(aiService.generationCalls()).isEqualTo(generationCallsBeforeRejectedRequest);
 		} finally {
 			usageLimits.getGeneration().setDailyLimit(originalLimit);
 		}
@@ -397,6 +407,16 @@ class GenerationIntegrationTest {
 		throw new AssertionError("Generation bundle was not deleted");
 	}
 
+	private void awaitGenerationCalls(int expected) throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			if (aiService.generationCalls() >= expected) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("AI generation calls did not reach " + expected);
+	}
+
 	private String createProject(String token, String name) throws Exception {
 		String body = mvc.perform(post("/api/projects")
 				.header("Authorization", bearer(token))
@@ -445,6 +465,7 @@ class GenerationIntegrationTest {
 		private volatile boolean fail;
 		private volatile ReportDocument generatedResult;
 		private volatile Path bundleRoot;
+		private final AtomicInteger generationCalls = new AtomicInteger();
 
 		void prepare(boolean shouldFail) {
 			prepare(shouldFail, null);
@@ -456,6 +477,7 @@ class GenerationIntegrationTest {
 			fail = shouldFail;
 			generatedResult = result;
 			bundleRoot = null;
+			generationCalls.set(0);
 		}
 
 		boolean awaitStarted() throws InterruptedException {
@@ -470,6 +492,10 @@ class GenerationIntegrationTest {
 			return bundleRoot;
 		}
 
+		int generationCalls() {
+			return generationCalls.get();
+		}
+
 		@Override
 		public AiHealthResponse health() {
 			return new AiHealthResponse("UP", "test", "test", "test", true, true);
@@ -477,6 +503,7 @@ class GenerationIntegrationTest {
 
 		@Override
 		public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
+			generationCalls.incrementAndGet();
 			bundleRoot = bundle.root();
 			assertThat(bundleRoot).exists();
 			started.countDown();

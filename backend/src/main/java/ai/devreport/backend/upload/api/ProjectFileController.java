@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Min;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.upload.domain.UploadedFile;
-import ai.devreport.backend.usage.application.RateLimitService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -39,11 +38,9 @@ import org.springframework.web.multipart.MultipartFile;
 class ProjectFileController {
 
 	private final ProjectFileService fileService;
-	private final RateLimitService rateLimits;
 
-	ProjectFileController(ProjectFileService fileService, RateLimitService rateLimits) {
+	ProjectFileController(ProjectFileService fileService) {
 		this.fileService = fileService;
-		this.rateLimits = rateLimits;
 	}
 
 	@PostMapping
@@ -51,7 +48,6 @@ class ProjectFileController {
 	FileIdResponse upload(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@RequestPart MultipartFile file) {
 		UUID ownerId = AuthenticatedUser.id(jwt);
-		rateLimits.checkUpload(ownerId);
 		return new FileIdResponse(fileService.upload(ownerId, projectId, file).getId());
 	}
 
