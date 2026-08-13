@@ -19,6 +19,13 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  if (!checked) return null // 판정은 한 번의 왕복이라 짧다. 빈 화면이 깜빡임보다 낫다
+  if (!checked) {
+    // 재발급이 타임아웃(10초)까지 걸릴 수 있어 빈 화면 대신 상태를 알린다
+    return (
+      <main role="status" aria-live="polite" className="p-6 text-gray-500">
+        로그인 상태를 확인하는 중…
+      </main>
+    )
+  }
   return children
 }

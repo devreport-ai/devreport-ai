@@ -142,9 +142,11 @@ async function request(path: string, options: ApiRequestOptions): Promise<Respon
   let response = await send()
 
   // Access Token 만료(401)면 재발급 후 원 요청을 딱 한 번 다시 보낸다.
-  // 인증 API 자신은 제외한다 — 로그인 실패(401)에 재발급을 시도하는 건 무의미하고,
-  // 재발급 요청이 401 일 때 또 재발급하면 무한 반복이다.
-  if (response.status === 401 && !path.startsWith('/api/auth/')) {
+  // 로그인·가입 실패(401)에 재발급은 무의미하고, 재발급 자신의 401 에 또 재발급하면
+  // 무한 반복이다. 단 /api/auth/me 는 보호 API 라 재발급 대상이다.
+  const skipRefresh =
+    path === '/api/auth/login' || path === '/api/auth/signup' || path === '/api/auth/refresh'
+  if (response.status === 401 && !skipRefresh) {
     const refreshed = await refreshSession()
     if (refreshed) {
       response = await send()

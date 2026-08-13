@@ -281,6 +281,26 @@ describe('인증', () => {
     expect(getAccessToken()).toBeNull()
   })
 
+  it('만료 후 /api/auth/me 도 재발급 대상이다', async () => {
+    // /api/auth/ 전체를 제외하면 me 가 살아날 수 있는 401 에서 즉시 실패한다 (리뷰 지적)
+    setAccessToken('expired')
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(
+          jsonResponse({ accessToken: 'fresh', tokenType: 'Bearer', expiresIn: 900 }),
+        )
+      }
+      const auth = (fetchMock.mock.calls.at(-1)?.[1] as RequestInit).headers as Headers
+      if (auth.get('Authorization') === 'Bearer expired') {
+        return Promise.resolve(jsonResponse(errorBody('UNAUTHORIZED'), 401))
+      }
+      return Promise.resolve(jsonResponse({ id: 'u1', email: 'a@b.c', name: '이름' }))
+    })
+
+    await expect(apiFetch('/api/auth/me')).resolves.toMatchObject({ name: '이름' })
+    clearAccessToken()
+  })
+
   it('인증 API 자신의 401 에는 재발급을 시도하지 않는다', async () => {
     // 로그인 실패(비밀번호 오류)에 재발급을 시도하는 건 무의미하고,
     // 재발급 401 에 또 재발급하면 무한 반복이다.
