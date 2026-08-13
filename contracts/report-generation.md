@@ -134,3 +134,28 @@ Issue #37에서 모든 Report 저장 경로에 추가한다.
 `HttpAiServiceClient`는 AI Service의 공통 오류 응답에서 `code`만 읽어 위 표로 변환한다.
 원격 `message`·`details`는 내부 정보일 수 있으므로 Backend 응답과 로그에 전달하지 않는다.
 알 수 없거나 JSON으로 해석할 수 없는 오류 응답은 `GENERATION_FAILED`로 처리한다.
+
+## 사용량 보호
+
+Backend는 AI 호출 전에 사용자별 일일 생성 횟수와 동시 생성 작업 수를 검사한다.
+검사와 `generation_jobs` 저장은 같은 트랜잭션에서 사용자 행 잠금으로 직렬화한다.
+제한 초과는 다음 공통 오류로 반환하며, 이때 `GenerationJob`이나 AI 임시 bundle을
+만들지 않는다.
+
+| 상황 | HTTP | 오류 코드 |
+| --- | --- | --- |
+| 일일 생성 횟수 초과 | 429 | `GENERATION_DAILY_LIMIT_EXCEEDED` |
+| 동시 생성 작업 초과 | 429 | `GENERATION_CONCURRENCY_LIMIT_EXCEEDED` |
+| 사용자 rate limit 초과 | 429 | `RATE_LIMIT_EXCEEDED` |
+
+| 운영 기본값 | 값 |
+| --- | --- |
+| 사용자별 일일 생성 | 10회 |
+| 사용자별 동시 생성 | 2개 |
+| 생성 rate limit | 1분당 10회 |
+
+기본값과 운영 quota는 Backend의 `USAGE_LIMITS_*` 환경변수로 조정한다. 생성 요청·성공·실패
+수는 `usage_events`에서 집계하고, 실패율은 `failed / (completed + failed)`, 초기 비용
+추정은 `requests * 0.05 USD`로 계산한다.
+기본 일일 상한의 80% 또는 실패율 20% 초과를 알림 기준으로 사용하며, 실제 Gemini
+토큰 사용량을 연동하는 것은 별도 작업이다.

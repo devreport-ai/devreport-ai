@@ -59,6 +59,19 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `EXPORT_RENDER_TOKEN_TTL` | `1m` |
 | `EXPORT_RENDER_TIMEOUT` | `30s` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
+| `USAGE_LIMITS_DAY_ZONE` | `Asia/Seoul` |
+| `USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES` | `524288000` (500 MiB) |
+| `USAGE_LIMITS_UPLOAD_MAX_FILES` | `100` |
+| `USAGE_LIMITS_GENERATION_DAILY_LIMIT` | `10` |
+| `USAGE_LIMITS_GENERATION_CONCURRENT_LIMIT` | `2` |
+| `USAGE_LIMITS_EXPORT_DAILY_LIMIT` | `20` |
+| `USAGE_LIMITS_EXPORT_CONCURRENT_LIMIT` | `1` |
+| `USAGE_LIMITS_RATE_WINDOW` | `1m` |
+| `USAGE_LIMITS_RATE_SIGNUP` | `10` / window / IP |
+| `USAGE_LIMITS_RATE_LOGIN` | `20` / window / IP |
+| `USAGE_LIMITS_RATE_REFRESH` | `30` / window / IP |
+| `USAGE_LIMITS_RATE_UPLOAD` | `30` / window / user |
+| `USAGE_LIMITS_RATE_GENERATION` | `10` / window / user |
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
 
@@ -148,6 +161,50 @@ Job ID를 반환한다. 요청 본문과 `document`는 모두 선택이며, 프�
 - 서버 재시작 시 대기 작업은 재실행하고 처리 중 작업은 `EXPORT_INTERRUPTED`로 실패 처리
 - 템플릿 미선택은 409 `REPORT_TEMPLATE_NOT_SELECTED`, 다른 사용자의 작업은 404,
   준비 전·실패 작업은 409, 만료는 410으로 응답
+
+## 사용량 제한과 비용 보호
+
+모든 제한은 Frontend가 아닌 Backend에서 검사한다. `app_users` 행을
+`PESSIMISTIC_WRITE`로 잠근 트랜잭션에서 현재 파일·생성 Job·PDF Export를 집계하고,
+그 트랜잭션 안에서 새 리소스를 저장한다. 따라서 같은 사용자의 여러 프로젝트 요청도
+quota와 동시성 검사를 중복 통과할 수 없다. 파일 quota는 휴지통에 남아 있는 파일도
+실제 저장 공간을 차지하는 동안 포함하며, 파일 삭제·휴지통 완전 삭제 뒤 DB 집계에서
+자동으로 제외된다.
+
+기본값은 공개 베타를 위한 보수적인 값이며 환경변수로 조정할 수 있다.
+
+| 대상 | 기본 제한 | 초과 오류 |
+| --- | --- | --- |
+| 사용자 업로드 | 500 MiB, 100개 | 413 `UPLOAD_STORAGE_QUOTA_EXCEEDED` 또는 `UPLOAD_FILE_QUOTA_EXCEEDED` |
+| AI 생성 | 하루 10회, 동시 2개 | 429 `GENERATION_DAILY_LIMIT_EXCEEDED` 또는 `GENERATION_CONCURRENCY_LIMIT_EXCEEDED` |
+| PDF export | 하루 20회, 동시 1개 | 429 `PDF_DAILY_LIMIT_EXCEEDED` 또는 `PDF_CONCURRENCY_LIMIT_EXCEEDED` |
+| 회원가입·로그인·refresh | 1분당 IP별 10·20·30회 | 429 `RATE_LIMIT_EXCEEDED` |
+| 업로드·AI 생성 요청 | 1분당 사용자별 30·10회 | 429 `RATE_LIMIT_EXCEEDED` |
+
+rate limit bucket은 `rate_limit_buckets`에 저장되며 Backend 재시작 뒤에도 현재 윈도우가
+유지된다. 제한을 거부하는 시점은 업로드 임시 파일, `GenerationJob`, PDF export가
+생성되기 전이므로 초과 요청이 원본 파일·작업·임시 bundle을 남기지 않는다.
+
+Gemini 사용량은 `usage_events`의 `GENERATION_REQUESTED`, `GENERATION_COMPLETED`,
+`GENERATION_FAILED` 수로 추적한다. 일별 지표는 다음처럼 계산한다.
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE event_type = 'GENERATION_REQUESTED') AS requests,
+  COUNT(*) FILTER (WHERE event_type = 'GENERATION_COMPLETED') AS completed,
+  COUNT(*) FILTER (WHERE event_type = 'GENERATION_FAILED') AS failed
+FROM usage_events
+WHERE occurred_at >= CURRENT_DATE;
+```
+
+실패율은 `failed / (completed + failed)`로 계산하고, 예상 비용은
+`requests * 0.05 USD`로 계산한다.
+
+초기 운영 추정치는 생성 1회당 `0.05 USD`이며 기본 일일 제한의 예상 상한은
+`0.50 USD`다. `0.40 USD`(상한의 80%)에서 비용 알림을 내고, 실패율이 20%를 넘거나
+5회 연속 실패하면 장애 알림을 낸다. 실제 Gemini 청구액·토큰 사용량을 확인하면 이
+추정 단가와 일일 quota를 함께 갱신한다. 현재 계약에는 AI 서비스의 토큰 사용량이
+없으므로 비용 계산은 운영용 추정치이며, 결제·요금제는 범위에 포함하지 않는다.
 
 Chromium binary는 Playwright 버전에 맞춰 설치한다.
 

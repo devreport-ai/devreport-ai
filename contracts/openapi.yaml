@@ -474,6 +474,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: IP별 회원가입 요청 한도 초과 (RATE_LIMIT_EXCEEDED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: 이메일 중복
           content:
@@ -504,6 +510,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: IP별 로그인 요청 한도 초과 (RATE_LIMIT_EXCEEDED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/refresh:
     post:
@@ -524,6 +536,12 @@ paths:
                 $ref: "#/components/schemas/TokenResponse"
         "401":
           description: Refresh Token 무효 또는 만료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: IP별 refresh 요청 한도 초과 (RATE_LIMIT_EXCEEDED)
           content:
             application/json:
               schema:
@@ -831,7 +849,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "413":
-          description: 파일 크기 또는 ZIP 해제 제한 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED)
+          description: 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 사용자별 업로드 요청 한도 초과 (RATE_LIMIT_EXCEEDED)
           content:
             application/json:
               schema:
@@ -1081,6 +1105,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 사용자별 rate limit·일일·동시 생성 quota 초과 (RATE_LIMIT_EXCEEDED, GENERATION_DAILY_LIMIT_EXCEEDED, GENERATION_CONCURRENCY_LIMIT_EXCEEDED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/generations/{jobId}:
     get:
@@ -1249,6 +1279,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: PDF 출력 URL이 설정되지 않았거나 올바르지 않음 (EXPORT_PRINT_URL_NOT_CONFIGURED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 사용자별 PDF 일일·동시 quota 초과 (PDF_DAILY_LIMIT_EXCEEDED, PDF_CONCURRENCY_LIMIT_EXCEEDED)
           content:
             application/json:
               schema:
