@@ -243,7 +243,6 @@ describe('인증', () => {
         return Promise.resolve(
           jsonResponse({
             accessToken: 'fresh',
-            refreshToken: 'fresh-refresh',
             tokenType: 'Bearer',
             expiresIn: 900,
           }),
