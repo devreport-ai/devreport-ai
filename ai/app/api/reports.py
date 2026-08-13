@@ -1,7 +1,8 @@
 import json
+from secrets import compare_digest
 from typing import Annotated, Any, TypeVar
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings, get_settings
@@ -11,6 +12,7 @@ from app.services.mock_report_generator import MockReportGenerator
 from app.services.multipart_bundle_validator import MultipartBundleValidator
 
 router = APIRouter(prefix="/internal/ai/reports", tags=["internal reports"])
+INTERNAL_TOKEN_HEADER = "X-Internal-Token"
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -22,11 +24,19 @@ async def generate_report(
     manifest: Annotated[UploadFile, File()],
     settings: SettingsDep,
     files: Annotated[list[UploadFile] | None, File()] = None,
+    internal_token: Annotated[str | None, Header(alias=INTERNAL_TOKEN_HEADER)] = None,
 ) -> dict[str, Any]:
     """검증된 multipart bundle을 받아 현재 연동 단계에서는 샘플 문서를 반환한다.
 
     파일 내용 분석과 Gemini 호출은 후속 task에서 연결한다.
     """
+    if (
+        not internal_token
+        or not settings.ai_internal_token
+        or not compare_digest(internal_token, settings.ai_internal_token)
+    ):
+        raise AIServiceError(ErrorCode.AI_UNAUTHORIZED, "내부 요청 인증에 실패했습니다.")
+
     generation_request = parse_json_model(request, GenerationRequest)
     generation_manifest = parse_json_model(await manifest.read(), GenerationManifest)
     MultipartBundleValidator.validate(generation_manifest, files or [], generation_request.file_ids)

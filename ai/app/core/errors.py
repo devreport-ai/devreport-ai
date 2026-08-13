@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 class ErrorCode(StrEnum):
     """Backend-AI 내부 생성 계약에서 사용하는 오류 코드."""
 
+    AI_UNAUTHORIZED = "AI_UNAUTHORIZED"
     AI_INVALID_REQUEST = "AI_INVALID_REQUEST"
     AI_FILE_PROCESSING_FAILED = "AI_FILE_PROCESSING_FAILED"
     AI_GENERATION_FAILED = "AI_GENERATION_FAILED"
@@ -22,6 +23,7 @@ class ErrorCode(StrEnum):
 
 
 _STATUS_BY_CODE: dict[ErrorCode, int] = {
+    ErrorCode.AI_UNAUTHORIZED: 401,
     ErrorCode.AI_INVALID_REQUEST: 400,
     ErrorCode.AI_FILE_PROCESSING_FAILED: 422,
     ErrorCode.AI_GENERATION_FAILED: 500,
