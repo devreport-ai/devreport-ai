@@ -1183,7 +1183,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: 보고서 조회 성공
+          description: 보고서 조회 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다.
           content:
             application/json:
               schema:
@@ -1217,7 +1217,7 @@ paths:
               $ref: "#/components/schemas/ReportUpdateRequest"
       responses:
         "200":
-          description: 보고서 수정 성공
+          description: 보고서 수정 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다.
           content:
             application/json:
               schema:

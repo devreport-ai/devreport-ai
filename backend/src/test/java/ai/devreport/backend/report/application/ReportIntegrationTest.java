@@ -76,6 +76,7 @@ class ReportIntegrationTest {
 				.header("Authorization", bearer(owner.token())))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.id").value(report.getId().toString()))
+			.andExpect(jsonPath("$.projectId").value(projectId.toString()))
 			.andExpect(jsonPath("$.document.metadata.title").value("초안"))
 			.andExpect(jsonPath("$.presentationSettings").isEmpty());
 		mvc.perform(get("/api/reports/{reportId}", report.getId())
@@ -95,6 +96,7 @@ class ReportIntegrationTest {
 				.content(updateRequest(validDocument("수정본"), initialVersion, "modern", 1,
 					"{\"accentColor\":\"#2563eb\",\"showPageNumbers\":true}")))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.projectId").value(projectId.toString()))
 			.andExpect(jsonPath("$.document.metadata.title").value("수정본"))
 			.andExpect(jsonPath("$.templateId").value("modern"))
 			.andExpect(jsonPath("$.templateVersion").value(1))

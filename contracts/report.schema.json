@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "id",
+    "projectId",
     "document",
     "templateId",
     "templateVersion",
@@ -14,6 +15,10 @@
   ],
   "properties": {
     "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "projectId": {
       "type": "string",
       "format": "uuid"
     },

@@ -1967,6 +1967,8 @@ export interface components {
     'report.schema': {
       /** Format: uuid */
       id: string
+      /** Format: uuid */
+      projectId: string
       document: components['schemas']['report-document.schema']
       templateId: string | null
       templateVersion: number | null
