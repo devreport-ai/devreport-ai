@@ -25,6 +25,7 @@ import { BlockEditor } from './BlockEditor'
 import { ADDABLE_BLOCK_TYPES, createBlock, type AddableBlockType } from './newBlock'
 import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
+import { useImageUrls } from './useImageUrls'
 import type { Report, ReportBlock, ReportSection } from '../../lib/contracts/types'
 import './report-document.css'
 
@@ -47,6 +48,7 @@ export function ReportEditor({
     }
   })
   const [editingId, setEditingId] = useState<string | null>(null)
+  const imageUrls = useImageUrls(report.projectId, state.document)
 
   const { status } = useAutosave({
     reportId: report.id,
@@ -137,6 +139,7 @@ export function ReportEditor({
                       <SortableBlock
                         key={block.id}
                         block={block}
+                        imageUrl={block.type === 'image' ? imageUrls[block.fileId] : undefined}
                         editing={editingId === block.id}
                         onEdit={() => setEditingId(block.id)}
                         onApply={(next) => {
@@ -267,6 +270,7 @@ function SortableSection({
 
 function SortableBlock({
   block,
+  imageUrl,
   editing,
   onEdit,
   onApply,
@@ -274,6 +278,7 @@ function SortableBlock({
   onDelete,
 }: {
   block: ReportBlock
+  imageUrl?: string
   editing: boolean
   onEdit: () => void
   onApply: (block: ReportBlock) => void
@@ -314,7 +319,7 @@ function SortableBlock({
         </button>
       </div>
       <button type="button" onClick={onEdit} className="block w-full cursor-text text-left">
-        <BlockView block={block} />
+        <BlockView block={block} imageUrl={imageUrl} />
       </button>
     </div>
   )

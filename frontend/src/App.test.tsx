@@ -30,6 +30,7 @@ beforeEach(() => {
         return Promise.resolve(
           json({
             id: 'abc-123',
+            projectId: 'p-1',
             document: { metadata: { title: '테스트 보고서' }, sections: [] },
             templateId: null,
             templateVersion: null,

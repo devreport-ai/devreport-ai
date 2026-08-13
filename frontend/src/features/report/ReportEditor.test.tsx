@@ -8,6 +8,7 @@ import type { Report } from '../../lib/contracts/types'
 function report(): Report {
   return {
     id: 'r-1',
+    projectId: 'p-1',
     document: {
       metadata: { title: '실습 보고서', author: '작성자' },
       sections: [
