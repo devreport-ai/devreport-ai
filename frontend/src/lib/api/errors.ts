@@ -72,10 +72,30 @@ export function isErrorResponse(value: unknown): value is ErrorResponse {
  * 표를 만들면 곧 낡는다. 분기가 필요할 때만 `ApiError.code` 를 본다.
  */
 export function toDisplayMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message
+  if (error instanceof ApiError) {
+    // 사용량 제한(429)은 details.retryAfterSeconds 로 재시도 시점을 알려준다 (#80 계약)
+    const retry = retryAfterSeconds(error)
+    if (retry !== null) return `${error.message} (약 ${formatSeconds(retry)} 후 가능)`
+    return error.message
+  }
   // 취소는 사용자가 의도한 것이므로 오류 문구를 띄우지 않는다. 호출부가 걸러야 한다.
   if (error instanceof DOMException && error.name === 'AbortError') return '요청이 취소되었습니다.'
   return '알 수 없는 오류가 발생했습니다.'
+}
+
+/** 429 details 의 retryAfterSeconds. 없거나 형태가 다르면 null. */
+export function retryAfterSeconds(error: ApiError): number | null {
+  if (error.status !== 429) return null
+  if (typeof error.details !== 'object' || error.details === null) return null
+  const value = (error.details as Record<string, unknown>).retryAfterSeconds
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${Math.ceil(seconds)}초`
+  const minutes = Math.ceil(seconds / 60)
+  if (minutes < 60) return `${minutes}분`
+  return `${Math.ceil(minutes / 60)}시간`
 }
 
 /**
