@@ -1,18 +1,12 @@
 /**
- * 토큰 보관함 — 토큰을 읽고 쓰는 유일한 통로.
+ * Access Token 보관함 — 메모리에만 둔다.
  *
- * 지금은 메모리에만 둔다(새로고침 = 로그아웃). 보관 위치는 팀 결정 대기 중이며,
- * 결정 나면 이 파일만 바뀐다. subscribe 는 useSyncExternalStore 용.
+ * Refresh Token 은 #79 부터 HttpOnly 쿠키라 프론트 코드가 만질 수 없다(만지면 안 되는 것이
+ * 설계다). 새로고침 복원은 저장이 아니라 앱 시작 시 refresh 호출로 한다 (AuthBootstrap).
+ * subscribe 는 useSyncExternalStore 용.
  */
-import type { TokenResponse } from '../contracts/types'
 
-/** 보관하는 토큰 쌍. null 이면 로그아웃 상태다. */
-export interface StoredTokens {
-  accessToken: string
-  refreshToken: string
-}
-
-let tokens: StoredTokens | null = null
+let accessToken: string | null = null
 const listeners = new Set<() => void>()
 
 function notify(): void {
@@ -20,31 +14,26 @@ function notify(): void {
 }
 
 /** 로그인·재발급 성공 시 호출한다. */
-export function setTokens(response: Pick<TokenResponse, 'accessToken' | 'refreshToken'>): void {
-  tokens = { accessToken: response.accessToken, refreshToken: response.refreshToken }
+export function setAccessToken(token: string): void {
+  accessToken = token
   notify()
 }
 
 /** 로그아웃·재발급 실패 시 호출한다. */
-export function clearTokens(): void {
-  if (tokens === null) return
-  tokens = null
+export function clearAccessToken(): void {
+  if (accessToken === null) return
+  accessToken = null
   notify()
 }
 
 /** Authorization 헤더에 실을 값. 없으면 null. */
 export function getAccessToken(): string | null {
-  return tokens?.accessToken ?? null
-}
-
-/** 재발급·로그아웃 요청 본문에 실을 값. 없으면 null. */
-export function getRefreshToken(): string | null {
-  return tokens?.refreshToken ?? null
+  return accessToken
 }
 
 /** 로그인 상태인가. */
 export function isAuthenticated(): boolean {
-  return tokens !== null
+  return accessToken !== null
 }
 
 /** 변경 알림 구독. 반환값은 해제 함수. */

@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import App from './App'
 import { renderWithProviders } from './test/renderWithProviders'
-import { clearTokens, setTokens } from './lib/auth/tokenStore'
+import { clearAccessToken, setAccessToken } from './lib/auth/tokenStore'
 
 /** 보호된 화면을 테스트할 때 쓰는 로그인 상태. */
 function loginAs() {
-  setTokens({ accessToken: 'test-access', refreshToken: 'test-refresh' })
+  setAccessToken('test-access')
 }
 
 beforeEach(() => {
@@ -31,7 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  clearTokens()
+  clearAccessToken()
 })
 
 describe('App 라우팅', () => {

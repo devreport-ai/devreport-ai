@@ -3,7 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiFetchNoContent } from '../../lib/api/client'
-import { clearTokens, getRefreshToken, isAuthenticated, setTokens } from '../../lib/auth/tokenStore'
+import { clearAccessToken, isAuthenticated, setAccessToken } from '../../lib/auth/tokenStore'
 import type {
   LoginRequest,
   SignupRequest,
@@ -34,30 +34,25 @@ export function useLogin() {
 }
 
 async function login(body: LoginRequest): Promise<void> {
+  // Refresh Token 은 응답의 Set-Cookie 로 온다(#79). 프론트는 Access Token 만 받는다.
   const tokens = await apiFetch<TokenResponse>('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  setTokens(tokens)
+  setAccessToken(tokens.accessToken)
 }
 
-/** 로그아웃. 서버 토큰 폐기 → 로컬 정리 순서 (로컬부터 지우면 폐기 요청을 못 보낸다). */
+/** 로그아웃. 서버가 쿠키의 Refresh Token 을 폐기하고 쿠키를 지운다(#79). */
 export function useLogout() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const refreshToken = getRefreshToken()
       try {
-        if (refreshToken !== null) {
-          await apiFetchNoContent('/api/auth/logout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
-          })
-        }
+        await apiFetchNoContent('/api/auth/logout', { method: 'POST' })
       } finally {
-        clearTokens()
+        // 서버 폐기가 실패해도 화면은 로그아웃돼야 한다
+        clearAccessToken()
         // 이전 사용자 캐시가 다음 사용자에게 보이지 않게 비운다
         client.clear()
       }

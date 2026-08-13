@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiFetch, apiFetchNoContent } from './client'
 import { ApiError } from './errors'
-import { clearTokens, getAccessToken, setTokens } from '../auth/tokenStore'
+import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore'
 
 /** 계약 모양의 실패 응답 본문. */
 function errorBody(code: string) {
@@ -217,13 +217,13 @@ describe('에러 응답 해석', () => {
  */
 describe('인증', () => {
   it('로그인 상태면 Authorization 헤더가 자동으로 붙는다', async () => {
-    setTokens({ accessToken: 'my-access', refreshToken: 'my-refresh' })
+    setAccessToken('my-access')
     fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
 
     await apiFetch('/api/projects')
 
     expect(lastRequestHeaders(fetchMock).get('Authorization')).toBe('Bearer my-access')
-    clearTokens()
+    clearAccessToken()
   })
 
   it('로그아웃 상태면 Authorization 헤더가 없다', async () => {
@@ -235,7 +235,7 @@ describe('인증', () => {
   })
 
   it('401 이면 재발급 후 새 토큰으로 원 요청을 한 번 다시 보낸다', async () => {
-    setTokens({ accessToken: 'expired', refreshToken: 'valid-refresh' })
+    setAccessToken('expired')
 
     fetchMock.mockImplementation((url: string) => {
       // 재발급 요청은 성공시킨다.
@@ -263,11 +263,11 @@ describe('인증', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
     // 재시도에는 새 토큰이 실려야 한다. 옛 토큰이면 또 401 이다.
     expect(lastRequestHeaders(fetchMock).get('Authorization')).toBe('Bearer fresh')
-    clearTokens()
+    clearAccessToken()
   })
 
   it('재발급까지 실패하면 원래의 401 을 그대로 던진다', async () => {
-    setTokens({ accessToken: 'expired', refreshToken: 'also-expired' })
+    setAccessToken('expired')
 
     fetchMock.mockImplementation((url: string) => {
       if (url.endsWith('/api/auth/refresh')) {
@@ -284,7 +284,7 @@ describe('인증', () => {
   it('인증 API 자신의 401 에는 재발급을 시도하지 않는다', async () => {
     // 로그인 실패(비밀번호 오류)에 재발급을 시도하는 건 무의미하고,
     // 재발급 401 에 또 재발급하면 무한 반복이다.
-    setTokens({ accessToken: 'a', refreshToken: 'r' })
+    setAccessToken('a')
     fetchMock.mockResolvedValue(jsonResponse(errorBody('INVALID_CREDENTIALS'), 401))
 
     await expect(apiFetch('/api/auth/login', { method: 'POST', body: '{}' })).rejects.toMatchObject(
@@ -292,6 +292,6 @@ describe('인증', () => {
     )
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    clearTokens()
+    clearAccessToken()
   })
 })

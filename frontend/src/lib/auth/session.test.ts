@@ -1,51 +1,55 @@
 /**
- * 세션 갱신 테스트.
- *
- * 핵심은 single-flight 다. 서버가 Refresh Token 을 1회용으로 회전시키므로
- * 동시에 두 번 재발급을 보내면 두 번째가 반드시 실패해 로그아웃된다.
- * "여러 곳이 동시에 401 을 받아도 재발급 요청은 한 번" 을 여기서 고정한다.
+ * 세션 갱신(쿠키 방식, #79) 테스트.
+ * single-flight 와 "429 는 로그아웃 아님" 규칙이 핵심이다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { refreshSession } from './session'
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './tokenStore'
+import { clearAccessToken, getAccessToken, setAccessToken } from './tokenStore'
 
-function tokenJson(access: string, refresh: string) {
+function tokenJson(access: string) {
   return new Response(
-    JSON.stringify({
-      accessToken: access,
-      refreshToken: refresh,
-      tokenType: 'Bearer',
-      expiresIn: 900,
-    }),
+    JSON.stringify({ accessToken: access, tokenType: 'Bearer', expiresIn: 900 }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   )
 }
 
+function errorJson(status: number, code: string) {
+  return new Response(
+    JSON.stringify({
+      code,
+      message: '실패',
+      details: null,
+      timestamp: '2026-08-13T00:00:00+09:00',
+    }),
+    { status, headers: { 'Content-Type': 'application/json' } },
+  )
+}
+
 beforeEach(() => {
-  setTokens({ accessToken: 'old-access', refreshToken: 'old-refresh' })
+  setAccessToken('old-access')
 })
 
 afterEach(() => {
-  clearTokens()
+  clearAccessToken()
   vi.unstubAllGlobals()
 })
 
 describe('refreshSession', () => {
-  it('성공하면 새 토큰 쌍으로 바꾼다', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(tokenJson('new-access', 'new-refresh'))),
-    )
+  it('본문 없이 쿠키 동봉으로 호출하고 새 Access Token 을 저장한다', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(tokenJson('new-access')))
+    vi.stubGlobal('fetch', fetchMock)
 
     await expect(refreshSession()).resolves.toBe(true)
     expect(getAccessToken()).toBe('new-access')
-    // 서버가 토큰을 회전시키므로 Refresh Token 도 새것으로 바뀌어야 한다.
-    // 옛것을 들고 있으면 다음 재발급이 INVALID_REFRESH_TOKEN 으로 실패한다.
-    expect(getRefreshToken()).toBe('new-refresh')
+
+    // 계약(#79): Refresh Token 은 쿠키다. 본문을 보내면 안 되고 credentials 가 필요하다.
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(init.body).toBeUndefined()
+    expect(init.credentials).toBe('include')
   })
 
   it('동시에 여러 번 불러도 요청은 한 번만 나간다', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(tokenJson('new-access', 'new-refresh')))
+    const fetchMock = vi.fn(() => Promise.resolve(tokenJson('new-access')))
     vi.stubGlobal('fetch', fetchMock)
 
     const results = await Promise.all([refreshSession(), refreshSession(), refreshSession()])
@@ -55,40 +59,37 @@ describe('refreshSession', () => {
   })
 
   it('앞선 재발급이 끝난 뒤에는 새로 요청할 수 있다', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(tokenJson('a', 'b')))
+    const fetchMock = vi.fn(() => Promise.resolve(tokenJson('a')))
     vi.stubGlobal('fetch', fetchMock)
 
     await refreshSession()
     await refreshSession()
 
-    // single-flight 는 "동시" 만 합친다. 순차 호출까지 막으면 두 번째 만료를 못 푼다.
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('서버가 401 을 주면 토큰을 정리하고 false 를 준다', async () => {
+  it('쿠키가 무효(401)면 토큰을 정리하고 false 를 준다', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              code: 'INVALID_REFRESH_TOKEN',
-              message: 'Refresh Token이 유효하지 않습니다.',
-              details: null,
-              timestamp: '2026-08-12T00:00:00+09:00',
-            }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } },
-          ),
-        ),
-      ),
+      vi.fn(() => Promise.resolve(errorJson(401, 'INVALID_REFRESH_TOKEN'))),
     )
 
     await expect(refreshSession()).resolves.toBe(false)
-    // 토큰을 남겨두면 이어지는 모든 요청이 401 을 반복한다. 확실히 로그아웃 상태로 만든다.
     expect(getAccessToken()).toBeNull()
   })
 
-  it('네트워크가 끊겨도 토큰을 정리하고 false 를 준다', async () => {
+  it('429(요청 한도)면 토큰을 지우지 않는다 — 세션이 로그아웃되면 안 된다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(errorJson(429, 'RATE_LIMIT_EXCEEDED'))),
+    )
+
+    await expect(refreshSession()).resolves.toBe(false)
+    // 토큰이 살아 있어야 제한 창이 지난 뒤 다음 401 에서 재발급이 다시 시도된다
+    expect(getAccessToken()).toBe('old-access')
+  })
+
+  it('네트워크가 끊기면 토큰을 정리하고 false 를 준다', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
@@ -96,14 +97,5 @@ describe('refreshSession', () => {
 
     await expect(refreshSession()).resolves.toBe(false)
     expect(getAccessToken()).toBeNull()
-  })
-
-  it('Refresh Token 이 없으면 요청 없이 false 를 준다', async () => {
-    clearTokens()
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(refreshSession()).resolves.toBe(false)
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

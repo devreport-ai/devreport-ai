@@ -120,6 +120,9 @@ async function request(path: string, options: ApiRequestOptions): Promise<Respon
     try {
       return await fetch(`${BASE_URL}${path}`, {
         ...rest,
+        // 로그인 Set-Cookie 수신과 이후 동봉을 위해 명시한다. 배포에서 오리진이
+        // 갈리는 경우 Backend CORS 의 allow-credentials 가 전제다(#79)
+        credentials: 'include',
         signal: mergedSignal,
         // 헤더도 재시도마다 다시 만든다. 재발급으로 토큰이 바뀌었기 때문이다.
         headers: buildHeaders(headers),
