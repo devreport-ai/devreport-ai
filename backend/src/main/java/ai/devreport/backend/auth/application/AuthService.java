@@ -86,6 +86,9 @@ public class AuthService {
 	}
 
 	public TokenPair refresh(String rawToken) {
+		if (rawToken == null || rawToken.isBlank()) {
+			throw invalidRefreshToken();
+		}
 		Instant now = Instant.now();
 		RefreshToken refreshToken = refreshTokens.findByTokenHash(hash(rawToken))
 			.filter(token -> token.isUsable(now))
@@ -95,6 +98,9 @@ public class AuthService {
 	}
 
 	public void logout(String rawToken) {
+		if (rawToken == null || rawToken.isBlank()) {
+			return;
+		}
 		refreshTokens.findByTokenHash(hash(rawToken))
 			.filter(token -> token.isUsable(Instant.now()))
 			.ifPresent(token -> token.revoke(Instant.now()));
