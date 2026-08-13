@@ -116,9 +116,14 @@ AI Service가 JSON Schema를 검증한 뒤 반환하고 Backend가 다시 다음
 - `image.fileId`가 요청 프로젝트에 존재하는 PNG/JPG인지 여부
 - 삭제·누락 파일, 임의 UUID, 다른 프로젝트나 사용자 파일 참조 여부
 
+Frontend는 Report 응답의 `projectId`와 이미지 블록의 `fileId`를 조합해
+`GET /api/projects/{projectId}/files/{fileId}`로 이미지를 조회한다.
+
 이 의미 검증은 AI 생성 결과 저장과 사용자 `PUT /api/reports/{reportId}` 수정 저장에
-동일하게 적용해야 한다. 현재는 JSON Schema만 검증하므로 프로젝트·소유권·MIME 검증은
-Issue #37에서 모든 Report 저장 경로에 추가한다.
+동일하게 적용해야 한다. Backend의 `ReportService.create`와 `ReportService.update`는
+`requireValid`를 통해 ReportDocument JSON Schema와 이미지 `fileId`의 존재,
+프로젝트 소유권, `image/jpeg`·`image/png` MIME, 저장 파일 정합성을 함께 검증한다.
+`ReportIntegrationTest.rejectsInvalidImageReferencesOnCreateAndUpdate`가 이 동작을 회귀 검증한다.
 
 ## 목표 오류 변환
 

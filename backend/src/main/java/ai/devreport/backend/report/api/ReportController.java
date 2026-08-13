@@ -42,10 +42,10 @@ class ReportController {
 		Map<String, Object> presentationSettings, Long expectedVersion) {
 	}
 
-	record ReportResponse(UUID id, Map<String, Object> document, String templateId, Integer templateVersion,
+	record ReportResponse(UUID id, UUID projectId, Map<String, Object> document, String templateId, Integer templateVersion,
 		Map<String, Object> presentationSettings, long version, Instant updatedAt) {
 		static ReportResponse from(ai.devreport.backend.report.domain.Report report) {
-			return new ReportResponse(report.getId(), report.getDocument(), report.getTemplateId(),
+			return new ReportResponse(report.getId(), report.getProjectId(), report.getDocument(), report.getTemplateId(),
 				report.getTemplateVersion(), report.getPresentationSettings(), report.getVersion(), report.getUpdatedAt());
 		}
 	}
