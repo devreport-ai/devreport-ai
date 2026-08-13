@@ -4,6 +4,8 @@ from app.api import health, reports
 from app.core.config import APP_VERSION, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
+from app.core.request_body_limit import RequestBodyLimitMiddleware
+from app.schemas.generation import MAX_BUNDLE_TOTAL_SIZE
 
 
 def create_app() -> FastAPI:
@@ -20,6 +22,11 @@ def create_app() -> FastAPI:
     )
 
     register_exception_handlers(app)
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_size=MAX_BUNDLE_TOTAL_SIZE,
+        path="/internal/ai/reports/generate",
+    )
     app.include_router(health.router)
     app.include_router(reports.router)
     return app
