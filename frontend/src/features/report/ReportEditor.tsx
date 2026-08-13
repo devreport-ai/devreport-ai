@@ -2,7 +2,7 @@
  * 보고서 편집기 (이슈 #38).
  * A4 미리보기 위에서 블록을 직접 편집·추가·삭제·드래그하고 1.5초 뒤 자동 저장한다.
  */
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -26,6 +26,8 @@ import { ADDABLE_BLOCK_TYPES, createBlock, type AddableBlockType } from './newBl
 import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
 import { useImageUrls } from './useImageUrls'
+import { downloadExportPdf, isExportFinished, useExportStatus, useStartExport } from './exportApi'
+import { toDisplayMessage } from '../../lib/api/errors'
 import type { Report, ReportBlock, ReportSection } from '../../lib/contracts/types'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import './report-document.css'
@@ -50,6 +52,20 @@ export function ReportEditor({
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const imageUrls = useImageUrls(report.projectId, state.document)
+
+  // PDF 내보내기: 요청 → 폴링 → 완료 시 자동 다운로드 (한 번만)
+  const startExport = useStartExport(report.id)
+  const [exportId, setExportId] = useState<string | null>(null)
+  const exportStatus = useExportStatus(exportId)
+  const downloadedRef = useRef<string | null>(null)
+  useEffect(() => {
+    const data = exportStatus.data
+    if (!data || data.status !== 'COMPLETED' || downloadedRef.current === data.exportId) return
+    downloadedRef.current = data.exportId
+    void downloadExportPdf(data.exportId, `${state.document.metadata.title}.pdf`).catch(() => {
+      downloadedRef.current = null // 실패하면 버튼으로 다시 시도할 수 있게 되돌린다
+    })
+  }, [exportStatus.data, state.document.metadata.title])
 
   const { status } = useAutosave({
     reportId: report.id,
@@ -110,12 +126,24 @@ export function ReportEditor({
       <Toolbar
         state={state}
         status={status}
+        exportState={{
+          pending:
+            startExport.isPending ||
+            (exportId !== null &&
+              !exportStatus.error &&
+              !(exportStatus.data && isExportFinished(exportStatus.data.status))),
+          error: exportError(startExport.error, exportStatus),
+        }}
         onTemplate={(id) => {
           const t = findTemplate(id)
           if (t) dispatch({ type: 'setTemplate', templateId: t.id, templateVersion: t.version })
         }}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
+        onExport={() => {
+          downloadedRef.current = null
+          startExport.mutate(undefined, { onSuccess: ({ exportId: id }) => setExportId(id) })
+        }}
       />
 
       {status === 'conflict' && (
@@ -183,18 +211,35 @@ export function ReportEditor({
   )
 }
 
+/** 내보내기 실패 원인을 한 문장으로. 요청 실패(409 등)와 생성 실패를 함께 다룬다. */
+function exportError(
+  startError: unknown,
+  exportStatus: ReturnType<typeof useExportStatus>,
+): string | null {
+  if (startError) return toDisplayMessage(startError)
+  if (exportStatus.error) return toDisplayMessage(exportStatus.error)
+  const data = exportStatus.data
+  if (data?.status === 'FAILED') return data.failureMessage ?? 'PDF 생성에 실패했습니다.'
+  if (data?.status === 'EXPIRED') return 'PDF 보관 기간이 지났습니다. 다시 시도해 주세요.'
+  return null
+}
+
 function Toolbar({
   state,
   status,
+  exportState,
   onTemplate,
   onUndo,
   onRedo,
+  onExport,
 }: {
   state: EditorState
   status: SaveStatus
+  exportState: { pending: boolean; error: string | null }
   onTemplate: (id: string) => void
   onUndo: () => void
   onRedo: () => void
+  onExport: () => void
 }) {
   return (
     <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-300 bg-white px-4 py-2">
@@ -235,6 +280,20 @@ function Toolbar({
         {status === 'saved' && '저장됨'}
         {status === 'error' && '저장 실패 — 편집하면 다시 시도합니다'}
       </span>
+
+      {exportState.error && (
+        <span role="alert" className="text-sm text-red-600">
+          {exportState.error}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={exportState.pending}
+        className="rounded bg-gray-900 px-3 py-1 text-sm text-white disabled:opacity-40"
+      >
+        {exportState.pending ? 'PDF 만드는 중…' : 'PDF 다운로드'}
+      </button>
     </div>
   )
 }

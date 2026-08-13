@@ -39,6 +39,7 @@ export type Report = Omit<Schemas['report.schema'], 'document' | '$defs'> & {
 }
 export type ReportSection = Schemas['section']
 export type ReportBlock = Schemas['block']
+export type ReportExportResponse = Schemas['ReportExportResponse']
 export type ReportRenderData = Omit<Schemas['ReportRenderDataResponse'], 'document'> & {
   document: ReportDocument
 }
