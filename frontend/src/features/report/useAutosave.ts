@@ -37,10 +37,14 @@ export function useAutosave(input: AutosaveInput): {
   status: SaveStatus
   /** 서버에 저장 확정된 templateId. PDF 내보내기는 이것이 선택값과 일치해야 안전하다. */
   savedTemplateId: string | null
+  /** 서버에 저장 확정된 document. */
+  savedDocument: ReportDocument
 } {
   const { reportId, document, templateId, templateVersion, presentationSettings } = input
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [savedTemplateId, setSavedTemplateId] = useState(input.server.templateId)
+  // 렌더에서 dirty 를 판정하려면 ref 가 아니라 state 가 필요하다 (ref 읽기는 lint 금지)
+  const [savedDocument, setSavedDocument] = useState(input.server.document)
 
   // 마지막으로 저장에 성공한 내용과 version. state 로 두면 저장 성공마다
   // effect 가 다시 돌아 불필요한 저장이 이어지므로 ref 로 둔다.
@@ -71,6 +75,7 @@ export function useAutosave(input: AutosaveInput): {
         (report) => {
           saved.current = { document, templateId, templateVersion, version: report.version }
           setSavedTemplateId(report.templateId)
+          setSavedDocument(document)
           setStatus('saved')
         },
         (error: unknown) => {
@@ -88,5 +93,5 @@ export function useAutosave(input: AutosaveInput): {
     return () => clearTimeout(timer)
   }, [reportId, document, templateId, templateVersion, presentationSettings])
 
-  return { status, savedTemplateId }
+  return { status, savedTemplateId, savedDocument }
 }

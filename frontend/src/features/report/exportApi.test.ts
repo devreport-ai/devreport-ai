@@ -19,7 +19,7 @@ describe('nextExportPollInterval', () => {
     }
   })
 
-  it('오류·상한에서 멈춘다', () => {
+  it('오류·상한에서 멈춘다 — 상한 도달은 useExportStatus 가 timedOut 으로 노출한다', () => {
     expect(
       nextExportPollInterval({ error: new Error('x'), status: 'PENDING', dataUpdateCount: 1 }),
     ).toBe(false)

@@ -7,7 +7,7 @@ import { apiFetch } from '../../lib/api/client'
 import { ApiError, toFallbackErrorResponse } from '../../lib/api/errors'
 import { getAccessToken } from '../../lib/auth/tokenStore'
 import { refreshSession } from '../../lib/auth/session'
-import { MAX_POLL_COUNT, pollIntervalMs } from '../generation/api'
+import { MAX_POLL_COUNT, pollIntervalMs, usePollCount } from '../generation/api'
 import type { ReportExportResponse } from '../../lib/contracts/types'
 
 const EXPORT_TERMINAL = ['COMPLETED', 'FAILED', 'EXPIRED'] as const
@@ -36,7 +36,7 @@ export function useStartExport(reportId: string) {
 }
 
 export function useExportStatus(exportId: string | null) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['exports', exportId ?? ''],
     queryFn: () => apiFetch<ReportExportResponse>(`/api/report-exports/${exportId}`),
     enabled: exportId !== null,
@@ -48,6 +48,14 @@ export function useExportStatus(exportId: string | null) {
         dataUpdateCount: query.state.dataUpdateCount,
       }),
   })
+
+  const pollCount = usePollCount(exportId === null ? null : ['exports', exportId])
+
+  // 상한에 걸려 폴링을 포기한 상태. 안 알리면 pending 이 굳어 PDF 버튼이 영구 비활성이 된다.
+  const timedOut =
+    query.data !== undefined && !isExportFinished(query.data.status) && pollCount >= MAX_POLL_COUNT
+
+  return { ...query, timedOut }
 }
 
 /** 완성된 PDF 를 받아 브라우저 다운로드를 건다. 401 이면 재발급 후 한 번 재시도. */

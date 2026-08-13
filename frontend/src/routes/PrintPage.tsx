@@ -20,6 +20,11 @@ export default function PrintPage() {
   const location = useLocation()
   const token = parseRenderToken(location.hash)
 
+  // 내보내기(또는 토큰)가 바뀌면 통째로 재마운트해 이전 이미지·준비 신호가 남지 않게 한다
+  return <PrintContent key={`${exportId}:${token ?? ''}`} exportId={exportId} token={token} />
+}
+
+function PrintContent({ exportId, token }: { exportId: string; token: string | null }) {
   const data = useRenderData(exportId, token)
   const [imageUrls, setImageUrls] = useState<Record<string, string> | null>(null)
 
@@ -32,7 +37,10 @@ export default function PrintPage() {
     Promise.all(
       data.data.imageFileIds.map(async (fileId) => {
         try {
-          urls[fileId] = await fetchExportImage(exportId, fileId, token)
+          const url = await fetchExportImage(exportId, fileId, token)
+          // 정리 이후 도착한 blob 은 아무도 해제하지 않으므로 즉시 해제한다
+          if (cancelled) URL.revokeObjectURL(url)
+          else urls[fileId] = url
         } catch {
           // 이미지 하나가 깨져도 문서 전체를 막지 않는다. 대체 텍스트로 나간다.
         }
@@ -47,10 +55,14 @@ export default function PrintPage() {
     }
   }, [data.data, exportId, token])
 
-  // 문서와 이미지가 DOM 에 오른 뒤 폰트·이미지 로딩을 기다려 신호를 켠다
+  // 문서와 이미지가 DOM 에 오른 뒤 폰트·이미지 로딩을 기다려 신호를 켠다.
+  // 언마운트(다른 내보내기로 전환) 시 신호를 지워 이전 ready 가 재사용되지 않게 한다.
   useEffect(() => {
     if (!data.data || imageUrls === null) return
     void markReadyWhenLoaded()
+    return () => {
+      delete document.documentElement.dataset.printState
+    }
   }, [data.data, imageUrls])
 
   if (token === null) {

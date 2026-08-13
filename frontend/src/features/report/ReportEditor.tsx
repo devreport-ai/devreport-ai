@@ -67,7 +67,7 @@ export function ReportEditor({
     })
   }, [exportStatus.data, state.document.metadata.title])
 
-  const { status, savedTemplateId } = useAutosave({
+  const { status, savedTemplateId, savedDocument } = useAutosave({
     reportId: report.id,
     document: state.document,
     templateId: state.templateId,
@@ -131,9 +131,14 @@ export function ReportEditor({
             startExport.isPending ||
             (exportId !== null &&
               !exportStatus.error &&
+              !exportStatus.timedOut &&
               !(exportStatus.data && isExportFinished(exportStatus.data.status))),
-          // 템플릿 선택이 서버에 저장되기 전에 내보내면 409 가 난다. 저장될 때까지 잠근다.
-          waitingSave: state.templateId !== savedTemplateId,
+          // 서버에 저장 안 된 상태(템플릿·문서)로 내보내면 409 가 나거나 낡은 스냅샷이
+          // PDF 가 된다. 저장이 따라잡을 때까지 잠근다.
+          waitingSave:
+            state.templateId !== savedTemplateId ||
+            state.document !== savedDocument ||
+            status === 'saving',
           error: exportError(startExport.error, exportStatus),
         }}
         onTemplate={(id) => {
@@ -219,6 +224,7 @@ function exportError(
   exportStatus: ReturnType<typeof useExportStatus>,
 ): string | null {
   if (startError) return toDisplayMessage(startError)
+  if (exportStatus.timedOut) return 'PDF 생성이 너무 오래 걸립니다. 다시 시도해 주세요.'
   if (exportStatus.error) return toDisplayMessage(exportStatus.error)
   const data = exportStatus.data
   if (data?.status === 'FAILED') return data.failureMessage ?? 'PDF 생성에 실패했습니다.'

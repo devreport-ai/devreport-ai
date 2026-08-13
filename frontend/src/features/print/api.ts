@@ -8,7 +8,7 @@ import type { ReportRenderData } from '../../lib/contracts/types'
 
 export function useRenderData(exportId: string, token: string | null) {
   return useQuery({
-    queryKey: ['print', exportId],
+    queryKey: ['print', exportId, token],
     queryFn: () =>
       apiFetch<ReportRenderData>(`/api/report-exports/${exportId}/render-data`, {
         headers: { 'X-Render-Token': token ?? '' },

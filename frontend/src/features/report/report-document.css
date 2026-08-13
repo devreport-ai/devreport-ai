@@ -102,7 +102,7 @@
 
 /* ── 출력 전용 페이지 (#39) — Chromium 이 preferCSSPageSize 로 찍는다 ── */
 @page {
-  size: A4;
+  size: a4;
   margin: 0; /* 여백은 .report-sheet 의 padding 이 담당한다 */
 }
 .print-page {

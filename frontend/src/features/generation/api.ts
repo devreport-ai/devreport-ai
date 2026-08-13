@@ -100,7 +100,7 @@ export function useGenerationJob(jobId: string | null) {
       }),
   })
 
-  const pollCount = usePollCount(jobId)
+  const pollCount = usePollCount(jobId === null ? null : generationKeys.job(jobId))
 
   /**
    * 상한에 걸려 폴링을 포기한 상태.
@@ -122,16 +122,17 @@ export function useGenerationJob(jobId: string | null) {
  * 그 값이 없다. 그래서 캐시를 직접 구독한다. 응답이 이전과 완전히 같으면 TanStack Query 가
  * 같은 객체를 돌려주어 다시 렌더되지 않으므로, `data` 만 보고 있으면 상한 도달을 놓친다.
  */
-function usePollCount(jobId: string | null): number {
+export function usePollCount(queryKey: readonly unknown[] | null): number {
   const client = useQueryClient()
   const subscribe = useCallback(
     (onChange: () => void) => client.getQueryCache().subscribe(onChange),
     [client],
   )
+  const key = JSON.stringify(queryKey)
   const getCount = useCallback(
-    () =>
-      jobId === null ? 0 : (client.getQueryState(generationKeys.job(jobId))?.dataUpdateCount ?? 0),
-    [client, jobId],
+    () => (queryKey === null ? 0 : (client.getQueryState(queryKey)?.dataUpdateCount ?? 0)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 배열 내용 기준으로 비교한다
+    [client, key],
   )
   return useSyncExternalStore(subscribe, getCount)
 }
