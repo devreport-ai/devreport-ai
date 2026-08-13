@@ -15,6 +15,11 @@ Gemini → FastAPI AI Service → Spring Backend → Frontend
 Frontend는 AI Service나 Gemini를 직접 호출하지 않는다. AI Service의 8000 포트는 같은
 서버 또는 Docker private network 안에서만 사용하며 외부에 공개하지 않는다.
 
+운영 배포에서는 Frontend를 reverse proxy로 Backend와 동일 Origin에 제공한다. 별도 Origin이
+필요한 경우에만 Backend의 `CORS_ALLOWED_ORIGINS`에 정확한 allowlist를 주입한다. Backend는
+`SPRING_PROFILES_ACTIVE=prod`, AI Service는 `APP_ENV=prod`로 실행하며 운영 필수 Secret이
+없으면 두 프로세스 모두 기동하지 않는다.
+
 ## 사용자 흐름
 
 1. 사용자가 프로젝트를 생성하고 자료를 업로드한다.
@@ -128,12 +133,13 @@ AI Service와 Backend는 모두 `ReportDocument`를 검증한다. Backend는 Sch
 이 검증은 AI 결과 생성 저장과 사용자 `PUT /api/reports/{reportId}` 수정 저장에 동일하게
 적용하는 목표 계약이며 프로젝트·소유권·MIME 검증은 #37에서 구현한다.
 
-목표 AI 내부 오류 코드는 `AI_INVALID_REQUEST`, `AI_FILE_PROCESSING_FAILED`,
+목표 AI 내부 오류 코드는 `AI_UNAUTHORIZED`, `AI_INVALID_REQUEST`, `AI_FILE_PROCESSING_FAILED`,
 `AI_GENERATION_FAILED`, `AI_INVALID_RESPONSE`, `AI_TIMEOUT`, `AI_UNAVAILABLE`의
 최소 집합으로 정의한다. Backend 사용자 API는 다음과 같이 변환한다.
 
 | AI Service | Backend 사용자 API |
 | --- | --- |
+| `AI_UNAUTHORIZED` | `AI_SERVICE_UNAVAILABLE` |
 | `AI_INVALID_REQUEST` | `GENERATION_REQUEST_INVALID` |
 | `AI_FILE_PROCESSING_FAILED`·`AI_GENERATION_FAILED`·`AI_INVALID_RESPONSE` | `GENERATION_FAILED` |
 | `AI_TIMEOUT` | `GENERATION_TIMEOUT` |

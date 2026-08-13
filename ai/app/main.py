@@ -11,6 +11,7 @@ from app.schemas.generation import MAX_BUNDLE_TOTAL_SIZE
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
+    production = settings.app_env.strip().lower() in {"prod", "production"}
 
     app = FastAPI(
         title="DevReport AI Service",
@@ -19,6 +20,9 @@ def create_app() -> FastAPI:
             "문서/코드/이미지를 분석해 ReportDocument JSON을 반환한다."
         ),
         version=APP_VERSION,
+        docs_url=None if production else "/docs",
+        redoc_url=None if production else "/redoc",
+        openapi_url=None if production else "/openapi.json",
     )
 
     register_exception_handlers(app)

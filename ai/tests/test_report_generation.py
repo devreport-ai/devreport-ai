@@ -21,6 +21,19 @@ SOURCE_CONTENT = b"class App {}"
 SECOND_FILE_ID = UUID("00000000-0000-4000-8000-000000000002")
 SECOND_SOURCE_PATH = f"source/{SECOND_FILE_ID}/src/Service.java"
 SECOND_SOURCE_CONTENT = b"class Service {}"
+INTERNAL_TOKEN = "test-internal-token"
+
+
+
+@pytest.fixture(autouse=True)
+def override_settings():
+    previous = app.dependency_overrides.get(get_settings)
+    app.dependency_overrides[get_settings] = lambda: Settings(ai_internal_token=INTERNAL_TOKEN)
+    yield
+    if previous is None:
+        app.dependency_overrides.pop(get_settings, None)
+    else:
+        app.dependency_overrides[get_settings] = previous
 
 
 def valid_request() -> dict[str, object]:
@@ -62,8 +75,16 @@ def multipart_data(
     ]
 
 
+def generate(files: list[tuple[str, tuple[str | None, str | bytes, str]]]):
+    return client.post(
+        "/internal/ai/reports/generate",
+        files=files,
+        headers={"X-Internal-Token": INTERNAL_TOKEN},
+    )
+
+
 def test_generate_returns_schema_valid_sample_report():
-    response = client.post("/internal/ai/reports/generate", files=multipart_data())
+    response = generate(multipart_data())
 
     assert response.status_code == 200
     assert response.json() == json.loads(SAMPLE_REPORT_PATH.read_text(encoding="utf-8"))
@@ -72,17 +93,14 @@ def test_generate_returns_schema_valid_sample_report():
 def test_generate_rejects_empty_file_ids_with_common_error_payload():
     request = valid_request() | {"fileIds": []}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
 
 
 def test_generate_rejects_blank_instructions_without_echoing_input():
-    response = client.post(
-        "/internal/ai/reports/generate",
-        files=multipart_data(request=valid_request() | {"instructions": "   "}),
-    )
+    response = generate(multipart_data(request=valid_request() | {"instructions": "   "}))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -90,11 +108,17 @@ def test_generate_rejects_blank_instructions_without_echoing_input():
 
 
 def test_generate_returns_unavailable_when_mock_is_disabled():
-    app.dependency_overrides[get_settings] = lambda: Settings(mock_report=False)
+    previous = app.dependency_overrides.get(get_settings)
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        mock_report=False, ai_internal_token=INTERNAL_TOKEN
+    )
     try:
-        response = client.post("/internal/ai/reports/generate", files=multipart_data())
+        response = generate(multipart_data())
     finally:
-        app.dependency_overrides.pop(get_settings)
+        if previous is None:
+            app.dependency_overrides.pop(get_settings, None)
+        else:
+            app.dependency_overrides[get_settings] = previous
 
     assert response.status_code == 503
     assert response.json()["code"] == "AI_UNAVAILABLE"
@@ -116,20 +140,14 @@ def test_mock_generator_converts_invalid_utf8_contract_file_to_ai_error(tmp_path
 
 
 def test_generate_rejects_manifest_file_count_mismatch():
-    response = client.post(
-        "/internal/ai/reports/generate",
-        files=multipart_data(manifest={"version": 1, "files": []}),
-    )
+    response = generate(multipart_data(manifest={"version": 1, "files": []}))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
 
 
 def test_generate_rejects_file_order_or_filename_mismatch():
-    response = client.post(
-        "/internal/ai/reports/generate",
-        files=multipart_data(source_path=f"source/{FILE_ID}/src/Other.java"),
-    )
+    response = generate(multipart_data(source_path=f"source/{FILE_ID}/src/Other.java"))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -151,7 +169,7 @@ def test_generate_rejects_files_in_a_different_order_than_manifest():
     parts[2] = ("files", (SECOND_SOURCE_PATH, SECOND_SOURCE_CONTENT, "text/plain"))
     parts.append(("files", (SOURCE_PATH, SOURCE_CONTENT, "text/plain")))
 
-    response = client.post("/internal/ai/reports/generate", files=parts)
+    response = generate(parts)
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -160,7 +178,7 @@ def test_generate_rejects_files_in_a_different_order_than_manifest():
 def test_generate_rejects_manifest_file_id_not_selected_in_request():
     request = valid_request() | {"fileIds": [str(SECOND_FILE_ID)]}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -170,9 +188,7 @@ def test_generate_rejects_manifest_path_outside_category_root():
     invalid_manifest = valid_manifest()
     invalid_manifest["files"][0]["path"] = "../src/App.java"
 
-    response = client.post(
-        "/internal/ai/reports/generate", files=multipart_data(manifest=invalid_manifest)
-    )
+    response = generate(multipart_data(manifest=invalid_manifest))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -182,9 +198,27 @@ def test_generate_rejects_manifest_total_size_limit():
     oversized_manifest = valid_manifest()
     oversized_manifest["files"][0]["size"] = 100 * 1024 * 1024 + 1
 
-    response = client.post(
-        "/internal/ai/reports/generate", files=multipart_data(manifest=oversized_manifest)
-    )
+    response = generate(multipart_data(manifest=oversized_manifest))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_missing_internal_token_without_echoing_secret():
+    response = client.post("/internal/ai/reports/generate", files=multipart_data())
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "AI_UNAUTHORIZED"
+    assert INTERNAL_TOKEN not in response.text
+
+
+def test_generate_rejects_invalid_internal_token_without_echoing_secret():
+    response = client.post(
+        "/internal/ai/reports/generate",
+        files=multipart_data(),
+        headers={"X-Internal-Token": "wrong-token"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "AI_UNAUTHORIZED"
+    assert "wrong-token" not in response.text

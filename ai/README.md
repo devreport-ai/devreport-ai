@@ -56,10 +56,13 @@ uv run uvicorn app.main:app --reload --port 8000
 | http://localhost:8000/health | Health Check |
 | http://localhost:8000/docs | Swagger UI |
 
+`APP_ENV=prod`에서는 Swagger UI, ReDoc, OpenAPI JSON을 비활성화한다.
+
 ## 내부 보고서 생성 API
 
-`POST /internal/ai/reports/generate`는 Backend 전용 multipart API다. Backend가 생성한
-bundle을 다음 part로 전달한다.
+`POST /internal/ai/reports/generate`는 Backend 전용 multipart API다. `X-Internal-Token`이
+설정된 `AI_INTERNAL_TOKEN`과 일치하지 않으면 401 `AI_UNAUTHORIZED`로 거부한다. Backend가
+생성한 bundle을 다음 part로 전달한다.
 
 | Part | Content-Type | 내용 |
 | --- | --- | --- |
@@ -90,10 +93,10 @@ uv run ruff format .
 | `APP_ENV` | `local` | 실행 환경 이름 |
 | `LOG_LEVEL` | `INFO` | 로그 레벨 |
 | `CONTRACTS_DIR` | 저장소 `contracts/` | 공통 계약 디렉터리 경로 |
-| `MOCK_REPORT` | `true` | true면 Gemini 호출 없이 샘플 보고서를 반환 |
-| `AI_INTERNAL_TOKEN` | 없음 | Backend 내부 생성 요청 인증용 공유 Secret |
+| `MOCK_REPORT` | `true` | true면 Gemini 호출 없이 샘플 보고서를 반환 (운영에서는 false 고정) |
+| `AI_INTERNAL_TOKEN` | 없음 | Backend 내부 생성 요청 인증용 공유 Secret (운영 필수) |
 | `GEMINI_MODEL` | `gemini-2.5-pro` | 사용할 Gemini 모델 |
-| `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 |
+| `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 (운영 필수) |
 | `GEMINI_TIMEOUT_SECONDS` | `300` | Gemini 호출 타임아웃 |
 | `GEMINI_MAX_RETRIES` | `2` | 스키마 검증 실패 시 재시도 횟수 |
 
@@ -103,6 +106,10 @@ uv run ruff format .
 - 사용자별 API Key는 MVP 범위에서 제외하며 필요성이 확인되면 확장한다.
 - 로그와 예외 메시지에 키를 남기지 않는다 (`app/core/logging.py`의 마스킹 필터).
 - 파일이나 DB에 저장하지 않는다.
+
+운영에서는 `APP_ENV=prod`, `MOCK_REPORT=false`, `AI_INTERNAL_TOKEN`, `GEMINI_API_KEY`를
+모두 주입한다. 하나라도 없거나 Mock이 켜져 있으면 프로세스가 기동하지 않는다. AI Service는
+Backend와 같은 서버 또는 Docker private network에만 바인딩하고 public port를 열지 않는다.
 
 ## 디렉터리 구조
 
@@ -120,5 +127,5 @@ ai/
 ## 다음 작업
 
 - [x] `POST /internal/ai/reports/generate` multipart bundle Mock 구현
-- [ ] `X-Internal-Token` AI Service 검증 추가 (배포 전 보안 task)
+- [x] `X-Internal-Token` AI Service 검증 추가 (배포 전 보안 task)
 - [ ] Gemini Client 및 생성 파이프라인 (추출 → 목차 설계 → 섹션 생성)

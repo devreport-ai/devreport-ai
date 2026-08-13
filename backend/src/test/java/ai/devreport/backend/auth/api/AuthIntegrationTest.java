@@ -38,9 +38,10 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:h2:mem:auth;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
 	"spring.datasource.username=sa",
-	"spring.datasource.password=",
-	"spring.datasource.driver-class-name=org.h2.Driver",
-	"auth.jwt-secret=test-secret-that-is-at-least-32-bytes-long"
+		"spring.datasource.password=",
+		"spring.datasource.driver-class-name=org.h2.Driver",
+		"auth.jwt-secret=test-secret-that-is-at-least-32-bytes-long",
+		"security.headers.enabled=true"
 })
 @AutoConfigureMockMvc
 class AuthIntegrationTest {
@@ -231,6 +232,19 @@ class AuthIntegrationTest {
 				.header("Origin", "https://evil.example")
 				.cookie(refreshCookie))
 			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void includesBaselineSecurityHeaders() throws Exception {
+		MvcResult result = mvc.perform(get("/actuator/health").secure(true))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+		assertThat(result.getResponse().getHeader("Content-Security-Policy"))
+			.contains("default-src 'self'");
+		assertThat(result.getResponse().getHeader("Strict-Transport-Security"))
+			.contains("max-age=31536000", "includeSubDomains");
 	}
 
 	@Test

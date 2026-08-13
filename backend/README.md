@@ -37,8 +37,8 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 
 ## 환경변수
 
-`JWT_SECRET`과 `EXPORT_PRINT_URL`을 먼저 설정해야 실행할 수 있다. 나머지 환경변수는
-기본값을 사용하거나 필요한 경우 변경한다.
+로컬 실행은 `JWT_SECRET`(32바이트 이상)을 설정하면 아래 기본값으로 가능하며, 실제 AI 생성 호출에는 `AI_INTERNAL_TOKEN`이 필요하다.
+운영은 `SPRING_PROFILES_ACTIVE=prod`를 사용해야 하고, 운영 필수 Secret이 없으면 기동에 실패한다.
 
 | 변수 | 기본값 |
 | --- | --- |
@@ -51,11 +51,11 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` |
 | `AI_SERVICE_RESPONSE_TIMEOUT` | `300s` |
 | `AI_SERVICE_MOCK` | `false` |
-| `AI_INTERNAL_TOKEN` | 없음 (실제 AI 생성 호출 시 필수) |
+| `AI_INTERNAL_TOKEN` | 없음 (실제 AI 생성·운영에서 필수) |
 | `UPLOAD_PATH` | `./uploads` |
 | `EXPORT_PATH` | `./generated-reports` |
 | `EXPORT_TTL` | `24h` |
-| `EXPORT_PRINT_URL` | 필수 (`{exportId}`를 포함한 Frontend 출력 route URL) |
+| `EXPORT_PRINT_URL` | 운영 필수 (`{exportId}`를 포함한 Frontend 출력 route URL) |
 | `EXPORT_RENDER_TOKEN_TTL` | `1m` |
 | `EXPORT_RENDER_TIMEOUT` | `30s` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
@@ -63,7 +63,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AUTH_REFRESH_TOKEN_COOKIE_PATH` | `/api/auth` |
 | `AUTH_REFRESH_TOKEN_COOKIE_SECURE` | `false` (prod 프로필에서는 `true`) |
 | `AUTH_REFRESH_TOKEN_COOKIE_SAME_SITE` | `Lax` (`Strict`, `Lax`, `None`) |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` (쉼표로 여러 Origin 지정) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` (운영 동일 Origin이면 빈 값, cross-origin일 때만 allowlist) |
 | `USAGE_LIMITS_DAY_ZONE` | `Asia/Seoul` |
 | `USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES` | `524288000` (500 MiB) |
 | `USAGE_LIMITS_UPLOAD_MAX_FILES` | `100` |
@@ -80,6 +80,24 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
 
+### 운영 설정
+
+Frontend는 reverse proxy를 통해 Backend와 동일한 Origin으로 제공한다. 별도 Origin이
+불가피할 때만 `CORS_ALLOWED_ORIGINS`에 정확한 Origin을 쉼표로 지정한다. 운영 Backend는
+Swagger/OpenAPI를 비활성화하고 Actuator는 `health`만 노출한다.
+
+```bash
+export SPRING_PROFILES_ACTIVE=prod
+export DATABASE_PASSWORD='운영 DB 비밀번호'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export AI_INTERNAL_TOKEN="$(openssl rand -hex 32)"
+export EXPORT_PRINT_URL='https://app.example.com/print/report-exports/{exportId}'
+cd backend && ./gradlew bootRun
+```
+
+`GEMINI_API_KEY`는 Backend가 아니라 AI Service 프로세스에 주입한다. Backend와 AI Service는
+같은 서버 또는 private network에서만 연결하고 AI Service 포트를 외부에 publish하지 않는다.
+
 ## 인증
 
 - `POST /api/auth/login`은 Access Token만 JSON 본문으로 반환하고 Refresh Token은 `HttpOnly`·`SameSite=Lax`·`Path=/api/auth` 쿠키로 설정한다.
@@ -87,7 +105,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 - `POST /api/auth/logout`은 쿠키에 대응하는 서버 토큰을 폐기하고, 토큰이 없거나 이미 폐기된 경우에도 `Max-Age=0` 쿠키로 브라우저 값을 삭제한다.
 - Refresh Token 쿠키는 JavaScript와 `localStorage`에 노출하지 않는다. 보호 API는 기존 `Authorization: Bearer` 방식을 유지한다.
 - Frontend가 Backend와 다른 Origin에서 실행되면 `CORS_ALLOWED_ORIGINS`에 정확한 Origin을 지정하고 요청에 `credentials: 'include'`를 사용한다. `*`와 credentials 조합은 허용하지 않는다.
-- 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 사용하거나 `AUTH_REFRESH_TOKEN_COOKIE_SECURE=true`를 지정한다. `SameSite=None`을 사용할 때는 반드시 Secure 쿠키를 함께 사용한다.
+- 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 사용한다. `SameSite=None`을 사용할 때는 반드시 Secure 쿠키를 함께 사용한다.
 - 쿠키를 사용하는 로그인·재발급·로그아웃 요청은 허용된 Origin 또는 동일 출처만 통과한다. Origin과 Referer가 모두 없는 요청은 최신 브라우저가 교차 출처 POST에 Origin을 보낸다는 전제 아래 허용한다. Origin이 필요한 브라우저 교차 출처 요청을 위해 reverse proxy의 forwarded header 설정도 신뢰된 프록시로 제한한다.
 
 ## 실행
