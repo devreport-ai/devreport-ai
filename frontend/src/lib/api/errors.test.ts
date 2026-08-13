@@ -28,6 +28,13 @@ describe('toDisplayMessage — 429', () => {
     )
   })
 
+  it('유한하지 않은 값은 무시한다', () => {
+    // JSON 은 Infinity 를 표현할 수 없지만, 방어적으로 서버 문구만 남긴다
+    expect(toDisplayMessage(rateLimited({ retryAfterSeconds: Infinity }))).toBe(
+      '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    )
+  })
+
   it('429 가 아니면 덧붙이지 않는다', () => {
     const error = new ApiError(400, {
       code: 'X',

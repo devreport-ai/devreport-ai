@@ -88,7 +88,7 @@ export function retryAfterSeconds(error: ApiError): number | null {
   if (error.status !== 429) return null
   if (typeof error.details !== 'object' || error.details === null) return null
   const value = (error.details as Record<string, unknown>).retryAfterSeconds
-  return typeof value === 'number' && value > 0 ? value : null
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
 }
 
 function formatSeconds(seconds: number): string {
