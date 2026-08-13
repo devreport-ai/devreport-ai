@@ -59,6 +59,11 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `EXPORT_RENDER_TOKEN_TTL` | `1m` |
 | `EXPORT_RENDER_TIMEOUT` | `30s` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |
+| `AUTH_REFRESH_TOKEN_COOKIE_NAME` | `refresh_token` |
+| `AUTH_REFRESH_TOKEN_COOKIE_PATH` | `/api/auth` |
+| `AUTH_REFRESH_TOKEN_COOKIE_SECURE` | `false` (prod 프로필에서는 `true`) |
+| `AUTH_REFRESH_TOKEN_COOKIE_SAME_SITE` | `Lax` (`Strict`, `Lax`, `None`) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` (쉼표로 여러 Origin 지정) |
 | `USAGE_LIMITS_DAY_ZONE` | `Asia/Seoul` |
 | `USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES` | `524288000` (500 MiB) |
 | `USAGE_LIMITS_UPLOAD_MAX_FILES` | `100` |
@@ -74,6 +79,16 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `USAGE_LIMITS_RATE_GENERATION` | `10` / window / user |
 
 비밀정보는 `.env` 또는 IntelliJ Run Configuration에 저장하고 커밋하지 않는다. Spring Boot는 `.env` 파일을 자동으로 읽지 않으므로 IntelliJ의 환경변수 항목에 입력하거나 터미널에서 내보내야 한다.
+
+## 인증
+
+- `POST /api/auth/login`은 Access Token만 JSON 본문으로 반환하고 Refresh Token은 `HttpOnly`·`SameSite=Lax`·`Path=/api/auth` 쿠키로 설정한다.
+- `POST /api/auth/refresh`는 요청 본문 없이 쿠키를 읽고, 기존 Refresh Token을 폐기한 뒤 회전된 쿠키와 Access Token을 반환한다.
+- `POST /api/auth/logout`은 쿠키에 대응하는 서버 토큰을 폐기하고, 토큰이 없거나 이미 폐기된 경우에도 `Max-Age=0` 쿠키로 브라우저 값을 삭제한다.
+- Refresh Token 쿠키는 JavaScript와 `localStorage`에 노출하지 않는다. 보호 API는 기존 `Authorization: Bearer` 방식을 유지한다.
+- Frontend가 Backend와 다른 Origin에서 실행되면 `CORS_ALLOWED_ORIGINS`에 정확한 Origin을 지정하고 요청에 `credentials: 'include'`를 사용한다. `*`와 credentials 조합은 허용하지 않는다.
+- 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 사용하거나 `AUTH_REFRESH_TOKEN_COOKIE_SECURE=true`를 지정한다. `SameSite=None`을 사용할 때는 반드시 Secure 쿠키를 함께 사용한다.
+- 쿠키를 사용하는 로그인·재발급·로그아웃 요청은 허용된 Origin 또는 동일 출처만 통과한다. Origin이 필요한 브라우저 교차 출처 요청을 위해 reverse proxy의 forwarded header 설정도 신뢰된 프록시로 제한한다.
 
 ## 실행
 

@@ -8,7 +8,9 @@ info:
     인증 요청의 IP별 rate limit은 Spring의 `server.forward-headers-strategy=framework`로
     해석된 클라이언트 IP를 사용한다. 배포 시 신뢰된 reverse proxy 또는 ingress만
     `Forwarded`/`X-Forwarded-For`를 정규화해 전달하고, 외부에서 전달된 forwarded header는
-    제거해야 한다.
+    제거해야 한다. Refresh Token은 `refresh_token` HttpOnly 쿠키로만 전달하며,
+    Frontend는 인증 요청에 credentials를 포함해야 한다. Backend는 명시된 허용 Origin만
+    credentials 요청에 허용하고, 쿠키를 사용하는 인증 요청의 Origin 또는 Referer를 검증한다.
 
 servers:
   - url: http://localhost:8080
@@ -19,6 +21,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    refreshTokenCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: HttpOnly·SameSite Refresh Token 쿠키. JavaScript에서 읽을 수 없다.
   schemas:
     SignupRequest:
       type: object
@@ -47,19 +54,11 @@ components:
         password:
           type: string
           format: password
-    RefreshTokenRequest:
-      type: object
-      required: [refreshToken]
-      properties:
-        refreshToken:
-          type: string
     TokenResponse:
       type: object
-      required: [accessToken, refreshToken, tokenType, expiresIn]
+      required: [accessToken, tokenType, expiresIn]
       properties:
         accessToken:
-          type: string
-        refreshToken:
           type: string
         tokenType:
           type: string
@@ -495,6 +494,7 @@ paths:
   /api/auth/login:
     post:
       summary: 로그인
+      description: Access Token은 JSON 본문으로, Refresh Token은 HttpOnly 쿠키로 반환한다.
       security: []
       requestBody:
         required: true
@@ -505,12 +505,23 @@ paths:
       responses:
         "200":
           description: 로그인 성공
+          headers:
+            Set-Cookie:
+              description: HttpOnly Refresh Token 쿠키 (`refresh_token`).
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenResponse"
         "401":
           description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 허용되지 않은 Origin 또는 Referer
           content:
             application/json:
               schema:
@@ -525,22 +536,29 @@ paths:
   /api/auth/refresh:
     post:
       summary: Access Token 재발급
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshTokenRequest"
+      description: 요청 본문 없이 HttpOnly Refresh Token 쿠키를 읽어 토큰을 회전한다.
+      security:
+        - refreshTokenCookie: []
       responses:
         "200":
           description: 토큰 재발급 성공
+          headers:
+            Set-Cookie:
+              description: 회전된 HttpOnly Refresh Token 쿠키 (`refresh_token`).
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenResponse"
         "401":
           description: Refresh Token 무효 또는 만료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID)
           content:
             application/json:
               schema:
@@ -555,16 +573,23 @@ paths:
   /api/auth/logout:
     post:
       summary: 로그아웃
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshTokenRequest"
+      description: HttpOnly Refresh Token 쿠키를 폐기하고 만료된 쿠키를 반환한다.
+      security:
+        - refreshTokenCookie: []
       responses:
         "204":
           description: 로그아웃 성공
+          headers:
+            Set-Cookie:
+              description: 삭제된 Refresh Token 쿠키 (`Max-Age=0`).
+              schema:
+                type: string
+        "403":
+          description: 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/me:
     get:

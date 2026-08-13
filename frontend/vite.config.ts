@@ -7,9 +7,8 @@
  *    루트 `.env.example` 의 FRONTEND_PORT=3000 과 맞춘 값이다.
  *
  * 2) 개발 중 CORS 문제를 프록시로 우회한다.
- *    Backend 의 SecurityConfig 에 CORS 설정이 아직 없어서, 브라우저가
- *    localhost:3000 -> localhost:8080 요청을 preflight 단계에서 막는다.
- *    Backend 코드는 다른 담당자 소유라 건드릴 수 없으므로 프록시로 푼다.
+ *    Backend 에도 허용 Origin과 credentials 설정이 있지만, 개발에서는
+ *    브라우저가 localhost:3000 단일 오리진으로 인식하도록 프록시를 쓴다.
  *
  * `defineConfig` 를 'vite' 가 아니라 'vitest/config' 에서 가져오는 이유는
  * 아래 test 블록에 타입을 붙이기 위해서다. Vite 쪽 defineConfig 는 test 키를 모른다.

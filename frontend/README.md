@@ -62,8 +62,8 @@ cp .env.example .env.local
 
 ## Backend 연동과 CORS
 
-Backend 에 CORS 설정이 아직 없어서 브라우저가 `localhost:3000` → `localhost:8080`
-요청을 preflight 단계에서 막는다. 개발 중에는 Vite 개발 서버의 프록시로 우회한다.
+Backend는 `CORS_ALLOWED_ORIGINS`에 등록된 Origin에만 credentials 요청을 허용한다.
+개발 중에는 Vite 개발 서버의 프록시로 우회할 수 있다.
 
 ```text
 브라우저 → localhost:3000/api/...  →  (Vite 프록시)  →  localhost:8080/api/...
@@ -72,8 +72,8 @@ Backend 에 CORS 설정이 아직 없어서 브라우저가 `localhost:3000` →
 브라우저 입장에서는 같은 오리진이므로 CORS 가 발생하지 않는다.
 그래서 `VITE_API_BASE_URL` 을 비워 두고 `/api/...` 로 호출하면 된다.
 
-**이 우회는 개발 서버 전용이다.** 배포 환경에는 프록시가 없으므로 Backend 쪽
-CORS 설정이 필요하다.
+**이 우회는 개발 서버 전용이다.** 배포 환경에는 프록시가 없으므로 Backend의
+`CORS_ALLOWED_ORIGINS` 설정과 인증 요청의 `credentials: 'include'`가 필요하다.
 
 Backend 를 함께 띄우려면 저장소 루트에서:
 
