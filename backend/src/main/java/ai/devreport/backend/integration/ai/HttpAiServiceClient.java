@@ -126,6 +126,7 @@ class HttpAiServiceClient implements AiServiceClient {
 		}
 
 		return switch (code) {
+			case "AI_UNAUTHORIZED" -> Failure.AI_SERVICE_UNAVAILABLE.exception();
 			case "AI_INVALID_REQUEST" -> Failure.GENERATION_REQUEST_INVALID.exception();
 			case "AI_FILE_PROCESSING_FAILED", "AI_GENERATION_FAILED", "AI_INVALID_RESPONSE" ->
 				Failure.GENERATION_FAILED.exception();

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -38,10 +39,21 @@ public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-		RateLimitService rateLimits, CorsConfigurationSource corsConfigurationSource) throws Exception {
+		RateLimitService rateLimits, CorsConfigurationSource corsConfigurationSource,
+		@Value("${security.headers.enabled:false}") boolean securityHeadersEnabled) throws Exception {
 		return http
 			.cors(cors -> cors.configurationSource(corsConfigurationSource))
 			.csrf(csrf -> csrf.disable())
+			.headers(headers -> {
+				headers.contentTypeOptions(Customizer.withDefaults());
+				if (securityHeadersEnabled) {
+					headers.contentSecurityPolicy(policy -> policy.policyDirectives(
+						"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; "
+							+ "img-src 'self' data: blob:; connect-src 'self'"));
+					headers.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true)
+					.maxAgeInSeconds(31536000));
+				}
+			})
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
@@ -67,9 +79,6 @@ public class SecurityConfig {
 			.map(String::trim)
 			.filter(origin -> !origin.isEmpty())
 			.toList();
-		if (origins.isEmpty()) {
-			throw new IllegalStateException("CORS 허용 Origin을 하나 이상 지정해야 합니다.");
-		}
 		if (origins.contains("*")) {
 			throw new IllegalStateException("CORS 허용 Origin에 *를 사용할 수 없습니다.");
 		}
