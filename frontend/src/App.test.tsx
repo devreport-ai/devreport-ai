@@ -57,7 +57,9 @@ describe('App 라우팅', () => {
     loginAs()
     renderWithProviders(<App />, { route: '/' })
 
-    expect(await screen.findByRole('heading', { name: 'DevReport AI' })).toBeInTheDocument()
+    // 서비스명은 네비게이션의 홈 링크다
+    expect(await screen.findByRole('link', { name: 'DevReport AI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그아웃' })).toBeInTheDocument()
   })
 
   it('로그인 상태로 /reports/:reportId 에 들어가면 편집기가 문서 제목을 보여준다', async () => {
