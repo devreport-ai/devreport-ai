@@ -153,6 +153,7 @@ class AuthController {
 	private void validateOrigin(HttpServletRequest request) {
 		Optional<String> requestOrigin = requestOrigin(request);
 		if (requestOrigin.isEmpty()) {
+			// Modern browsers send Origin on cross-site POSTs, so keep this compatibility path for requests without either header.
 			return;
 		}
 		String origin = requestOrigin.get();
@@ -211,7 +212,7 @@ class AuthController {
 	}
 
 	private void validateCookieSettings() {
-		if (refreshTokenCookieName.isBlank() || !refreshTokenCookiePath.startsWith("/")
+		if (refreshTokenCookieName.isBlank() || !refreshTokenCookiePath.startsWith("/api/auth")
 			|| refreshTokenTtl.isZero() || refreshTokenTtl.isNegative()
 			|| !Set.of("strict", "lax", "none").contains(refreshTokenCookieSameSite.toLowerCase(Locale.ROOT))) {
 			throw new IllegalStateException("Refresh Token 쿠키 설정이 올바르지 않습니다.");

@@ -67,6 +67,9 @@ public class SecurityConfig {
 			.map(String::trim)
 			.filter(origin -> !origin.isEmpty())
 			.toList();
+		if (origins.isEmpty()) {
+			throw new IllegalStateException("CORS 허용 Origin을 하나 이상 지정해야 합니다.");
+		}
 		if (origins.contains("*")) {
 			throw new IllegalStateException("CORS 허용 Origin에 *를 사용할 수 없습니다.");
 		}

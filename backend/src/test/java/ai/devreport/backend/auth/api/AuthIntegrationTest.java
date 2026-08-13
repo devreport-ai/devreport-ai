@@ -234,6 +234,26 @@ class AuthIntegrationTest {
 	}
 
 	@Test
+	void validatesRefererWhenOriginHeaderIsAbsent() throws Exception {
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "https://evil.example/attack")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("CSRF_ORIGIN_INVALID"));
+
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "not-a-valid-url")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isForbidden());
+
+		mvc.perform(post("/api/auth/refresh")
+				.header("Referer", "http://localhost:3000/login")
+				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "any-value")))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+	}
+
+	@Test
 	void logoutClearsCookieEvenWhenServerTokenIsMissing() throws Exception {
 		MvcResult result = mvc.perform(post("/api/auth/logout")
 				.cookie(new Cookie(REFRESH_TOKEN_COOKIE, "already-revoked")))

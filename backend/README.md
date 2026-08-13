@@ -88,7 +88,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 - Refresh Token 쿠키는 JavaScript와 `localStorage`에 노출하지 않는다. 보호 API는 기존 `Authorization: Bearer` 방식을 유지한다.
 - Frontend가 Backend와 다른 Origin에서 실행되면 `CORS_ALLOWED_ORIGINS`에 정확한 Origin을 지정하고 요청에 `credentials: 'include'`를 사용한다. `*`와 credentials 조합은 허용하지 않는다.
 - 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 사용하거나 `AUTH_REFRESH_TOKEN_COOKIE_SECURE=true`를 지정한다. `SameSite=None`을 사용할 때는 반드시 Secure 쿠키를 함께 사용한다.
-- 쿠키를 사용하는 로그인·재발급·로그아웃 요청은 허용된 Origin 또는 동일 출처만 통과한다. Origin이 필요한 브라우저 교차 출처 요청을 위해 reverse proxy의 forwarded header 설정도 신뢰된 프록시로 제한한다.
+- 쿠키를 사용하는 로그인·재발급·로그아웃 요청은 허용된 Origin 또는 동일 출처만 통과한다. Origin과 Referer가 모두 없는 요청은 최신 브라우저가 교차 출처 POST에 Origin을 보낸다는 전제 아래 허용한다. Origin이 필요한 브라우저 교차 출처 요청을 위해 reverse proxy의 forwarded header 설정도 신뢰된 프록시로 제한한다.
 
 ## 실행
 
