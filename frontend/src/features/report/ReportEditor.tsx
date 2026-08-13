@@ -67,7 +67,7 @@ export function ReportEditor({
     })
   }, [exportStatus.data, state.document.metadata.title])
 
-  const { status, savedTemplateId, savedDocument } = useAutosave({
+  const { status, savedTemplateId, savedTemplateVersion, savedDocument } = useAutosave({
     reportId: report.id,
     document: state.document,
     templateId: state.templateId,
@@ -137,6 +137,7 @@ export function ReportEditor({
           // PDF 가 된다. 저장이 따라잡을 때까지 잠근다.
           waitingSave:
             state.templateId !== savedTemplateId ||
+            state.templateVersion !== savedTemplateVersion ||
             state.document !== savedDocument ||
             status === 'saving',
           error: exportError(startExport.error, exportStatus),
