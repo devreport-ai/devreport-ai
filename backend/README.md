@@ -37,7 +37,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 
 ## 환경변수
 
-로컬 실행은 아래 기본값으로 가능하며, 실제 AI 생성 호출에는 `AI_INTERNAL_TOKEN`이 필요하다.
+로컬 실행은 `JWT_SECRET`(32바이트 이상)을 설정하면 아래 기본값으로 가능하며, 실제 AI 생성 호출에는 `AI_INTERNAL_TOKEN`이 필요하다.
 운영은 `SPRING_PROFILES_ACTIVE=prod`를 사용해야 하고, 운영 필수 Secret이 없으면 기동에 실패한다.
 
 | 변수 | 기본값 |
@@ -55,7 +55,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `UPLOAD_PATH` | `./uploads` |
 | `EXPORT_PATH` | `./generated-reports` |
 | `EXPORT_TTL` | `24h` |
-| `EXPORT_PRINT_URL` | PDF 사용 시 필수 (`{exportId}`를 포함한 Frontend 출력 route URL) |
+| `EXPORT_PRINT_URL` | 운영 필수 (`{exportId}`를 포함한 Frontend 출력 route URL) |
 | `EXPORT_RENDER_TOKEN_TTL` | `1m` |
 | `EXPORT_RENDER_TIMEOUT` | `30s` |
 | `JWT_SECRET` | 필수 (32바이트 이상의 임의 문자열) |

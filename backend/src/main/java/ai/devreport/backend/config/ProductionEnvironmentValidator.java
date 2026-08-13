@@ -23,8 +23,8 @@ public class ProductionEnvironmentValidator implements EnvironmentPostProcessor 
 		if (!environment.getProperty("security.headers.enabled", Boolean.class, false)) {
 			throw new IllegalStateException("운영 환경에서는 보안 헤더가 활성화되어야 합니다.");
 		}
-		if (environment.getProperty("springdoc.api-docs.enabled", Boolean.class, false)
-			|| environment.getProperty("springdoc.swagger-ui.enabled", Boolean.class, false)) {
+		if (!Boolean.FALSE.equals(environment.getProperty("springdoc.api-docs.enabled", Boolean.class))
+			|| !Boolean.FALSE.equals(environment.getProperty("springdoc.swagger-ui.enabled", Boolean.class))) {
 			throw new IllegalStateException("운영 환경에서는 Swagger/OpenAPI를 비활성화해야 합니다.");
 		}
 		String actuatorExposure = environment.getProperty("management.endpoints.web.exposure.include", "health");

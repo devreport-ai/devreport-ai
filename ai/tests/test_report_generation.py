@@ -23,7 +23,17 @@ SECOND_SOURCE_PATH = f"source/{SECOND_FILE_ID}/src/Service.java"
 SECOND_SOURCE_CONTENT = b"class Service {}"
 INTERNAL_TOKEN = "test-internal-token"
 
-app.dependency_overrides[get_settings] = lambda: Settings(ai_internal_token=INTERNAL_TOKEN)
+
+
+@pytest.fixture(autouse=True)
+def override_settings():
+    previous = app.dependency_overrides.get(get_settings)
+    app.dependency_overrides[get_settings] = lambda: Settings(ai_internal_token=INTERNAL_TOKEN)
+    yield
+    if previous is None:
+        app.dependency_overrides.pop(get_settings, None)
+    else:
+        app.dependency_overrides[get_settings] = previous
 
 
 def valid_request() -> dict[str, object]:
@@ -98,13 +108,17 @@ def test_generate_rejects_blank_instructions_without_echoing_input():
 
 
 def test_generate_returns_unavailable_when_mock_is_disabled():
+    previous = app.dependency_overrides.get(get_settings)
     app.dependency_overrides[get_settings] = lambda: Settings(
         mock_report=False, ai_internal_token=INTERNAL_TOKEN
     )
     try:
         response = generate(multipart_data())
     finally:
-        app.dependency_overrides[get_settings] = lambda: Settings(ai_internal_token=INTERNAL_TOKEN)
+        if previous is None:
+            app.dependency_overrides.pop(get_settings, None)
+        else:
+            app.dependency_overrides[get_settings] = previous
 
     assert response.status_code == 503
     assert response.json()["code"] == "AI_UNAVAILABLE"

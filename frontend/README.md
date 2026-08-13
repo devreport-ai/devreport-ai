@@ -72,8 +72,14 @@ Backend는 `CORS_ALLOWED_ORIGINS`에 등록된 Origin에만 credentials 요청�
 브라우저 입장에서는 같은 오리진이므로 CORS 가 발생하지 않는다.
 그래서 `VITE_API_BASE_URL` 을 비워 두고 `/api/...` 로 호출하면 된다.
 
-**이 우회는 개발 서버 전용이다.** 배포 환경에는 프록시가 없으므로 Backend의
-`CORS_ALLOWED_ORIGINS` 설정과 인증 요청의 `credentials: 'include'`가 필요하다.
+**이 우회는 Vite 개발 서버 전용이다.** 별도 Origin으로 배포하면 Vite 개발 프록시가
+포함되지 않으므로 Frontend에는 Backend Origin을, Backend에는 정확한 Frontend Origin을
+설정해야 한다.
+
+```bash
+VITE_API_BASE_URL=https://api.example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com
+```
 
 운영 배포는 reverse proxy로 Frontend와 Backend를 동일 Origin에 제공하는 것을 기본으로
 한다. 별도 Origin이 불가피한 경우에만 Backend에 정확한 Origin allowlist를 설정한다.

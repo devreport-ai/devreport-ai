@@ -31,6 +31,10 @@ class ProductionEnvironmentValidatorTest {
 			.hasMessageContaining("보안 헤더");
 		assertThatThrownBy(() -> validate(environment().withProperty("springdoc.api-docs.enabled", "true")))
 			.hasMessageContaining("Swagger/OpenAPI");
+		assertThatThrownBy(() -> validate(environment(null, false)))
+			.hasMessageContaining("Swagger/OpenAPI");
+		assertThatThrownBy(() -> validate(environment(false, null)))
+			.hasMessageContaining("Swagger/OpenAPI");
 		assertThatThrownBy(() -> validate(
 			environment().withProperty("management.endpoints.web.exposure.include", "health,info")))
 			.hasMessageContaining("Actuator");
@@ -42,7 +46,11 @@ class ProductionEnvironmentValidatorTest {
 	}
 
 	private static MockEnvironment environment() {
-		return new MockEnvironment()
+		return environment(false, false);
+	}
+
+	private static MockEnvironment environment(Boolean apiDocsEnabled, Boolean swaggerUiEnabled) {
+		MockEnvironment environment = new MockEnvironment()
 			.withProperty("spring.profiles.active", "prod")
 			.withProperty("DATABASE_PASSWORD", "database-secret")
 			.withProperty("JWT_SECRET", "jwt-secret")
@@ -50,9 +58,14 @@ class ProductionEnvironmentValidatorTest {
 			.withProperty("EXPORT_PRINT_URL", "https://app.example.com/print/{exportId}")
 			.withProperty("ai.service.mock", "false")
 			.withProperty("security.headers.enabled", "true")
-			.withProperty("springdoc.api-docs.enabled", "false")
-			.withProperty("springdoc.swagger-ui.enabled", "false")
 			.withProperty("management.endpoints.web.exposure.include", "health");
+		if (apiDocsEnabled != null) {
+			environment.withProperty("springdoc.api-docs.enabled", apiDocsEnabled.toString());
+		}
+		if (swaggerUiEnabled != null) {
+			environment.withProperty("springdoc.swagger-ui.enabled", swaggerUiEnabled.toString());
+		}
+		return environment;
 	}
 
 	private static void validate(MockEnvironment environment) {
