@@ -23,7 +23,7 @@ export interface AutosaveInput {
   /**
    * 서버가 알고 있는 마지막 상태(GET 응답). 여기서 어긋난 것이 저장 대상이다.
    * 현재 입력값으로 초기화하면 생성 흐름에서 고른 템플릿이 "이미 저장됨" 취급되어
-   * 편집 전까지 저장이 안 나가고 새로고침 시 선택이 사라진다.
+   * 편집 전까지 저장이 안 나가고 PDF 내보내기가 409 로 막힌다.
    */
   server: {
     document: ReportDocument
@@ -40,7 +40,7 @@ export function useAutosave(input: AutosaveInput): {
 } {
   const { reportId, document, templateId, templateVersion, presentationSettings } = input
   const [status, setStatus] = useState<SaveStatus>('idle')
-  const [savedTemplateId, setSavedTemplateId] = useState(input.templateId)
+  const [savedTemplateId, setSavedTemplateId] = useState(input.server.templateId)
 
   // 마지막으로 저장에 성공한 내용과 version. state 로 두면 저장 성공마다
   // effect 가 다시 돌아 불필요한 저장이 이어지므로 ref 로 둔다.
