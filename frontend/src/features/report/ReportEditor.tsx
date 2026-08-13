@@ -67,7 +67,7 @@ export function ReportEditor({
     })
   }, [exportStatus.data, state.document.metadata.title])
 
-  const { status } = useAutosave({
+  const { status, savedTemplateId } = useAutosave({
     reportId: report.id,
     document: state.document,
     templateId: state.templateId,
@@ -132,6 +132,8 @@ export function ReportEditor({
             (exportId !== null &&
               !exportStatus.error &&
               !(exportStatus.data && isExportFinished(exportStatus.data.status))),
+          // 템플릿 선택이 서버에 저장되기 전에 내보내면 409 가 난다. 저장될 때까지 잠근다.
+          waitingSave: state.templateId !== savedTemplateId,
           error: exportError(startExport.error, exportStatus),
         }}
         onTemplate={(id) => {
@@ -235,7 +237,7 @@ function Toolbar({
 }: {
   state: EditorState
   status: SaveStatus
-  exportState: { pending: boolean; error: string | null }
+  exportState: { pending: boolean; waitingSave: boolean; error: string | null }
   onTemplate: (id: string) => void
   onUndo: () => void
   onRedo: () => void
@@ -289,7 +291,8 @@ function Toolbar({
       <button
         type="button"
         onClick={onExport}
-        disabled={exportState.pending}
+        disabled={exportState.pending || exportState.waitingSave}
+        title={exportState.waitingSave ? '변경 사항 저장 후 가능합니다' : undefined}
         className="rounded bg-gray-900 px-3 py-1 text-sm text-white disabled:opacity-40"
       >
         {exportState.pending ? 'PDF 만드는 중…' : 'PDF 다운로드'}
