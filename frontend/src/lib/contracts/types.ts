@@ -26,6 +26,27 @@ export type FileResponse = Schemas['FileResponse']
 export type FilePageResponse = Schemas['FilePageResponse']
 export type FileIdResponse = Schemas['FileIdResponse']
 
+/**
+ * 생성 타입 보정 두 가지:
+ * 1. openapi-typescript 가 JSON Schema 의 $defs 를 데이터 속성으로 포함시킨다 — 실제
+ *    응답에는 없으므로 걷어낸다.
+ * 2. ReportUpdateRequest 의 oneOf(templateId·Version 둘 다 null 또는 둘 다 값)가
+ *    사용 불가능한 교차 타입으로 생성된다. 계약 그대로 손으로 옮긴다.
+ */
+export type ReportDocument = Omit<Schemas['report-document.schema'], '$defs'>
+export type Report = Omit<Schemas['report.schema'], 'document' | '$defs'> & {
+  document: ReportDocument
+}
+export type ReportSection = Schemas['section']
+export type ReportBlock = Schemas['block']
+export interface ReportUpdateRequest {
+  document: ReportDocument
+  templateId: string | null
+  templateVersion: number | null
+  presentationSettings: Record<string, string | number | boolean | null>
+  expectedVersion: number
+}
+
 export type GenerationRequest = Schemas['GenerationRequest']
 
 /**

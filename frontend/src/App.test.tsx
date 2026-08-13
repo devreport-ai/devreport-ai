@@ -15,17 +15,35 @@ function loginAs() {
   setAccessToken('test-access')
 }
 
+function json(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      ),
-    ),
+    vi.fn((url: string) => {
+      if (url.includes('/api/reports/')) {
+        return Promise.resolve(
+          json({
+            id: 'abc-123',
+            projectId: 'p-1',
+            document: { metadata: { title: '테스트 보고서' }, sections: [] },
+            templateId: null,
+            templateVersion: null,
+            presentationSettings: {},
+            version: 0,
+            updatedAt: '2026-08-12T00:00:00+09:00',
+          }),
+        )
+      }
+      return Promise.resolve(
+        json({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+      )
+    }),
   )
 })
 
@@ -42,13 +60,11 @@ describe('App 라우팅', () => {
     expect(await screen.findByRole('heading', { name: 'DevReport AI' })).toBeInTheDocument()
   })
 
-  it('로그인 상태로 /reports/:reportId 에 들어가면 보고서 화면을 보여준다', async () => {
+  it('로그인 상태로 /reports/:reportId 에 들어가면 편집기가 문서 제목을 보여준다', async () => {
     loginAs()
     renderWithProviders(<App />, { route: '/reports/abc-123' })
 
-    expect(await screen.findByRole('heading', { name: '보고서' })).toBeInTheDocument()
-    // 생성 완료 후 이동이 제대로 됐는지 눈으로 확인할 수 있어야 한다.
-    expect(screen.getByText('abc-123')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '테스트 보고서' })).toBeInTheDocument()
   })
 
   it('정의되지 않은 주소로 들어가면 404 화면을 보여준다', async () => {

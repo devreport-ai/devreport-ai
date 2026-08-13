@@ -4,20 +4,20 @@
  * 생성 진행을 별도 페이지로 빼지 않은 이유: 사용자가 파일 목록을 보면서 기다리는 게
  * 자연스럽고, 실패했을 때 같은 화면에서 바로 다시 요청할 수 있어야 하기 때문이다.
  *
- * 템플릿 선택은 이번 범위가 아니다. 템플릿 저장은 편집기의 자동 저장·버전 관리와
- * 한 몸이라 #38 에서 함께 다룬다.
+ * 생성을 요청하면 곧바로 템플릿 선택으로 넘어간다(#36). 생성은 뒤에서 돌지만
+ * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useState } from 'react'
+import { useParams } from 'react-router'
 import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
 import { useGenerationJob, useStartGeneration } from '../features/generation/api'
+import { TemplateChoicePanel } from '../features/generation/TemplateChoicePanel'
 import { toDisplayMessage } from '../lib/api/errors'
 import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
   const { projectId = '' } = useParams()
-  const navigate = useNavigate()
 
   const files = useProjectFiles(projectId)
   const deleteFile = useDeleteFile(projectId)
@@ -32,13 +32,6 @@ export default function ProjectPage() {
   const [jobId, setJobId] = useState<string | null>(null)
 
   const job = useGenerationJob(jobId)
-
-  // 생성이 끝나면 편집기로 넘어간다. reportId 가 null 인 경우가 계약상 허용되므로 확인한다.
-  useEffect(() => {
-    if (job.data?.status === 'COMPLETED' && job.data.reportId) {
-      void navigate(`/reports/${job.data.reportId}`)
-    }
-  }, [job.data, navigate])
 
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
@@ -123,44 +116,46 @@ export default function ProjectPage() {
         )}
       </section>
 
-      <form onSubmit={handleGenerate} className="space-y-4">
-        <h2 className="text-lg font-semibold">보고서 정보</h2>
+      {jobId !== null ? (
+        <TemplateChoicePanel job={job} onRetry={() => setJobId(null)} />
+      ) : (
+        <form onSubmit={handleGenerate} className="space-y-4">
+          <h2 className="text-lg font-semibold">보고서 정보</h2>
 
-        <Field id="title" label="제목" required value={title} onChange={setTitle} />
-        <Field id="author" label="작성자" value={author} onChange={setAuthor} />
-        <Field id="course" label="과목" value={course} onChange={setCourse} />
-        <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
+          <Field id="title" label="제목" required value={title} onChange={setTitle} />
+          <Field id="author" label="작성자" value={author} onChange={setAuthor} />
+          <Field id="course" label="과목" value={course} onChange={setCourse} />
+          <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
 
-        <div>
-          <label htmlFor="instructions" className="block text-sm font-medium">
-            작성 지시사항 <span className="text-red-600">*</span>
-          </label>
-          <textarea
-            id="instructions"
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            rows={4}
-            placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-          />
-        </div>
+          <div>
+            <label htmlFor="instructions" className="block text-sm font-medium">
+              작성 지시사항 <span className="text-red-600">*</span>
+            </label>
+            <textarea
+              id="instructions"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              rows={4}
+              placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={!canSubmit || startGeneration.isPending}
-          className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
-        >
-          {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
-        </button>
+          <button
+            type="submit"
+            disabled={!canSubmit || startGeneration.isPending}
+            className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
+          >
+            {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
+          </button>
 
-        {startGeneration.error && (
-          <p role="alert" className="text-sm text-red-600">
-            {toDisplayMessage(startGeneration.error)}
-          </p>
-        )}
-      </form>
-
-      {jobId && <GenerationStatus job={job} onRetry={() => setJobId(null)} />}
+          {startGeneration.error && (
+            <p role="alert" className="text-sm text-red-600">
+              {toDisplayMessage(startGeneration.error)}
+            </p>
+          )}
+        </form>
+      )}
     </main>
   )
 }
@@ -246,92 +241,5 @@ function FileRow({
         삭제
       </button>
     </li>
-  )
-}
-
-/**
- * 생성 진행 상태.
- *
- * `progress` 는 0·10·100 세 값뿐이라 퍼센트 진행바로 쓰면 10% 에서 한참 멈춘 것처럼 보인다.
- * 그래서 숫자 대신 `currentStage` 를 문구로 보여준다.
- */
-const STAGE_LABELS: Record<string, string> = {
-  QUEUED: '순서를 기다리는 중',
-  CALLING_AI: 'AI 가 보고서를 작성하는 중',
-  COMPLETED: '완료',
-  FAILED: '실패',
-  CANCELED: '취소됨',
-}
-
-function GenerationStatus({
-  job,
-  onRetry,
-}: {
-  job: ReturnType<typeof useGenerationJob>
-  onRetry: () => void
-}) {
-  if (job.isPending) return <p className="text-gray-500">생성 작업을 확인하는 중…</p>
-
-  if (job.error) {
-    return (
-      <div role="alert" className="space-y-2">
-        <p className="text-red-600">{toDisplayMessage(job.error)}</p>
-        <RetryButton onClick={onRetry} />
-      </div>
-    )
-  }
-
-  const data = job.data
-  if (!data) return null
-
-  if (job.timedOut) {
-    return (
-      <div role="alert" className="space-y-2">
-        <p className="font-medium text-red-600">
-          생성이 너무 오래 걸려 상태 확인을 멈췄습니다. 작업은 서버에서 계속될 수 있습니다.
-        </p>
-        <RetryButton onClick={onRetry} />
-      </div>
-    )
-  }
-
-  if (data.status === 'FAILED' || data.status === 'CANCELED') {
-    return (
-      <div role="alert" className="space-y-2">
-        <p className="font-medium text-red-600">
-          {data.status === 'FAILED' ? '보고서 생성에 실패했습니다.' : '생성이 취소되었습니다.'}
-        </p>
-        {data.failureMessage && <p className="text-sm text-red-600">{data.failureMessage}</p>}
-        <RetryButton onClick={onRetry} />
-      </div>
-    )
-  }
-
-  if (data.status === 'COMPLETED' && !data.reportId) {
-    // 계약상 가능한 조합이다. 편집기로 보낼 수 없으니 그대로 알린다.
-    return (
-      <div role="alert" className="space-y-2">
-        <p className="text-red-600">생성은 끝났지만 보고서를 찾을 수 없습니다.</p>
-        <RetryButton onClick={onRetry} />
-      </div>
-    )
-  }
-
-  return (
-    <p aria-live="polite" className="text-gray-700">
-      {STAGE_LABELS[data.currentStage] ?? '진행 중'}…
-    </p>
-  )
-}
-
-function RetryButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
-    >
-      다시 시도
-    </button>
   )
 }
