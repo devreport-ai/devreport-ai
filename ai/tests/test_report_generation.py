@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import reports
 from app.core.config import Settings, get_settings
 from app.core.errors import AIServiceError, ErrorCode
 from app.main import app
@@ -134,6 +135,35 @@ def test_generate_returns_unavailable_when_mock_is_disabled():
 
     assert response.status_code == 503
     assert response.json()["code"] == "AI_UNAVAILABLE"
+
+
+def test_generate_uses_pipeline_when_mock_is_disabled(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, object] = {}
+
+    class FakePipeline:
+        def __init__(self, gemini: object, report_schema_path: Path) -> None:
+            captured["gemini"] = gemini
+            captured["report_schema_path"] = report_schema_path
+
+        def generate(self, request: object, context: object) -> dict[str, object]:
+            captured["request"] = request
+            captured["context"] = context
+            return {"metadata": {"title": "실습보고서"}, "sections": []}
+
+    monkeypatch.setattr(reports, "ReportGenerationPipeline", FakePipeline)
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        mock_report=False, gemini_api_key="test-api-key"
+    )
+    try:
+        response = client.post("/internal/ai/reports/generate", files=multipart_data())
+    finally:
+        app.dependency_overrides.pop(get_settings)
+
+    assert response.status_code == 200
+    assert response.json() == {"metadata": {"title": "실습보고서"}, "sections": []}
+    assert captured["report_schema_path"] == Settings().report_schema_path
+    assert captured["request"] is not None
+    assert captured["context"] is not None
 
 
 def test_mock_generator_converts_invalid_utf8_contract_file_to_ai_error(tmp_path: Path):

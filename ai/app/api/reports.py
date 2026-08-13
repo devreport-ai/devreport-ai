@@ -3,13 +3,16 @@ from typing import Annotated, Any, TypeVar
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from pydantic import BaseModel, ValidationError
+from starlette.concurrency import run_in_threadpool
 
+from app.clients.gemini_client import GeminiClient
 from app.core.config import Settings, get_settings
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.generation import GenerationManifest, GenerationRequest
 from app.services.bundle_normalizer import BundleNormalizer
 from app.services.mock_report_generator import MockReportGenerator
 from app.services.multipart_bundle_validator import MultipartBundleValidator
+from app.services.report_generation_pipeline import ReportGenerationPipeline
 
 router = APIRouter(prefix="/internal/ai/reports", tags=["internal reports"])
 
@@ -24,25 +27,28 @@ async def generate_report(
     settings: SettingsDep,
     files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> dict[str, Any]:
-    """검증된 multipart bundle을 받아 현재 연동 단계에서는 샘플 문서를 반환한다.
-
-    파일 내용 분석과 Gemini 호출은 후속 task에서 연결한다.
-    """
+    """검증된 Backend multipart bundle을 Mock 또는 Gemini 파이프라인으로 처리한다."""
     generation_request = parse_json_model(request, GenerationRequest)
     generation_manifest = parse_json_model(await manifest.read(), GenerationManifest)
     MultipartBundleValidator.validate(generation_manifest, files or [], generation_request.file_ids)
-    await BundleNormalizer().normalize(generation_manifest, files or [])
+    context = await BundleNormalizer().normalize(generation_manifest, files or [])
 
-    if not settings.mock_report:
-        raise AIServiceError(
-            ErrorCode.AI_UNAVAILABLE,
-            "Gemini 보고서 생성 기능이 아직 준비되지 않았습니다.",
-        )
+    if settings.mock_report:
+        return MockReportGenerator(
+            sample_report_path=settings.sample_report_path,
+            report_schema_path=settings.report_schema_path,
+        ).generate()
 
-    return MockReportGenerator(
-        sample_report_path=settings.sample_report_path,
-        report_schema_path=settings.report_schema_path,
-    ).generate()
+    pipeline = ReportGenerationPipeline(
+        GeminiClient(
+            api_key=settings.gemini_api_key,
+            model=settings.gemini_model,
+            timeout_seconds=settings.gemini_timeout_seconds,
+            max_retries=settings.gemini_max_retries,
+        ),
+        settings.report_schema_path,
+    )
+    return await run_in_threadpool(pipeline.generate, generation_request, context)
 
 
 def parse_json_model(raw_value: str | bytes, model: type[ModelT]) -> ModelT:
