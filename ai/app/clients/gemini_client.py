@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from time import sleep
 from typing import Any, Protocol
+
+import httpx
 
 from app.core.errors import AIServiceError, ErrorCode
 
@@ -38,7 +41,12 @@ class GeminiClient:
         if not self._api_key:
             raise AIServiceError(ErrorCode.AI_UNAVAILABLE, "Gemini API Key가 설정되지 않았습니다.")
 
-        client = self._client_factory(self._api_key, self._timeout_seconds)
+        try:
+            client = self._client_factory(self._api_key, self._timeout_seconds)
+        except Exception as exception:
+            raise AIServiceError(
+                ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
+            ) from exception
         response = self._generate_with_retries(client, prompt)
 
         text = getattr(response, "text", None)
@@ -46,6 +54,12 @@ class GeminiClient:
             raise AIServiceError(
                 ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다."
             )
+        try:
+            json.loads(text)
+        except json.JSONDecodeError as exception:
+            raise AIServiceError(
+                ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다."
+            ) from exception
         return text
 
     def _generate_with_retries(self, client: GeminiSdkClient, prompt: str) -> Any:
@@ -64,7 +78,7 @@ class GeminiClient:
                 self._sleeper(retry_delay_seconds(attempt))
 
         assert last_exception is not None
-        if isinstance(last_exception, TimeoutError):
+        if is_timeout(last_exception):
             raise AIServiceError(
                 ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
             ) from last_exception
@@ -74,10 +88,14 @@ class GeminiClient:
 
 
 def is_retryable(exception: Exception) -> bool:
-    if isinstance(exception, TimeoutError):
+    if is_timeout(exception):
         return True
     status = getattr(exception, "code", None) or getattr(exception, "status_code", None)
     return isinstance(status, int) and status >= 500
+
+
+def is_timeout(exception: Exception) -> bool:
+    return isinstance(exception, (TimeoutError, httpx.TimeoutException))
 
 
 def retry_delay_seconds(attempt: int) -> float:

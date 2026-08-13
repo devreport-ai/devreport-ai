@@ -87,6 +87,15 @@ def test_generate_rejects_metadata_without_title():
     assert response.json()["code"] == "AI_INVALID_REQUEST"
 
 
+def test_generate_rejects_metadata_with_blank_title():
+    request = valid_request() | {"metadata": {"title": "   "}}
+
+    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
 def test_generate_rejects_unknown_metadata_field():
     request = valid_request() | {"metadata": {"title": "보고서", "unknown": "value"}}
 

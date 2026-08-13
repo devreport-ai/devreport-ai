@@ -37,6 +37,13 @@ class ReportMetadata(BaseModel):
     course: str | None = None
     date: CalendarDate | None = None
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("title must not be blank")
+        return value
+
 
 class ManifestFile(BaseModel):
     """Backend가 multipart 파일 part와 연결하기 위해 제공하는 파일 메타데이터."""

@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import httpx
 import pytest
 
 from app.clients.gemini_client import GeminiClient
@@ -82,6 +83,47 @@ def test_rejects_empty_response_text():
         client(Response(" ")).generate_json("prompt")
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_rejects_non_json_response_text():
+    with pytest.raises(AIServiceError) as raised:
+        client(Response("not-json")).generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_converts_client_initialization_failure_to_ai_unavailable():
+    def failing_factory(_api_key: str, _timeout_seconds: float) -> FakeClient:
+        raise RuntimeError("secret SDK detail")
+
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=10,
+        max_retries=0,
+        client_factory=failing_factory,
+    )
+
+    with pytest.raises(AIServiceError) as raised:
+        gemini_client.generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_UNAVAILABLE
+    assert "secret SDK detail" not in raised.value.message
+
+
+def test_retries_httpx_timeout_and_converts_it_to_ai_timeout():
+    delays: list[float] = []
+
+    with pytest.raises(AIServiceError) as raised:
+        client(
+            httpx.TimeoutException("timed out"),
+            httpx.TimeoutException("timed out"),
+            max_retries=1,
+            sleeper=delays.append,
+        ).generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_TIMEOUT
+    assert delays == [0.25]
 
 
 def test_retries_transient_sdk_failure_before_returning_response():
