@@ -163,7 +163,7 @@
    주의: 서버 Chromium 에는 한글 명조가 없다. 이 템플릿을 확정하면 명조 웹폰트
    (예: Noto Serif KR) 추가가 필요하다. */
 .tpl-latex {
-  font-family: 'AppleMyungjo', 'Nanum Myeongjo', 'Noto Serif KR', serif;
+  font-family: AppleMyungjo, 'Nanum Myeongjo', 'Noto Serif KR', serif;
   font-size: 11pt;
   line-height: 1.8;
 }

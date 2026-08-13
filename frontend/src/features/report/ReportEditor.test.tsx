@@ -1,6 +1,6 @@
 /** 편집기 통합 동작 — #38 완료 조건(템플릿 전환 시 콘텐츠 유지)과 편집·삭제·undo 를 고정한다. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { ReportEditor } from './ReportEditor'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import type { Report } from '../../lib/contracts/types'
@@ -100,6 +100,27 @@ describe('ReportEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '콜아웃' }))
 
     expect(screen.getAllByRole('button', { name: '블록 삭제' })).toHaveLength(3)
+  })
+
+  it('생성 흐름에서 고른 템플릿은 편집 없이도 자동 저장된다', async () => {
+    // 저장 기준을 입력값으로 잡으면 "이미 저장됨" 취급되어 PUT 이 안 나가고
+    // 새로고침 시 선택이 사라진다 (리뷰 지적·실측 버그)
+    vi.useFakeTimers()
+    try {
+      renderWithProviders(<ReportEditor report={report()} initialTemplateId="compact" />)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      const put = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(put).toBeDefined()
+      expect(String((put![1] as RequestInit).body)).toContain('"templateId":"compact"')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('생성 흐름에서 고른 템플릿이 저장된 값이 없을 때 적용된다', () => {

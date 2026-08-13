@@ -59,7 +59,12 @@ export function ReportEditor({
       string,
       string | number | boolean | null
     >,
-    initialVersion: report.version,
+    server: {
+      document: report.document,
+      templateId: report.templateId,
+      templateVersion: report.templateVersion,
+      version: report.version,
+    },
   })
 
   // 블록 편집 입력창 안에서는 브라우저 기본 undo 를 존중한다

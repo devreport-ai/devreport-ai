@@ -12,10 +12,14 @@ export function useImageUrls(projectId: string, document: ReportDocument): Recor
   // 편집으로 문서가 바뀌어도 이미지 fileId 목록이 같으면 다시 받지 않는다
   const fileIdsKey = useMemo(
     () =>
-      document.sections
-        .flatMap((s) => s.blocks)
-        .filter((b) => b.type === 'image')
-        .map((b) => b.fileId)
+      [
+        ...new Set(
+          document.sections
+            .flatMap((s) => s.blocks)
+            .filter((b) => b.type === 'image')
+            .map((b) => b.fileId),
+        ),
+      ]
         .sort()
         .join(','),
     [document],
@@ -29,7 +33,10 @@ export function useImageUrls(projectId: string, document: ReportDocument): Recor
     Promise.all(
       fileIdsKey.split(',').map(async (fileId) => {
         try {
-          loaded[fileId] = await fetchAuthedBlobUrl(`/api/projects/${projectId}/files/${fileId}`)
+          const url = await fetchAuthedBlobUrl(`/api/projects/${projectId}/files/${fileId}`)
+          // 정리 이후 도착한 응답을 loaded 에 넣으면 아무도 해제하지 않는다 (StrictMode 상시 경로)
+          if (cancelled) URL.revokeObjectURL(url)
+          else loaded[fileId] = url
         } catch {
           // 한 장이 깨져도 나머지는 보여준다. 실패한 것은 대체 텍스트로 남는다.
         }

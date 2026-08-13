@@ -20,8 +20,17 @@ export interface AutosaveInput {
   templateId: string | null
   templateVersion: number | null
   presentationSettings: Record<string, string | number | boolean | null>
-  /** 서버에서 마지막으로 확인한 version. 첫 값은 GET 응답의 version. */
-  initialVersion: number
+  /**
+   * 서버가 알고 있는 마지막 상태(GET 응답). 여기서 어긋난 것이 저장 대상이다.
+   * 현재 입력값으로 초기화하면 생성 흐름에서 고른 템플릿이 "이미 저장됨" 취급되어
+   * 편집 전까지 저장이 안 나가고 새로고침 시 선택이 사라진다.
+   */
+  server: {
+    document: ReportDocument
+    templateId: string | null
+    templateVersion: number | null
+    version: number
+  }
 }
 
 export function useAutosave(input: AutosaveInput): { status: SaveStatus } {
@@ -31,10 +40,10 @@ export function useAutosave(input: AutosaveInput): { status: SaveStatus } {
   // 마지막으로 저장에 성공한 내용과 version. state 로 두면 저장 성공마다
   // effect 가 다시 돌아 불필요한 저장이 이어지므로 ref 로 둔다.
   const saved = useRef({
-    document: input.document,
-    templateId: input.templateId,
-    templateVersion: input.templateVersion,
-    version: input.initialVersion,
+    document: input.server.document,
+    templateId: input.server.templateId,
+    templateVersion: input.server.templateVersion,
+    version: input.server.version,
   })
   useEffect(() => {
     const dirty =
