@@ -1,7 +1,10 @@
 package ai.devreport.backend.usage.application;
 
+import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,6 +12,7 @@ import ai.devreport.backend.usage.domain.UsageLimitException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,7 +91,8 @@ public class RateLimitService {
 	@Transactional
 	public void cleanupExpiredBuckets() {
 		Instant cutoff = Instant.now().minus(properties.getRateLimit().getRetention());
-		jdbc.update("DELETE FROM rate_limit_buckets WHERE window_started_at < ?", cutoff);
+		jdbc.update("DELETE FROM rate_limit_buckets WHERE window_started_at < ?",
+			postgresql ? postgresqlTimestamp(cutoff) : cutoff);
 	}
 
 	private void check(String endpoint, String scope, int limit) {
@@ -97,7 +102,8 @@ public class RateLimitService {
 		long epochSecond = Math.floorDiv(now.getEpochSecond(), seconds) * seconds;
 		Instant windowStart = Instant.ofEpochSecond(epochSecond);
 		String bucketKey = endpoint + ":" + scope;
-		jdbc.update(postgresql ? POSTGRESQL_UPSERT : H2_UPSERT, bucketKey, windowStart);
+		jdbc.update(postgresql ? POSTGRESQL_UPSERT : H2_UPSERT, bucketKey,
+			postgresql ? postgresqlTimestamp(windowStart) : windowStart);
 		Integer count = jdbc.queryForObject(
 			"SELECT request_count FROM rate_limit_buckets WHERE bucket_key = ?", Integer.class, bucketKey);
 		if (count != null && count > limit) {
@@ -106,6 +112,11 @@ public class RateLimitService {
 				"요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 				Map.of("limit", limit, "retryAfterSeconds", retryAfter));
 		}
+	}
+
+	private static SqlParameterValue postgresqlTimestamp(Instant value) {
+		return new SqlParameterValue(Types.TIMESTAMP_WITH_TIMEZONE,
+			OffsetDateTime.ofInstant(value, ZoneOffset.UTC));
 	}
 
 	private static String scope(String value) {
