@@ -9,6 +9,7 @@ import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.generation.application.GenerationJobService;
 import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.integration.ai.GenerationRequest;
+import ai.devreport.backend.usage.application.RateLimitService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,16 +25,20 @@ import org.springframework.web.bind.annotation.RestController;
 class GenerationController {
 
 	private final GenerationJobService jobs;
+	private final RateLimitService rateLimits;
 
-	GenerationController(GenerationJobService jobs) {
+	GenerationController(GenerationJobService jobs, RateLimitService rateLimits) {
 		this.jobs = jobs;
+		this.rateLimits = rateLimits;
 	}
 
 	@PostMapping("/api/projects/{projectId}/generations")
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	JobIdResponse create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@Valid @RequestBody GenerationRequest request) {
-		return new JobIdResponse(jobs.create(AuthenticatedUser.id(jwt), projectId, request).getId());
+		UUID ownerId = AuthenticatedUser.id(jwt);
+		rateLimits.checkGeneration(ownerId);
+		return new JobIdResponse(jobs.create(ownerId, projectId, request).getId());
 	}
 
 	@GetMapping("/api/generations/{jobId}")

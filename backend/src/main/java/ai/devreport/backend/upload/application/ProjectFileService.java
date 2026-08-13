@@ -35,6 +35,7 @@ import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 import ai.devreport.backend.usage.application.UsageEventService;
+import ai.devreport.backend.usage.application.UsageLimitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,27 +70,31 @@ public class ProjectFileService {
 	private final ProjectService projects;
 	private final SafeZipExtractor zipExtractor;
 	private final UsageEventService usageEvents;
+	private final UsageLimitService usageLimits;
 	private final ReportExportRepository exports;
 	private final Path uploadRoot;
 
 	ProjectFileService(UploadedFileRepository files, GenerationJobRepository generationJobs, ProjectService projects,
 		SafeZipExtractor zipExtractor, UsageEventService usageEvents, ReportExportRepository exports,
+		UsageLimitService usageLimits,
 		@Value("${storage.upload-path}") String uploadPath) {
 		this.files = files;
 		this.generationJobs = generationJobs;
 		this.projects = projects;
 		this.zipExtractor = zipExtractor;
 		this.usageEvents = usageEvents;
+		this.usageLimits = usageLimits;
 		this.exports = exports;
 		this.uploadRoot = Path.of(uploadPath).toAbsolutePath().normalize();
 	}
 
 	public UploadedFile upload(UUID ownerId, UUID projectId, MultipartFile multipartFile) {
-		projects.requireOwned(ownerId, projectId);
+		projects.lock(ownerId, projectId);
 		String originalName = originalName(multipartFile);
 		String extension = extension(originalName);
 		String contentType = contentType(multipartFile);
 		validateMetadata(multipartFile, extension, contentType);
+		usageLimits.checkUpload(ownerId, multipartFile.getSize());
 
 		Path temporary = null;
 		Path extractionTemporary = null;

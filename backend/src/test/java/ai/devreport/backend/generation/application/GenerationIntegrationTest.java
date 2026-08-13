@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.devreport.backend.integration.ai.AiHealthResponse;
 import ai.devreport.backend.integration.ai.AiServiceClient;
@@ -26,6 +27,7 @@ import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.integration.ai.GenerationBundle;
 import ai.devreport.backend.integration.ai.MockAiServiceClient;
 import ai.devreport.backend.report.domain.ReportDocument;
+import ai.devreport.backend.usage.application.UsageLimitProperties;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,9 @@ class GenerationIntegrationTest {
 
 	@Autowired
 	GenerationRecovery recovery;
+
+	@Autowired
+	UsageLimitProperties usageLimits;
 
 	@DynamicPropertySource
 	static void storageProperties(DynamicPropertyRegistry registry) {
@@ -158,6 +163,78 @@ class GenerationIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.failureCode").value("REPORT_DOCUMENT_INVALID"));
 		assertThat(jobs.findById(UUID.fromString(jobId)).orElseThrow().getReportId()).isNull();
+	}
+
+	@Test
+	void limitsConcurrentGenerationsAcrossProjectsForOneUser() throws Exception {
+		String token = signupAndLogin("generation-concurrency@example.com");
+		String firstProjectId = createProject(token, "첫 번째 프로젝트");
+		String secondProjectId = createProject(token, "두 번째 프로젝트");
+		String thirdProjectId = createProject(token, "세 번째 프로젝트");
+		String firstFileId = upload(token, firstProjectId, "first.txt", "첫 번째 자료");
+		String secondFileId = upload(token, secondProjectId, "second.txt", "두 번째 자료");
+		String thirdFileId = upload(token, thirdProjectId, "third.txt", "세 번째 자료");
+
+		aiService.prepare(false);
+		String firstJobId = createGeneration(token, firstProjectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"첫 번째 생성"}
+			""".formatted(firstFileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		String secondJobId = createGeneration(token, secondProjectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"두 번째 생성"}
+			""".formatted(secondFileId));
+		awaitActive(secondJobId);
+		awaitGenerationCalls(2);
+		long jobsBeforeRejectedRequest = jobs.count();
+		int generationCallsBeforeRejectedRequest = aiService.generationCalls();
+
+		mvc.perform(post("/api/projects/{projectId}/generations", thirdProjectId)
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"fileIds":["%s"],"metadata":{},"instructions":"세 번째 생성"}
+					""".formatted(thirdFileId)))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(jsonPath("$.code").value("GENERATION_CONCURRENCY_LIMIT_EXCEEDED"));
+		assertThat(jobs.count()).isEqualTo(jobsBeforeRejectedRequest);
+		assertThat(aiService.generationCalls()).isEqualTo(generationCallsBeforeRejectedRequest);
+
+		aiService.release();
+		awaitStatus(token, firstJobId, "COMPLETED");
+		awaitStatus(token, secondJobId, "COMPLETED");
+	}
+
+	@Test
+	void limitsDailyGenerationsAfterACompletedRequest() throws Exception {
+		long originalLimit = usageLimits.getGeneration().getDailyLimit();
+		usageLimits.getGeneration().setDailyLimit(1);
+		try {
+			String token = signupAndLogin("generation-daily@example.com");
+			String projectId = createProject(token, "일일 제한 프로젝트");
+			String fileId = upload(token, projectId, "daily.txt", "일일 제한 자료");
+			aiService.prepare(false);
+			String firstJobId = createGeneration(token, projectId, """
+				{"fileIds":["%s"],"metadata":{},"instructions":"첫 번째 생성"}
+				""".formatted(fileId));
+			assertThat(aiService.awaitStarted()).isTrue();
+			aiService.release();
+			awaitStatus(token, firstJobId, "COMPLETED");
+		long jobsBeforeRejectedRequest = jobs.count();
+		int generationCallsBeforeRejectedRequest = aiService.generationCalls();
+
+			mvc.perform(post("/api/projects/{projectId}/generations", projectId)
+					.header("Authorization", bearer(token))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"fileIds":["%s"],"metadata":{},"instructions":"두 번째 생성"}
+						""".formatted(fileId)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("GENERATION_DAILY_LIMIT_EXCEEDED"));
+			assertThat(jobs.count()).isEqualTo(jobsBeforeRejectedRequest);
+			assertThat(aiService.generationCalls()).isEqualTo(generationCallsBeforeRejectedRequest);
+		} finally {
+			usageLimits.getGeneration().setDailyLimit(originalLimit);
+		}
 	}
 
 	@Test
@@ -272,6 +349,18 @@ class GenerationIntegrationTest {
 		throw new AssertionError("Generation did not reach status " + expected);
 	}
 
+	private void awaitActive(String jobId) throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			GenerationJob.Status status = jobs.findById(UUID.fromString(jobId))
+				.map(GenerationJob::getStatus).orElse(null);
+			if (status == GenerationJob.Status.PENDING || status == GenerationJob.Status.PROCESSING) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("Generation did not become active");
+	}
+
 	private String createGeneration(String token, String projectId, String requestBody) throws Exception {
 		var request = post("/api/projects/{projectId}/generations", projectId)
 			.header("Authorization", bearer(token));
@@ -316,6 +405,16 @@ class GenerationIntegrationTest {
 			Thread.sleep(20);
 		}
 		throw new AssertionError("Generation bundle was not deleted");
+	}
+
+	private void awaitGenerationCalls(int expected) throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			if (aiService.generationCalls() >= expected) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("AI generation calls did not reach " + expected);
 	}
 
 	private String createProject(String token, String name) throws Exception {
@@ -366,6 +465,7 @@ class GenerationIntegrationTest {
 		private volatile boolean fail;
 		private volatile ReportDocument generatedResult;
 		private volatile Path bundleRoot;
+		private final AtomicInteger generationCalls = new AtomicInteger();
 
 		void prepare(boolean shouldFail) {
 			prepare(shouldFail, null);
@@ -377,6 +477,7 @@ class GenerationIntegrationTest {
 			fail = shouldFail;
 			generatedResult = result;
 			bundleRoot = null;
+			generationCalls.set(0);
 		}
 
 		boolean awaitStarted() throws InterruptedException {
@@ -391,6 +492,10 @@ class GenerationIntegrationTest {
 			return bundleRoot;
 		}
 
+		int generationCalls() {
+			return generationCalls.get();
+		}
+
 		@Override
 		public AiHealthResponse health() {
 			return new AiHealthResponse("UP", "test", "test", "test", true, true);
@@ -398,6 +503,7 @@ class GenerationIntegrationTest {
 
 		@Override
 		public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
+			generationCalls.incrementAndGet();
 			bundleRoot = bundle.root();
 			assertThat(bundleRoot).exists();
 			started.countDown();

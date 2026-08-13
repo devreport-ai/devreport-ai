@@ -18,6 +18,7 @@ import ai.devreport.backend.report.domain.ReportDocument;
 import ai.devreport.backend.report.application.ReportService;
 import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.usage.application.UsageEventService;
+import ai.devreport.backend.usage.application.UsageLimitService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -39,16 +40,19 @@ public class GenerationJobService {
 	private final ReportService reports;
 	private final ProjectFileService files;
 	private final UsageEventService usageEvents;
+	private final UsageLimitService usageLimits;
 	private final ObjectMapper objectMapper;
 
 	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events,
-		ReportService reports, ProjectFileService files, UsageEventService usageEvents, ObjectMapper objectMapper) {
+		ReportService reports, ProjectFileService files, UsageEventService usageEvents,
+		UsageLimitService usageLimits, ObjectMapper objectMapper) {
 		this.jobs = jobs;
 		this.projects = projects;
 		this.events = events;
 		this.reports = reports;
 		this.files = files;
 		this.usageEvents = usageEvents;
+		this.usageLimits = usageLimits;
 		this.objectMapper = objectMapper;
 	}
 
@@ -61,6 +65,7 @@ public class GenerationJobService {
 		if (jobs.existsByProjectIdAndStatusIn(projectId, ACTIVE_STATUSES)) {
 			throw alreadyRunning();
 		}
+		usageLimits.checkGeneration(ownerId);
 		GenerationJob job = new GenerationJob(projectId, request);
 		try {
 			jobs.saveAndFlush(job);

@@ -47,7 +47,8 @@ class ProjectFileController {
 	@ResponseStatus(HttpStatus.CREATED)
 	FileIdResponse upload(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID projectId,
 		@RequestPart MultipartFile file) {
-		return new FileIdResponse(fileService.upload(AuthenticatedUser.id(jwt), projectId, file).getId());
+		UUID ownerId = AuthenticatedUser.id(jwt);
+		return new FileIdResponse(fileService.upload(ownerId, projectId, file).getId());
 	}
 
 	@GetMapping

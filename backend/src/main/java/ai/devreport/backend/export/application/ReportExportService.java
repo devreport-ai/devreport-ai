@@ -25,9 +25,11 @@ import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
 import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 import ai.devreport.backend.report.application.ReportService;
 import ai.devreport.backend.report.domain.Report;
+import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.upload.application.ProjectFileService;
 import ai.devreport.backend.upload.application.ProjectFileService.FileContent;
 import ai.devreport.backend.usage.application.UsageEventService;
+import ai.devreport.backend.usage.application.UsageLimitService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -47,24 +49,29 @@ public class ReportExportService {
 
 	private final ReportExportRepository exports;
 	private final ReportService reports;
+	private final ProjectService projects;
 	private final ProjectFileService files;
 	private final ApplicationEventPublisher events;
 	private final PdfReportRenderer renderer;
 	private final UsageEventService usageEvents;
+	private final UsageLimitService usageLimits;
 	private final ObjectMapper objectMapper;
 	private final Duration ttl;
 	private final Duration renderTokenTtl;
 
-	ReportExportService(ReportExportRepository exports, ReportService reports, ProjectFileService files,
+	ReportExportService(ReportExportRepository exports, ReportService reports, ProjectService projects,
+		ProjectFileService files,
 		ApplicationEventPublisher events, PdfReportRenderer renderer, UsageEventService usageEvents,
-		ObjectMapper objectMapper, @Value("${storage.export-ttl}") Duration ttl,
+		UsageLimitService usageLimits, ObjectMapper objectMapper, @Value("${storage.export-ttl}") Duration ttl,
 		@Value("${export.render-token-ttl}") Duration renderTokenTtl) {
 		this.exports = exports;
 		this.reports = reports;
+		this.projects = projects;
 		this.files = files;
 		this.events = events;
 		this.renderer = renderer;
 		this.usageEvents = usageEvents;
+		this.usageLimits = usageLimits;
 		this.objectMapper = objectMapper;
 		this.ttl = ttl;
 		this.renderTokenTtl = renderTokenTtl;
@@ -80,6 +87,8 @@ public class ReportExportService {
 			throw new ReportExportException(HttpStatus.SERVICE_UNAVAILABLE, "EXPORT_PRINT_URL_NOT_CONFIGURED",
 				"PDF 출력 URL이 설정되지 않았거나 올바르지 않습니다.");
 		}
+		projects.lock(ownerId, report.getProjectId());
+		usageLimits.checkExport(ownerId);
 		ReportExport export = exports.save(new ReportExport(report.getId(), snapshot(report)));
 		events.publishEvent(new ReportExportQueuedEvent(export.getId()));
 		return export;
