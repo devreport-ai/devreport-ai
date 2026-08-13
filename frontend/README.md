@@ -75,6 +75,9 @@ Backend는 `CORS_ALLOWED_ORIGINS`에 등록된 Origin에만 credentials 요청�
 **이 우회는 개발 서버 전용이다.** 배포 환경에는 프록시가 없으므로 Backend의
 `CORS_ALLOWED_ORIGINS` 설정과 인증 요청의 `credentials: 'include'`가 필요하다.
 
+운영 배포는 reverse proxy로 Frontend와 Backend를 동일 Origin에 제공하는 것을 기본으로
+한다. 별도 Origin이 불가피한 경우에만 Backend에 정확한 Origin allowlist를 설정한다.
+
 Backend 를 함께 띄우려면 저장소 루트에서:
 
 ```bash

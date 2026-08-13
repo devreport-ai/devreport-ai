@@ -92,8 +92,9 @@ temporary bundle
 | `manifest` | `application/json` | `manifest.json` |
 | `files` | 각 파일 MIME | 파일별 반복 part, `filename`은 manifest의 `path` |
 
-요청은 `X-Internal-Token: ${AI_INTERNAL_TOKEN}` 헤더로 인증한다. 토큰이 없으면 Backend는
-AI 호출을 수행하지 않는다.
+요청은 `X-Internal-Token: ${AI_INTERNAL_TOKEN}` 헤더로 인증한다. Backend는 토큰이 없으면
+AI 호출을 수행하지 않고, AI Service는 헤더가 없거나 값이 다르면 `401 AI_UNAUTHORIZED`를
+반환한다. 인증 실패 응답에는 토큰·요청 원문·비밀값을 포함하지 않는다.
 
 ### 전송 제한
 
@@ -129,6 +130,7 @@ Frontend는 Report 응답의 `projectId`와 이미지 블록의 `fileId`를 조�
 
 | AI Service | Backend 사용자 API |
 | --- | --- |
+| `AI_UNAUTHORIZED` | `AI_SERVICE_UNAVAILABLE` |
 | `AI_INVALID_REQUEST` | `GENERATION_REQUEST_INVALID` |
 | `AI_FILE_PROCESSING_FAILED` | `GENERATION_FAILED` |
 | `AI_GENERATION_FAILED` | `GENERATION_FAILED` |
@@ -139,6 +141,17 @@ Frontend는 Report 응답의 `projectId`와 이미지 블록의 `fileId`를 조�
 `HttpAiServiceClient`는 AI Service의 공통 오류 응답에서 `code`만 읽어 위 표로 변환한다.
 원격 `message`·`details`는 내부 정보일 수 있으므로 Backend 응답과 로그에 전달하지 않는다.
 알 수 없거나 JSON으로 해석할 수 없는 오류 응답은 `GENERATION_FAILED`로 처리한다.
+
+## 운영 보안 설정
+
+Backend는 `SPRING_PROFILES_ACTIVE=prod`에서 `DATABASE_PASSWORD`, `JWT_SECRET`,
+`AI_INTERNAL_TOKEN`, `EXPORT_PRINT_URL`이 비어 있으면 기동하지 않으며 `AI_SERVICE_MOCK=true`를
+허용하지 않는다. AI Service는 `APP_ENV=prod`에서 `AI_INTERNAL_TOKEN`, `GEMINI_API_KEY`가
+필수이고 `MOCK_REPORT=true`를 허용하지 않는다.
+
+Frontend는 Backend와 동일 Origin으로 제공하는 것을 기본으로 한다. cross-origin이 불가피한
+경우에만 `CORS_ALLOWED_ORIGINS`에 명시적 allowlist를 설정하며, AI Service는 같은 서버 또는
+private network에 두고 외부 포트를 공개하지 않는다.
 
 ## 사용량 보호
 
