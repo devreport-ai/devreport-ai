@@ -28,7 +28,10 @@ import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
   const { projectId = '' } = useParams()
+  return <ProjectPageContent key={projectId} projectId={projectId} />
+}
 
+function ProjectPageContent({ projectId }: { projectId: string }) {
   const project = useProject(projectId)
   const files = useProjectFiles(projectId)
   const [reportPage, setReportPage] = useState(0)
