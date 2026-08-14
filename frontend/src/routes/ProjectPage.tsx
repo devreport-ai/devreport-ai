@@ -7,16 +7,23 @@
  * 생성을 요청하면 곧바로 템플릿 선택으로 넘어간다(#36). 생성은 뒤에서 돌지만
  * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { AppNav } from '../components/AppNav'
 import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
-import { useGenerationJob, useStartGeneration } from '../features/generation/api'
+import {
+  clearGenerationRecovery,
+  loadGenerationRecovery,
+  saveGenerationRecovery,
+  useCancelGeneration,
+  useGenerationJob,
+  useStartGeneration,
+} from '../features/generation/api'
 import { TemplateChoicePanel } from '../features/generation/TemplateChoicePanel'
 import { findTemplate } from '../features/report/templates'
 import { useProject, useProjectReports } from '../features/projects/api'
-import { toDisplayMessage } from '../lib/api/errors'
+import { ApiError, toDisplayMessage } from '../lib/api/errors'
 import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
@@ -28,6 +35,7 @@ export default function ProjectPage() {
   const reports = useProjectReports(projectId, reportPage)
   const deleteFile = useDeleteFile(projectId)
   const startGeneration = useStartGeneration(projectId)
+  const cancelGeneration = useCancelGeneration()
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [title, setTitle] = useState('')
@@ -35,9 +43,19 @@ export default function ProjectPage() {
   const [course, setCourse] = useState('')
   const [date, setDate] = useState(todayLocal)
   const [instructions, setInstructions] = useState('')
-  const [jobId, setJobId] = useState<string | null>(null)
+  const [policyAgreed, setPolicyAgreed] = useState(false)
+  const recovery = loadGenerationRecovery(projectId)
+  const [recovered, setRecovered] = useState(recovery !== null)
+  const [jobId, setJobId] = useState<string | null>(recovery?.jobId ?? null)
+  const [templateId, setTemplateId] = useState(recovery?.templateId)
 
   const job = useGenerationJob(jobId)
+
+  useEffect(() => {
+    if (job.error instanceof ApiError && job.error.status === 404) {
+      clearGenerationRecovery(projectId)
+    }
+  }, [job.error, projectId])
 
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
@@ -62,7 +80,14 @@ export default function ProjectPage() {
         },
         instructions: instructions.trim(),
       },
-      { onSuccess: ({ jobId: id }) => setJobId(id) },
+      {
+        onSuccess: ({ jobId: id }) => {
+          const next = { jobId: id, templateId: templateId ?? 'default' }
+          saveGenerationRecovery(projectId, next)
+          setRecovered(false)
+          setJobId(id)
+        },
+      },
     )
   }
 
@@ -98,6 +123,12 @@ export default function ProjectPage() {
 
         <section className="rounded-lg border border-gray-200 bg-white p-5">
           <UploadPanel projectId={projectId} />
+          <p className="mt-3 text-xs text-gray-600">
+            업로드 자료는 보고서 생성 과정에서 AI 제공자에게 전달될 수 있습니다.{' '}
+            <Link to="/policies#ai-data" className="underline">
+              자료 처리 안내
+            </Link>
+          </p>
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-5">
@@ -148,7 +179,33 @@ export default function ProjectPage() {
 
         <section className="rounded-lg border border-gray-200 bg-white p-5">
           {jobId !== null ? (
-            <TemplateChoicePanel job={job} onRetry={() => setJobId(null)} />
+            <TemplateChoicePanel
+              job={job}
+              initialTemplateId={templateId}
+              recovered={recovered}
+              onTemplateChange={(next) => {
+                setTemplateId(next)
+                saveGenerationRecovery(projectId, { jobId, templateId: next })
+              }}
+              onRetry={() => {
+                clearGenerationRecovery(projectId)
+                setRecovered(false)
+                setJobId(null)
+              }}
+              onComplete={() => clearGenerationRecovery(projectId)}
+              onCancel={() => {
+                if (!window.confirm('보고서 생성을 취소할까요?')) return
+                cancelGeneration.mutate(jobId, {
+                  onSuccess: () => {
+                    clearGenerationRecovery(projectId)
+                    setRecovered(false)
+                    setJobId(null)
+                  },
+                })
+              }}
+              canceling={cancelGeneration.isPending}
+              cancelError={cancelGeneration.error}
+            />
           ) : (
             <form onSubmit={handleGenerate} className="space-y-4">
               <h2 className="text-lg font-semibold">보고서 정보</h2>
@@ -172,9 +229,24 @@ export default function ProjectPage() {
                 />
               </div>
 
+              <label className="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={policyAgreed}
+                  onChange={(event) => setPolicyAgreed(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  자료가 AI 제공자에게 전달될 수 있음을 확인했습니다.{' '}
+                  <Link to="/policies#ai-data" className="underline">
+                    자세히 보기
+                  </Link>
+                </span>
+              </label>
+
               <button
                 type="submit"
-                disabled={!canSubmit || startGeneration.isPending}
+                disabled={!canSubmit || !policyAgreed || startGeneration.isPending}
                 className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
               >
                 {startGeneration.isPending ? '요청 중…' : '보고서 생성'}

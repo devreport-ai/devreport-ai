@@ -8,7 +8,14 @@
  * 계약 규칙: 지수 백오프 + 타임아웃 상한 필수, 무한 폴링 금지.
  */
 import { describe, expect, it } from 'vitest'
-import { MAX_POLL_COUNT, nextPollInterval, pollIntervalMs } from './api'
+import {
+  clearGenerationRecovery,
+  loadGenerationRecovery,
+  MAX_POLL_COUNT,
+  nextPollInterval,
+  pollIntervalMs,
+  saveGenerationRecovery,
+} from './api'
 
 describe('pollIntervalMs', () => {
   it('첫 재조회는 2초다', () => {
@@ -75,5 +82,30 @@ describe('nextPollInterval', () => {
     for (let count = 1; count < MAX_POLL_COUNT; count += 1) total += pollIntervalMs(count)
     expect(total).toBeGreaterThan(10 * 60 * 1000)
     expect(total).toBeLessThan(20 * 60 * 1000)
+  })
+})
+
+describe('generation recovery', () => {
+  it('프로젝트별 작업과 템플릿을 세션에 저장하고 지운다', () => {
+    sessionStorage.clear()
+    saveGenerationRecovery('project-1', { jobId: 'job-1', templateId: 'compact' })
+
+    expect(loadGenerationRecovery('project-1')).toEqual({ jobId: 'job-1', templateId: 'compact' })
+
+    clearGenerationRecovery('project-1')
+    expect(loadGenerationRecovery('project-1')).toBeNull()
+  })
+
+  it('손상된 복구 상태는 안전하게 버린다', () => {
+    sessionStorage.setItem('devreport:generation:project-1', '{bad json')
+    expect(loadGenerationRecovery('project-1')).toBeNull()
+    expect(sessionStorage.getItem('devreport:generation:project-1')).toBeNull()
+
+    sessionStorage.setItem(
+      'devreport:generation:project-1',
+      JSON.stringify({ jobId: '', templateId: 'default' }),
+    )
+    expect(loadGenerationRecovery('project-1')).toBeNull()
+    expect(sessionStorage.getItem('devreport:generation:project-1')).toBeNull()
   })
 })
