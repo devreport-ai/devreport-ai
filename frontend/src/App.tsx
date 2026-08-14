@@ -17,12 +17,14 @@ import ProjectsPage from './routes/ProjectsPage'
 import ProjectPage from './routes/ProjectPage'
 import ReportPage from './routes/ReportPage'
 import NotFoundPage from './routes/NotFoundPage'
+import PolicyPage from './routes/PolicyPage'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/policies" element={<PolicyPage />} />
 
       {/* 출력 전용(#39). Bearer 대신 render token 인증이라 RequireAuth 를 안 거친다 */}
       <Route path="/print/:exportId" element={<PrintPage />} />

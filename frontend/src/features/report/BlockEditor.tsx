@@ -3,22 +3,24 @@
  * 원문(인라인 마크다운 포함)을 그대로 편집하고, 확인 시 updateBlock 으로 반영된다.
  */
 import { useState } from 'react'
-import type { ReportBlock } from '../../lib/contracts/types'
+import type { FileResponse, ReportBlock } from '../../lib/contracts/types'
 
 export function BlockEditor({
   block,
   onApply,
   onCancel,
+  imageFiles = [],
 }: {
   block: ReportBlock
   onApply: (block: ReportBlock) => void
   onCancel: () => void
+  imageFiles?: FileResponse[]
 }) {
   const [draft, setDraft] = useState<ReportBlock>(block)
 
   return (
     <div className="space-y-2 rounded border border-blue-400 bg-blue-50/50 p-2">
-      <Fields draft={draft} onChange={setDraft} />
+      <Fields draft={draft} onChange={setDraft} imageFiles={imageFiles} />
       <div className="flex gap-2">
         <button
           type="button"
@@ -42,9 +44,11 @@ export function BlockEditor({
 function Fields({
   draft,
   onChange,
+  imageFiles,
 }: {
   draft: ReportBlock
   onChange: (block: ReportBlock) => void
+  imageFiles: FileResponse[]
 }) {
   switch (draft.type) {
     case 'paragraph':
@@ -89,6 +93,23 @@ function Fields({
             value={draft.alt}
             onChange={(alt) => onChange({ ...draft, alt })}
           />
+          <label className="block text-sm">
+            <span className="text-gray-600">이미지 파일</span>
+            <select
+              value={draft.fileId}
+              onChange={(event) => onChange({ ...draft, fileId: event.target.value })}
+              className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
+            >
+              {!imageFiles.some((file) => file.id === draft.fileId) && (
+                <option value={draft.fileId}>현재 이미지 ({draft.fileId.slice(0, 8)})</option>
+              )}
+              {imageFiles.map((file) => (
+                <option key={file.id} value={file.id}>
+                  {file.originalName}
+                </option>
+              ))}
+            </select>
+          </label>
           <Input
             label="캡션"
             value={draft.caption ?? ''}
@@ -151,6 +172,50 @@ function TableFields({
           ))}
         </div>
       ))}
+      <div className="flex flex-wrap gap-1 pt-1">
+        <button
+          type="button"
+          onClick={() => onChange({ ...draft, rows: [...draft.rows, draft.columns.map(() => '')] })}
+          className="rounded border border-gray-300 px-2 py-1 text-xs"
+        >
+          + 행
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange({ ...draft, rows: draft.rows.slice(0, -1) })}
+          disabled={draft.rows.length === 0}
+          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40"
+        >
+          행 삭제
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              ...draft,
+              columns: [...draft.columns, '새 열'],
+              rows: draft.rows.map((row) => [...row, '']),
+            })
+          }
+          className="rounded border border-gray-300 px-2 py-1 text-xs"
+        >
+          + 열
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              ...draft,
+              columns: draft.columns.slice(0, -1),
+              rows: draft.rows.map((row) => row.slice(0, -1)),
+            })
+          }
+          disabled={draft.columns.length <= 1}
+          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40"
+        >
+          열 삭제
+        </button>
+      </div>
     </div>
   )
 }

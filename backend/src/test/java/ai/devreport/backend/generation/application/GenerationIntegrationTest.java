@@ -1,5 +1,6 @@
 package ai.devreport.backend.generation.application;
 
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.generation.domain.GenerationJob;
 import ai.devreport.backend.generation.infrastructure.GenerationJobRepository;
 
@@ -431,8 +432,8 @@ class GenerationIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"사용자"}
-					""".formatted(email)))
+					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		String body = mvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)

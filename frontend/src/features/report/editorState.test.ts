@@ -86,6 +86,32 @@ describe('editorReducer', () => {
     expect(s1.document.sections.map((s) => s.id)).toEqual(['sec-2', 'sec-1'])
   })
 
+  it('메타데이터·섹션 제목을 바꾸고 블록을 다른 섹션으로 옮긴다', () => {
+    const s0 = state()
+    const s1 = editorReducer(s0, {
+      type: 'updateMetadata',
+      metadata: { title: '새 제목', author: '새 작성자' },
+    })
+    const s2 = editorReducer(s1, {
+      type: 'updateSectionTitle',
+      sectionId: 'sec-2',
+      title: '새 섹션',
+    })
+    const s3 = editorReducer(s2, {
+      type: 'moveBlockToSection',
+      fromSectionId: 'sec-1',
+      toSectionId: 'sec-2',
+      blockId: 'b',
+      toIndex: 0,
+    })
+
+    expect(s3.document.metadata).toEqual({ title: '새 제목', author: '새 작성자' })
+    expect(s3.document.sections[1].title).toBe('새 섹션')
+    expect(s3.document.sections[0].blocks.map((b) => b.id)).toEqual(['a', 'c'])
+    expect(s3.document.sections[1].blocks.map((b) => b.id)).toEqual(['b'])
+    expect(editorReducer(s3, { type: 'undo' }).document.sections[1].blocks).toHaveLength(0)
+  })
+
   it('템플릿 변경은 document 를 건드리지 않고 히스토리에도 안 쌓인다', () => {
     // 계약: 템플릿 변경은 document 를 수정하지 않는다
     const s0 = state()

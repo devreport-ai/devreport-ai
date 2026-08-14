@@ -13,16 +13,34 @@ import type { useGenerationJob } from './api'
 export function TemplateChoicePanel({
   job,
   onRetry,
+  initialTemplateId,
+  recovered = false,
+  onTemplateChange,
+  onCancel,
+  canceling = false,
+  cancelError,
+  onComplete,
 }: {
   job: ReturnType<typeof useGenerationJob>
   onRetry: () => void
+  initialTemplateId?: string
+  recovered?: boolean
+  onTemplateChange?: (templateId: string) => void
+  onCancel?: () => void
+  canceling?: boolean
+  cancelError?: unknown
+  onComplete?: () => void
 }) {
   const navigate = useNavigate()
-  const [templateId, setTemplateId] = useState(REPORT_TEMPLATES[0].id)
+  const [templateId, setTemplateId] = useState(() =>
+    initialTemplateId && REPORT_TEMPLATES.some((t) => t.id === initialTemplateId)
+      ? initialTemplateId
+      : REPORT_TEMPLATES[0].id,
+  )
   // 사용자가 "시작"을 눌렀는데 생성이 아직인 상태. 이때부터만 기다림을 보여준다.
-  const [confirmed, setConfirmed] = useState(false)
+  const [confirmed, setConfirmed] = useState(recovered)
 
-  const finished = job.data?.status === 'COMPLETED' && job.data.reportId
+  const finished = Boolean(job.data?.status === 'COMPLETED' && job.data.reportId)
   const failed =
     job.error !== null ||
     job.timedOut ||
@@ -41,6 +59,7 @@ export function TemplateChoicePanel({
       // 표시할 100% 는 아래에서 파생값으로 계산한다
       if (navigatedRef.current) return
       navigatedRef.current = true
+      onComplete?.()
       const reportId = job.data?.reportId
       const timer = setTimeout(() => {
         if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
@@ -51,7 +70,7 @@ export function TemplateChoicePanel({
       setPercent((p) => Math.min(90, p + (90 - p) * 0.08 + 0.5))
     }, 200)
     return () => clearInterval(timer)
-  }, [confirmed, failed, finished, job.data?.reportId, navigate, templateId])
+  }, [confirmed, failed, finished, job.data?.reportId, navigate, onComplete, templateId])
 
   // 선택을 마쳤을 때만 실패를 드러낸다
   if (confirmed && failed) {
@@ -71,6 +90,9 @@ export function TemplateChoicePanel({
         >
           다시 시도
         </button>
+        {cancelError !== undefined && cancelError !== null && (
+          <p className="text-sm text-red-600">{toDisplayMessage(cancelError)}</p>
+        )}
       </section>
     )
   }
@@ -93,6 +115,21 @@ export function TemplateChoicePanel({
             style={{ width: `${finished ? 100 : percent}%` }}
           />
         </div>
+        {onCancel && (
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={canceling || finished}
+              className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
+            >
+              {canceling ? '취소 중…' : '생성 취소'}
+            </button>
+            {cancelError !== undefined && cancelError !== null && (
+              <p className="text-sm text-red-600">{toDisplayMessage(cancelError)}</p>
+            )}
+          </div>
+        )}
       </section>
     )
   }
@@ -115,7 +152,10 @@ export function TemplateChoicePanel({
               name="template"
               value={t.id}
               checked={templateId === t.id}
-              onChange={() => setTemplateId(t.id)}
+              onChange={() => {
+                setTemplateId(t.id)
+                onTemplateChange?.(t.id)
+              }}
               className="sr-only"
             />
             <TemplateThumbnail id={t.id} />
@@ -131,6 +171,21 @@ export function TemplateChoicePanel({
       >
         이 디자인으로 시작
       </button>
+      {onCancel && (
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={canceling}
+            className="rounded border border-gray-300 px-3 py-2 text-sm disabled:opacity-40"
+          >
+            {canceling ? '취소 중…' : '생성 취소'}
+          </button>
+          {cancelError !== undefined && cancelError !== null && (
+            <p className="text-sm text-red-600">{toDisplayMessage(cancelError)}</p>
+          )}
+        </div>
+      )}
     </section>
   )
 }

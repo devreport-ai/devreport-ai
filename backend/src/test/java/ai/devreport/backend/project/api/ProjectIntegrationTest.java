@@ -1,5 +1,7 @@
 package ai.devreport.backend.project.api;
 
+import ai.devreport.backend.auth.domain.PolicyVersions;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -112,8 +114,8 @@ class ProjectIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"사용자"}
-					""".formatted(email)))
+					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		String body = mvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)

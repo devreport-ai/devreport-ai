@@ -1,5 +1,6 @@
 package ai.devreport.backend.report.application;
 
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.report.domain.Report;
 import ai.devreport.backend.report.domain.ReportException;
 import ai.devreport.backend.report.infrastructure.ReportRepository;
@@ -224,8 +225,8 @@ class ReportIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"사용자"}
-					""".formatted(email)))
+					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		String loginBody = mvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)

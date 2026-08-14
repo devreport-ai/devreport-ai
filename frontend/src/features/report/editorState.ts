@@ -16,10 +16,19 @@ export interface EditorState {
 }
 
 export type EditorAction =
+  | { type: 'updateMetadata'; metadata: ReportDocument['metadata'] }
+  | { type: 'updateSectionTitle'; sectionId: string; title: string }
   | { type: 'updateBlock'; sectionId: string; block: ReportBlock }
   | { type: 'addBlock'; sectionId: string; afterBlockId: string | null; block: ReportBlock }
   | { type: 'deleteBlock'; sectionId: string; blockId: string }
   | { type: 'moveBlock'; sectionId: string; blockId: string; toIndex: number }
+  | {
+      type: 'moveBlockToSection'
+      fromSectionId: string
+      toSectionId: string
+      blockId: string
+      toIndex: number
+    }
   | { type: 'moveSection'; sectionId: string; toIndex: number }
   | { type: 'setTemplate'; templateId: string; templateVersion: number }
   | { type: 'undo' }
@@ -67,6 +76,13 @@ function applyDocumentAction(
   action: Exclude<EditorAction, { type: 'undo' | 'redo' | 'setTemplate' }>,
 ): ReportDocument {
   switch (action.type) {
+    case 'updateMetadata':
+      return { ...document, metadata: action.metadata }
+    case 'updateSectionTitle':
+      return mapSection(document, action.sectionId, (section) => ({
+        ...section,
+        title: action.title,
+      }))
     case 'updateBlock':
       return mapSection(document, action.sectionId, (section) => ({
         ...section,
@@ -94,6 +110,29 @@ function applyDocumentAction(
         blocks.splice(action.toIndex, 0, moved)
         return { ...section, blocks }
       })
+    case 'moveBlockToSection': {
+      if (action.fromSectionId === action.toSectionId) return document
+      const source = document.sections.find((s) => s.id === action.fromSectionId)
+      const target = document.sections.find((s) => s.id === action.toSectionId)
+      if (!source || !target) return document
+      const from = source.blocks.findIndex((b) => b.id === action.blockId)
+      if (from < 0) return document
+      const moved = source.blocks[from]
+      if (!moved) return document
+      return {
+        ...document,
+        sections: document.sections.map((section) => {
+          if (section.id === source.id)
+            return { ...section, blocks: source.blocks.toSpliced(from, 1) }
+          if (section.id === target.id) {
+            const blocks = [...section.blocks]
+            blocks.splice(Math.max(0, Math.min(action.toIndex, blocks.length)), 0, moved)
+            return { ...section, blocks }
+          }
+          return section
+        }),
+      }
+    }
     case 'moveSection': {
       const from = document.sections.findIndex((s) => s.id === action.sectionId)
       if (from < 0 || from === action.toIndex) return document

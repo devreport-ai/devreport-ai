@@ -3,7 +3,10 @@ package ai.devreport.backend.auth.application;
 import static ai.devreport.backend.config.SecurityConfig.JWT_ISSUER;
 
 import ai.devreport.backend.auth.domain.RefreshToken;
+import ai.devreport.backend.auth.domain.PolicyConsent;
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.auth.domain.User;
+import ai.devreport.backend.auth.infrastructure.PolicyConsentRepository;
 import ai.devreport.backend.auth.infrastructure.RefreshTokenRepository;
 import ai.devreport.backend.auth.infrastructure.UserRepository;
 
@@ -40,16 +43,19 @@ public class AuthService {
 		"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 	private final UserRepository users;
+	private final PolicyConsentRepository policyConsents;
 	private final RefreshTokenRepository refreshTokens;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtEncoder jwtEncoder;
 	private final Duration accessTokenTtl;
 	private final Duration refreshTokenTtl;
 
-	AuthService(UserRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
+	AuthService(UserRepository users, PolicyConsentRepository policyConsents, RefreshTokenRepository refreshTokens,
+		PasswordEncoder passwordEncoder,
 		JwtEncoder jwtEncoder, @Value("${auth.access-token-ttl}") Duration accessTokenTtl,
 		@Value("${auth.refresh-token-ttl}") Duration refreshTokenTtl) {
 		this.users = users;
+		this.policyConsents = policyConsents;
 		this.refreshTokens = refreshTokens;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtEncoder = jwtEncoder;
@@ -57,18 +63,31 @@ public class AuthService {
 		this.refreshTokenTtl = refreshTokenTtl;
 	}
 
-	public User signup(String email, String password, String name) {
+	public User signup(String email, String password, String name, String privacyPolicyVersion,
+		String termsOfServiceVersion) {
 		String normalizedEmail = normalizeEmail(email);
+		validatePolicyVersions(privacyPolicyVersion, termsOfServiceVersion);
 		if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
 			throw new AuthException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.");
 		}
 		if (users.findByEmail(normalizedEmail).isPresent()) {
 			throw new AuthException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.");
 		}
+		User user;
 		try {
-			return users.saveAndFlush(new User(normalizedEmail, passwordEncoder.encode(password), name.trim()));
+			user = users.saveAndFlush(new User(normalizedEmail, passwordEncoder.encode(password), name.trim()));
 		} catch (DataIntegrityViolationException exception) {
 			throw new AuthException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.");
+		}
+		policyConsents.save(new PolicyConsent(user, privacyPolicyVersion, termsOfServiceVersion, Instant.now()));
+		return user;
+	}
+
+	private static void validatePolicyVersions(String privacyPolicyVersion, String termsOfServiceVersion) {
+		if (!PolicyVersions.PRIVACY_POLICY.equals(privacyPolicyVersion)
+			|| !PolicyVersions.TERMS_OF_SERVICE.equals(termsOfServiceVersion)) {
+			throw new AuthException(HttpStatus.BAD_REQUEST, "POLICY_CONSENT_REQUIRED",
+				"현재 개인정보처리방침과 이용약관에 동의해야 합니다.");
 		}
 	}
 

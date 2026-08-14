@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.auth.domain.User;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.usage.application.UsageEventService;
@@ -66,7 +67,8 @@ class UsageEventPostgresqlIntegrationTest {
 	@Test
 	void projectCreationStoresTimestampAndIgnoresDuplicateEvent() throws Exception {
 		String email = "usage-events-postgresql-" + UUID.randomUUID() + "@example.com";
-		User user = auth.signup(email, "password123", "PostgreSQL 테스트");
+		User user = auth.signup(email, "password123", "PostgreSQL 테스트", PolicyVersions.PRIVACY_POLICY,
+			PolicyVersions.TERMS_OF_SERVICE);
 		userId = user.getId();
 		String token = auth.login(email, "password123").accessToken();
 

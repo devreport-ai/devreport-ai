@@ -3,7 +3,7 @@
  */
 import { useCallback, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../../lib/api/client'
+import { apiFetch, apiFetchNoContent } from '../../lib/api/client'
 import {
   isTerminalStatus,
   type GenerationJobResponse,
@@ -64,6 +64,58 @@ export const generationKeys = {
   job: (jobId: string) => ['generations', jobId] as const,
 }
 
+export interface GenerationRecovery {
+  jobId: string
+  templateId: string
+}
+
+function recoveryKey(projectId: string): string {
+  return `devreport:generation:${projectId}`
+}
+
+export function loadGenerationRecovery(projectId: string): GenerationRecovery | null {
+  try {
+    const raw = sessionStorage.getItem(recoveryKey(projectId))
+    if (!raw) return null
+    const value: unknown = JSON.parse(raw)
+    if (
+      typeof value !== 'object' ||
+      value === null ||
+      typeof (value as Record<string, unknown>).jobId !== 'string' ||
+      typeof (value as Record<string, unknown>).templateId !== 'string' ||
+      !(value as Record<string, unknown>).jobId ||
+      !(value as Record<string, unknown>).templateId
+    ) {
+      sessionStorage.removeItem(recoveryKey(projectId))
+      return null
+    }
+    return value as GenerationRecovery
+  } catch {
+    try {
+      sessionStorage.removeItem(recoveryKey(projectId))
+    } catch {
+      // 저장소 접근 자체가 막힌 브라우저에서는 정리할 수 없다.
+    }
+    return null
+  }
+}
+
+export function saveGenerationRecovery(projectId: string, recovery: GenerationRecovery): void {
+  try {
+    sessionStorage.setItem(recoveryKey(projectId), JSON.stringify(recovery))
+  } catch {
+    // 세션 저장소가 막힌 브라우저에서도 생성 자체는 계속한다.
+  }
+}
+
+export function clearGenerationRecovery(projectId: string): void {
+  try {
+    sessionStorage.removeItem(recoveryKey(projectId))
+  } catch {
+    // 저장소 접근 불가 시에도 화면 상태는 정리한다.
+  }
+}
+
 export function useStartGeneration(projectId: string) {
   return useMutation({
     mutationFn: (body: GenerationRequest) =>
@@ -72,6 +124,17 @@ export function useStartGeneration(projectId: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }),
+  })
+}
+
+export function useCancelGeneration() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (jobId: string) =>
+      apiFetchNoContent(`/api/generations/${jobId}`, { method: 'DELETE' }),
+    onSuccess: (_data, jobId) => {
+      client.invalidateQueries({ queryKey: generationKeys.job(jobId) })
+    },
   })
 }
 

@@ -102,6 +102,23 @@ describe('ReportEditor', () => {
     expect(screen.getAllByRole('button', { name: '블록 삭제' })).toHaveLength(3)
   })
 
+  it('문서 정보와 섹션 제목을 편집할 수 있다', () => {
+    renderWithProviders(<ReportEditor report={report()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '문서 정보 편집' }))
+    const title = screen.getByDisplayValue('실습 보고서')
+    fireEvent.change(title, { target: { value: '최종 보고서' } })
+    fireEvent.click(screen.getAllByRole('button', { name: '확인' })[0])
+    expect(screen.getByRole('heading', { name: '최종 보고서' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '개요 섹션 제목 편집' }))
+    fireEvent.change(screen.getByRole('textbox', { name: '섹션 제목' }), {
+      target: { value: '새 개요' },
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: '확인' })[0])
+    expect(screen.getByText('새 개요')).toBeInTheDocument()
+  })
+
   it('생성 흐름에서 고른 템플릿은 편집 없이도 자동 저장된다', async () => {
     // 저장 기준을 입력값으로 잡으면 "이미 저장됨" 취급되어 PUT 이 안 나가고,
     // 서버 templateId 가 null 인 채라 PDF 내보내기가 409 로 막힌다 (실제 있었던 버그)
