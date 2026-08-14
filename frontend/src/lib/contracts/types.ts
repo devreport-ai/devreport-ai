@@ -19,6 +19,7 @@ export type UserResponse = Schemas['UserResponse']
 
 export type ProjectResponse = Schemas['ProjectResponse']
 export type ProjectPageResponse = Schemas['ProjectPageResponse']
+export type TrashedProjectPageResponse = Schemas['TrashedProjectPageResponse']
 export type ProjectRequest = Schemas['ProjectRequest']
 export type ProjectIdResponse = Schemas['ProjectIdResponse']
 

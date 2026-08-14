@@ -5,13 +5,14 @@
  * 화면 컴포넌트가 엔드포인트 경로를 알 필요가 없게 하려는 것이다.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../../lib/api/client'
+import { apiFetch, apiFetchNoContent } from '../../lib/api/client'
 import type {
   ProjectIdResponse,
   ProjectPageResponse,
   ProjectResponse,
   ProjectRequest,
   ReportPageResponse,
+  TrashedProjectPageResponse,
 } from '../../lib/contracts/types'
 
 /**
@@ -26,12 +27,21 @@ export const projectKeys = {
   detail: (projectId: string) => ['projects', projectId] as const,
   reports: (projectId: string, page: number, size: number) =>
     ['projects', projectId, 'reports', page, size] as const,
+  trash: (page: number, size: number) => ['projects', 'trash', page, size] as const,
 }
 
 export function useProjects(page = 0, size = 20) {
   return useQuery({
     queryKey: projectKeys.list(page, size),
     queryFn: () => apiFetch<ProjectPageResponse>(`/api/projects?page=${page}&size=${size}`),
+  })
+}
+
+export function useTrashedProjects(page = 0, size = 20) {
+  return useQuery({
+    queryKey: projectKeys.trash(page, size),
+    queryFn: () =>
+      apiFetch<TrashedProjectPageResponse>(`/api/projects/trash?page=${page}&size=${size}`),
   })
 }
 
@@ -63,6 +73,40 @@ export function useCreateProject() {
         body: JSON.stringify(body),
       }),
     // 생성 직후 목록을 다시 불러 새 프로젝트가 바로 보이게 한다.
+    onSuccess: () => client.invalidateQueries({ queryKey: projectKeys.all }),
+  })
+}
+
+export function useUpdateProject() {
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ projectId, name }: { projectId: string; name: string }) =>
+      apiFetch<ProjectResponse>(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: projectKeys.all }),
+  })
+}
+
+export function useDeleteProject() {
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      apiFetchNoContent(`/api/projects/${projectId}`, { method: 'DELETE' }),
+    onSuccess: () => client.invalidateQueries({ queryKey: projectKeys.all }),
+  })
+}
+
+export function useRestoreProject() {
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      apiFetch<ProjectResponse>(`/api/projects/${projectId}/restore`, { method: 'POST' }),
     onSuccess: () => client.invalidateQueries({ queryKey: projectKeys.all }),
   })
 }
