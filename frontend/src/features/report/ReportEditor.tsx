@@ -27,8 +27,9 @@ import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
 import { useImageUrls } from './useImageUrls'
 import { downloadExportPdf, isExportFinished, useExportStatus, useStartExport } from './exportApi'
+import { useProjectFiles } from '../files/api'
 import { toDisplayMessage } from '../../lib/api/errors'
-import type { Report, ReportBlock, ReportSection } from '../../lib/contracts/types'
+import type { Report, ReportBlock, ReportDocument, ReportSection } from '../../lib/contracts/types'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import './report-document.css'
 
@@ -51,7 +52,15 @@ export function ReportEditor({
     }
   })
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingMetadata, setEditingMetadata] = useState(false)
+  const [metadataDraft, setMetadataDraft] = useState<ReportDocument['metadata']>(
+    report.document.metadata,
+  )
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
+  const [sectionTitleDraft, setSectionTitleDraft] = useState('')
   const imageUrls = useImageUrls(report.projectId, state.document)
+  const files = useProjectFiles(report.projectId)
+  const imageFiles = (files.data?.items ?? []).filter(isImageFile)
 
   // PDF 내보내기: 요청 → 폴링 → 완료 시 자동 다운로드 (한 번만)
   const startExport = useStartExport(report.id)
@@ -111,12 +120,28 @@ export function ReportEditor({
       dispatch({ type: 'moveSection', sectionId: String(active.id), toIndex: sectionIndex })
       return
     }
-    // 블록: 같은 섹션 안에서만 이동한다
-    const section = state.document.sections.find((s) => s.blocks.some((b) => b.id === active.id))
-    if (!section) return
-    const toIndex = section.blocks.findIndex((b) => b.id === over.id)
+    // 블록은 같은 섹션뿐 아니라 다른 섹션의 블록/섹션 빈 공간으로도 옮길 수 있다.
+    const source = state.document.sections.find((s) => s.blocks.some((b) => b.id === active.id))
+    const target = state.document.sections.find(
+      (s) => s.id === over.id || s.blocks.some((b) => b.id === over.id),
+    )
+    if (!source || !target) return
+    const toIndex =
+      target.id === over.id
+        ? target.blocks.length
+        : target.blocks.findIndex((b) => b.id === over.id)
     if (toIndex < 0) return
-    dispatch({ type: 'moveBlock', sectionId: section.id, blockId: String(active.id), toIndex })
+    if (source.id === target.id) {
+      dispatch({ type: 'moveBlock', sectionId: source.id, blockId: String(active.id), toIndex })
+    } else {
+      dispatch({
+        type: 'moveBlockToSection',
+        fromSectionId: source.id,
+        toSectionId: target.id,
+        blockId: String(active.id),
+        toIndex,
+      })
+    }
   }
 
   const template = findTemplate(state.templateId) ?? FALLBACK_TEMPLATE
@@ -163,8 +188,34 @@ export function ReportEditor({
 
       <div className="mt-6 overflow-x-auto px-4">
         <div className={`report-sheet ${template.className}`}>
-          <h1>{state.document.metadata.title}</h1>
-          <MetaLine metadata={state.document.metadata} />
+          {editingMetadata ? (
+            <MetadataEditor
+              metadata={metadataDraft}
+              onChange={setMetadataDraft}
+              onApply={() => {
+                const title = metadataDraft.title.trim()
+                if (!title) return
+                dispatch({ type: 'updateMetadata', metadata: { ...metadataDraft, title } })
+                setEditingMetadata(false)
+              }}
+              onCancel={() => setEditingMetadata(false)}
+            />
+          ) : (
+            <div className="group relative">
+              <h1>{state.document.metadata.title}</h1>
+              <MetaLine metadata={state.document.metadata} />
+              <button
+                type="button"
+                onClick={() => {
+                  setMetadataDraft(state.document.metadata)
+                  setEditingMetadata(true)
+                }}
+                className="absolute right-0 top-0 rounded border border-gray-300 bg-white px-2 py-1 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100"
+              >
+                문서 정보 편집
+              </button>
+            </div>
+          )}
 
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext
@@ -172,7 +223,24 @@ export function ReportEditor({
               strategy={verticalListSortingStrategy}
             >
               {state.document.sections.map((section) => (
-                <SortableSection key={section.id} section={section}>
+                <SortableSection
+                  key={section.id}
+                  section={section}
+                  editing={editingSectionId === section.id}
+                  titleDraft={sectionTitleDraft}
+                  onEditTitle={() => {
+                    setSectionTitleDraft(section.title)
+                    setEditingSectionId(section.id)
+                  }}
+                  onTitleChange={setSectionTitleDraft}
+                  onApplyTitle={() => {
+                    const title = sectionTitleDraft.trim()
+                    if (!title) return
+                    dispatch({ type: 'updateSectionTitle', sectionId: section.id, title })
+                    setEditingSectionId(null)
+                  }}
+                  onCancelTitle={() => setEditingSectionId(null)}
+                >
                   <SortableContext
                     items={section.blocks.map((b) => b.id)}
                     strategy={verticalListSortingStrategy}
@@ -182,6 +250,7 @@ export function ReportEditor({
                         key={block.id}
                         block={block}
                         imageUrl={block.type === 'image' ? imageUrls[block.fileId] : undefined}
+                        imageFiles={imageFiles}
                         editing={editingId === block.id}
                         onEdit={() => setEditingId(block.id)}
                         onApply={(next) => {
@@ -314,19 +383,86 @@ function MetaLine({ metadata }: { metadata: Report['document']['metadata'] }) {
   return <p className="rpt-meta">{parts.join(' · ')}</p>
 }
 
+function MetadataEditor({
+  metadata,
+  onChange,
+  onApply,
+  onCancel,
+}: {
+  metadata: ReportDocument['metadata']
+  onChange: (metadata: ReportDocument['metadata']) => void
+  onApply: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="mb-4 space-y-2 rounded border border-blue-300 bg-blue-50/50 p-3">
+      <h1 className="text-xl font-semibold">문서 정보 편집</h1>
+      <label className="block text-sm">
+        <span className="text-gray-600">제목 *</span>
+        <input
+          value={metadata.title}
+          onChange={(event) => onChange({ ...metadata, title: event.target.value })}
+          className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
+        />
+      </label>
+      {(['author', 'course', 'date'] as const).map((key) => (
+        <label key={key} className="block text-sm">
+          <span className="text-gray-600">
+            {key === 'author' ? '작성자' : key === 'course' ? '과목' : '날짜'}
+          </span>
+          <input
+            type={key === 'date' ? 'date' : 'text'}
+            value={metadata[key] ?? ''}
+            onChange={(event) => onChange({ ...metadata, [key]: event.target.value || undefined })}
+            className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
+          />
+        </label>
+      ))}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onApply}
+          className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
+        >
+          확인
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded border border-gray-300 px-3 py-1 text-sm"
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SortableSection({
   section,
   children,
+  editing,
+  titleDraft,
+  onEditTitle,
+  onTitleChange,
+  onApplyTitle,
+  onCancelTitle,
 }: {
   section: ReportSection
   children: React.ReactNode
+  editing: boolean
+  titleDraft: string
+  onEditTitle: () => void
+  onTitleChange: (title: string) => void
+  onApplyTitle: () => void
+  onCancelTitle: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
   })
   return (
     <section ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
-      <h2 className="group">
+      <h2 className="group flex items-center gap-2">
         <button
           type="button"
           {...attributes}
@@ -336,7 +472,34 @@ function SortableSection({
         >
           ⠿
         </button>
-        {section.title}
+        {editing ? (
+          <>
+            <input
+              aria-label="섹션 제목"
+              value={titleDraft}
+              onChange={(event) => onTitleChange(event.target.value)}
+              className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-lg font-semibold"
+            />
+            <button type="button" onClick={onApplyTitle} className="text-xs underline">
+              확인
+            </button>
+            <button type="button" onClick={onCancelTitle} className="text-xs underline">
+              취소
+            </button>
+          </>
+        ) : (
+          <>
+            <span>{section.title}</span>
+            <button
+              type="button"
+              onClick={onEditTitle}
+              aria-label={`${section.title} 섹션 제목 편집`}
+              className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 focus:opacity-100"
+            >
+              편집
+            </button>
+          </>
+        )}
       </h2>
       {children}
     </section>
@@ -346,6 +509,7 @@ function SortableSection({
 function SortableBlock({
   block,
   imageUrl,
+  imageFiles,
   editing,
   onEdit,
   onApply,
@@ -354,6 +518,7 @@ function SortableBlock({
 }: {
   block: ReportBlock
   imageUrl?: string
+  imageFiles: import('../../lib/contracts/types').FileResponse[]
   editing: boolean
   onEdit: () => void
   onApply: (block: ReportBlock) => void
@@ -365,7 +530,9 @@ function SortableBlock({
   })
 
   if (editing) {
-    return <BlockEditor block={block} onApply={onApply} onCancel={onCancel} />
+    return (
+      <BlockEditor block={block} imageFiles={imageFiles} onApply={onApply} onCancel={onCancel} />
+    )
   }
 
   return (
@@ -398,6 +565,11 @@ function SortableBlock({
       </button>
     </div>
   )
+}
+
+function isImageFile(file: import('../../lib/contracts/types').FileResponse): boolean {
+  const mime = file.contentType.split(';')[0].trim().toLowerCase()
+  return mime === 'image/png' || mime === 'image/jpeg' || /\.(png|jpe?g)$/i.test(file.originalName)
 }
 
 function AddBlockMenu({ onAdd }: { onAdd: (type: AddableBlockType) => void }) {
