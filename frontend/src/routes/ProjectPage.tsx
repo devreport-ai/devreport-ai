@@ -8,19 +8,24 @@
  * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { AppNav } from '../components/AppNav'
 import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
 import { useGenerationJob, useStartGeneration } from '../features/generation/api'
 import { TemplateChoicePanel } from '../features/generation/TemplateChoicePanel'
+import { findTemplate } from '../features/report/templates'
+import { useProject, useProjectReports } from '../features/projects/api'
 import { toDisplayMessage } from '../lib/api/errors'
 import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
   const { projectId = '' } = useParams()
 
+  const project = useProject(projectId)
   const files = useProjectFiles(projectId)
+  const [reportPage, setReportPage] = useState(0)
+  const reports = useProjectReports(projectId, reportPage)
   const deleteFile = useDeleteFile(projectId)
   const startGeneration = useStartGeneration(projectId)
 
@@ -70,8 +75,27 @@ export default function ProjectPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppNav screen="보고서 만들기" />
+      <AppNav screen={project.data?.name ?? '보고서 만들기'} />
       <main className="mx-auto max-w-3xl space-y-5 p-6">
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          {project.isPending && <p className="text-gray-500">프로젝트를 불러오는 중…</p>}
+          {project.error && (
+            <p role="alert" className="text-red-600">
+              {toDisplayMessage(project.error)}
+            </p>
+          )}
+          {project.data && (
+            <>
+              <h1 className="text-xl font-semibold">{project.data.name}</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                프로젝트 자료를 관리하고 보고서를 다시 열 수 있습니다.
+              </p>
+            </>
+          )}
+        </section>
+
+        <ReportList page={reportPage} reports={reports} onPageChange={setReportPage} />
+
         <section className="rounded-lg border border-gray-200 bg-white p-5">
           <UploadPanel projectId={projectId} />
         </section>
@@ -167,6 +191,91 @@ export default function ProjectPage() {
       </main>
     </div>
   )
+}
+
+function ReportList({
+  page,
+  reports,
+  onPageChange,
+}: {
+  page: number
+  reports: ReturnType<typeof useProjectReports>
+  onPageChange: (page: number) => void
+}) {
+  const data = reports.data
+
+  return (
+    <section
+      aria-labelledby="report-list-heading"
+      className="rounded-lg border border-gray-200 bg-white p-5"
+    >
+      <h2 id="report-list-heading" className="text-lg font-semibold">
+        기존 보고서
+      </h2>
+
+      {reports.isPending && <p className="mt-2 text-gray-500">보고서를 불러오는 중…</p>}
+      {reports.error && (
+        <p role="alert" className="mt-2 text-red-600">
+          {toDisplayMessage(reports.error)}
+        </p>
+      )}
+      {data && data.items.length === 0 && (
+        <p className="mt-2 text-gray-500">
+          {data.totalElements === 0
+            ? '아직 생성한 보고서가 없습니다.'
+            : '이 페이지에 보고서가 없습니다.'}
+        </p>
+      )}
+
+      {data && data.items.length > 0 && (
+        <ul className="mt-2 divide-y divide-gray-200">
+          {data.items.map((report) => (
+            <li key={report.id}>
+              <Link to={`/reports/${report.id}`} className="block py-3 hover:bg-gray-50">
+                <span className="font-medium">보고서 {report.id.slice(0, 8)}</span>
+                <span className="mt-1 flex flex-wrap gap-x-3 text-sm text-gray-500">
+                  <span>{findTemplate(report.templateId)?.name ?? '템플릿 미선택'}</span>
+                  <span>버전 {report.version}</span>
+                  <time dateTime={report.updatedAt}>{formatUpdatedAt(report.updatedAt)}</time>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <nav
+          aria-label="보고서 페이지 이동"
+          className="mt-4 flex items-center justify-center gap-3"
+        >
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 0 || reports.isFetching}
+            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
+          >
+            이전 페이지
+          </button>
+          <span className="text-sm text-gray-600">
+            {page + 1} / {data.totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page + 1 >= data.totalPages || reports.isFetching}
+            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
+          >
+            다음 페이지
+          </button>
+        </nav>
+      )}
+    </section>
+  )
+}
+
+function formatUpdatedAt(value: string): string {
+  return new Date(value).toLocaleString('ko-KR')
 }
 
 /**

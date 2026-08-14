@@ -9,7 +9,9 @@ import { apiFetch } from '../../lib/api/client'
 import type {
   ProjectIdResponse,
   ProjectPageResponse,
+  ProjectResponse,
   ProjectRequest,
+  ReportPageResponse,
 } from '../../lib/contracts/types'
 
 /**
@@ -21,12 +23,32 @@ import type {
 export const projectKeys = {
   all: ['projects'] as const,
   list: (page: number, size: number) => ['projects', 'list', page, size] as const,
+  detail: (projectId: string) => ['projects', projectId] as const,
+  reports: (projectId: string, page: number, size: number) =>
+    ['projects', projectId, 'reports', page, size] as const,
 }
 
 export function useProjects(page = 0, size = 20) {
   return useQuery({
     queryKey: projectKeys.list(page, size),
     queryFn: () => apiFetch<ProjectPageResponse>(`/api/projects?page=${page}&size=${size}`),
+  })
+}
+
+export function useProject(projectId: string) {
+  return useQuery({
+    queryKey: projectKeys.detail(projectId),
+    queryFn: () => apiFetch<ProjectResponse>(`/api/projects/${projectId}`),
+    enabled: projectId !== '',
+  })
+}
+
+export function useProjectReports(projectId: string, page = 0, size = 10) {
+  return useQuery({
+    queryKey: projectKeys.reports(projectId, page, size),
+    queryFn: () =>
+      apiFetch<ReportPageResponse>(`/api/projects/${projectId}/reports?page=${page}&size=${size}`),
+    enabled: projectId !== '',
   })
 }
 
