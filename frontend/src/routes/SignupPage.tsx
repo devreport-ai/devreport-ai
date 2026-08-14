@@ -13,6 +13,7 @@ export function SignupPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [policyAgreed, setPolicyAgreed] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   const errors = {
@@ -24,7 +25,7 @@ export function SignupPage() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setSubmitted(true)
-    if (errors.name || errors.email || errors.password) return
+    if (errors.name || errors.email || errors.password || !policyAgreed) return
 
     signup.mutate(
       { name: name.trim(), email: email.trim(), password },
@@ -66,6 +67,26 @@ export function SignupPage() {
             error={submitted ? errors.password : null}
           />
 
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              required
+              checked={policyAgreed}
+              onChange={(event) => setPolicyAgreed(event.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <Link to="/policies#privacy" className="underline">
+                개인정보처리방침
+              </Link>
+              과{' '}
+              <Link to="/policies#terms" className="underline">
+                이용약관
+              </Link>
+              을 확인하고 동의합니다.
+            </span>
+          </label>
+
           <button
             type="submit"
             disabled={signup.isPending}
@@ -86,6 +107,17 @@ export function SignupPage() {
           <Link to="/login" className="underline">
             로그인
           </Link>
+        </p>
+        <p className="text-xs text-gray-500">
+          가입하면{' '}
+          <Link to="/policies#privacy" className="underline">
+            개인정보처리방침
+          </Link>{' '}
+          및{' '}
+          <Link to="/policies#terms" className="underline">
+            이용약관
+          </Link>
+          을 확인한 것으로 안내됩니다.
         </p>
       </div>
     </main>

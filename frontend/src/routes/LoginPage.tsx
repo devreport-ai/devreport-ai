@@ -83,6 +83,15 @@ export function LoginPage() {
             회원가입
           </Link>
         </p>
+        <p className="text-xs text-gray-500">
+          <Link to="/policies#privacy" className="underline">
+            개인정보처리방침
+          </Link>{' '}
+          ·{' '}
+          <Link to="/policies#terms" className="underline">
+            이용약관
+          </Link>
+        </p>
       </div>
     </main>
   )
