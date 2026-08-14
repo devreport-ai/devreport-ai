@@ -27,7 +27,7 @@ import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
 import { useImageUrls } from './useImageUrls'
 import { downloadExportPdf, isExportFinished, useExportStatus, useStartExport } from './exportApi'
-import { useProjectFiles } from '../files/api'
+import { useAllProjectFiles } from '../files/api'
 import { toDisplayMessage } from '../../lib/api/errors'
 import type { Report, ReportBlock, ReportDocument, ReportSection } from '../../lib/contracts/types'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
@@ -59,7 +59,7 @@ export function ReportEditor({
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
   const [sectionTitleDraft, setSectionTitleDraft] = useState('')
   const imageUrls = useImageUrls(report.projectId, state.document)
-  const files = useProjectFiles(report.projectId)
+  const files = useAllProjectFiles(report.projectId)
   const imageFiles = (files.data?.items ?? []).filter(isImageFile)
 
   // PDF 내보내기: 요청 → 폴링 → 완료 시 자동 다운로드 (한 번만)

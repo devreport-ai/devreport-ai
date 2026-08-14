@@ -15,8 +15,8 @@ export default function PolicyPage() {
         <h2 className="text-xl font-semibold">AI 자료 처리 고지</h2>
         <p>
           사용자가 선택한 ZIP·MD·TXT·PNG·JPG 자료와 생성 지시사항은 보고서 생성 과정에서 Backend를
-          거쳐 AI Service와 Gemini에 전달될 수 있습니다. Frontend가 AI 제공자를 직접 호출하지
-          않으며, 생성이 끝나면 Backend의 임시 bundle은 삭제됩니다.
+          거쳐 AI Service에 전달될 수 있습니다. Frontend가 AI 제공자를 직접 호출하지 않으며, 생성이
+          끝나면 Backend의 임시 bundle은 삭제됩니다.
         </p>
         <p>
           업로드·생성 전에 이 고지를 확인해야 하며, 민감하거나 제3자의 개인정보가 포함된 자료는
@@ -33,7 +33,10 @@ export default function PolicyPage() {
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>프로젝트와 업로드 파일은 삭제하면 휴지통에서 30일간 복구할 수 있습니다.</li>
-          <li>휴지통 프로젝트는 매일 정리 작업으로 30일 후 메타데이터와 파일을 완전 삭제합니다.</li>
+          <li>
+            휴지통 프로젝트는 삭제 후 30일이 경과하면 정리 작업에서 메타데이터와 파일을 완전
+            삭제합니다.
+          </li>
           <li>완료된 PDF는 기본 24시간 후 만료·삭제됩니다.</li>
           <li>비식별 사용 이벤트는 최대 90일 보관하며 회원·프로젝트 삭제 시 함께 삭제됩니다.</li>
         </ul>

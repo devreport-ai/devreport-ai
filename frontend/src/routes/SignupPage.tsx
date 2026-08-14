@@ -73,6 +73,8 @@ export function SignupPage() {
               required
               checked={policyAgreed}
               onChange={(event) => setPolicyAgreed(event.target.checked)}
+              aria-invalid={submitted && !policyAgreed}
+              aria-describedby={submitted && !policyAgreed ? 'policy-agreement-error' : undefined}
               className="mt-0.5"
             />
             <span>
@@ -86,6 +88,11 @@ export function SignupPage() {
               을 확인하고 동의합니다.
             </span>
           </label>
+          {submitted && !policyAgreed && (
+            <p id="policy-agreement-error" role="alert" className="text-sm text-red-600">
+              개인정보처리방침과 이용약관에 동의해야 합니다.
+            </p>
+          )}
 
           <button
             type="submit"

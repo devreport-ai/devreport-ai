@@ -55,10 +55,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const job = useGenerationJob(jobId)
 
   useEffect(() => {
-    if (job.error instanceof ApiError && job.error.status === 404) {
+    const terminalWithoutReport =
+      job.data?.status === 'FAILED' ||
+      job.data?.status === 'CANCELED' ||
+      (job.data?.status === 'COMPLETED' && !job.data.reportId)
+    if ((job.error instanceof ApiError && job.error.status === 404) || terminalWithoutReport) {
       clearGenerationRecovery(projectId)
     }
-  }, [job.error, projectId])
+  }, [job.data?.reportId, job.data?.status, job.error, projectId])
 
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
