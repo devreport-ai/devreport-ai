@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from app.clients.gemini_client import GeminiClient
+from app.clients.gemini_client import JSON_MAX_OUTPUT_TOKENS, GeminiClient, response_config
 from app.core.errors import AIServiceError, ErrorCode
 
 
@@ -63,6 +63,14 @@ def test_returns_json_text_from_sdk_response():
     assert client(Response('{"result":true}')).generate_json("prompt") == '{"result":true}'
 
 
+def test_uses_low_thinking_and_sufficient_output_limit_for_json_responses():
+    config = response_config()
+
+    assert config.response_mime_type == "application/json"
+    assert config.max_output_tokens == JSON_MAX_OUTPUT_TOKENS
+    assert config.thinking_config.thinking_level.value.lower() == "low"
+
+
 def test_converts_timeout_to_ai_timeout():
     with pytest.raises(AIServiceError) as raised:
         client(TimeoutError(), max_retries=0).generate_json("prompt")
@@ -80,16 +88,22 @@ def test_converts_sdk_failure_without_exposing_exception_message():
 
 def test_rejects_empty_response_text():
     with pytest.raises(AIServiceError) as raised:
-        client(Response(" ")).generate_json("prompt")
+        client(Response(" "), max_retries=0).generate_json("prompt")
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
 
 
 def test_rejects_non_json_response_text():
     with pytest.raises(AIServiceError) as raised:
-        client(Response("not-json")).generate_json("prompt")
+        client(Response("not-json"), max_retries=0).generate_json("prompt")
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_retries_malformed_json_response_before_failing():
+    result = client(Response("not-json"), Response("{}"), max_retries=1).generate_json("prompt")
+
+    assert result == "{}"
 
 
 def test_converts_client_initialization_failure_to_ai_unavailable():

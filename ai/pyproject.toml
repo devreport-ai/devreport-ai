@@ -5,7 +5,7 @@ description = "DevReport AI - 문서/코드/이미지 분석 및 보고서 생�
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "fastapi>=0.115",
-    "uvicorn[standard]>=0.34",
+    "hypercorn>=0.17",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
     "jsonschema>=4.23",

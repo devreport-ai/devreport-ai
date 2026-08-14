@@ -167,6 +167,30 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void completesGenerationWhenAiOmitsOptionalMetadata() throws Exception {
+		String token = signupAndLogin("generation-optional-metadata@example.com");
+		String projectId = createProject(token, "선택 메타데이터 프로젝트");
+		String fileId = upload(token, projectId, "notes.txt", "분석 자료");
+		aiService.prepare(false, reportWithoutOptionalMetadata());
+
+		String jobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"선택 메타데이터 검증"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, jobId, "COMPLETED");
+
+		GenerationJob job = jobs.findById(UUID.fromString(jobId)).orElseThrow();
+		mvc.perform(get("/api/reports/{reportId}", job.getReportId())
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.document.metadata.title").value("AI 생성 보고서"))
+			.andExpect(jsonPath("$.document.metadata.author").value("AI"))
+			.andExpect(jsonPath("$.document.metadata.course").doesNotExist())
+			.andExpect(jsonPath("$.document.metadata.date").doesNotExist());
+	}
+
+	@Test
 	void limitsConcurrentGenerationsAcrossProjectsForOneUser() throws Exception {
 		String token = signupAndLogin("generation-concurrency@example.com");
 		String firstProjectId = createProject(token, "첫 번째 프로젝트");
@@ -528,5 +552,12 @@ class GenerationIntegrationTest {
 			new ReportDocument.Metadata("이미지 보고서", null, null, null),
 			List.of(new ReportDocument.Section("images", "이미지", List.of(Map.of(
 				"id", "screen", "type", "image", "fileId", fileId, "alt", "화면")))));
+	}
+
+	private static ReportDocument reportWithoutOptionalMetadata() {
+		return new ReportDocument(
+			new ReportDocument.Metadata("AI 생성 보고서", "AI", null, null),
+			List.of(new ReportDocument.Section("overview", "프로젝트 개요", List.of(Map.of(
+				"id", "summary", "type", "paragraph", "content", "분석 결과")))));
 	}
 }

@@ -103,7 +103,36 @@ def report_document_prompt(
                 "course": "string?",
                 "date": "YYYY-MM-DD?",
             },
-            "sections": "ReportDocument JSON Schema에 맞는 section과 block 배열",
+            "sections": [
+                {
+                    "id": "stable-section-id",
+                    "title": "string",
+                    "blocks": [
+                        {"id": "stable-block-id", "type": "paragraph", "content": "string"},
+                        {"id": "stable-block-id", "type": "bulletList", "items": ["string"]},
+                        {
+                            "id": "stable-block-id",
+                            "type": "code",
+                            "code": "string",
+                            "language": "string?",
+                        },
+                        {
+                            "id": "stable-block-id",
+                            "type": "image",
+                            "fileId": "uuid",
+                            "alt": "string",
+                            "caption": "string?",
+                        },
+                        {
+                            "id": "stable-block-id",
+                            "type": "callout",
+                            "title": "string?",
+                            "content": "string",
+                        },
+                        {"id": "stable-block-id", "type": "pageBreak"},
+                    ],
+                }
+            ],
         },
         evidence={
             "requiredMetadata": request.metadata.model_dump(mode="json", exclude_none=True),
@@ -117,7 +146,9 @@ def report_document_prompt(
         extra_rule=(
             "metadata는 requiredMetadata와 정확히 같아야 한다. image block은 실제 이미지 근거가 "
             "있고 availableImageIds에 있는 fileId만 사용한다. 각 section·block id는 "
-            "안정적인 영문 ID로 만들고, "
+            "안정적인 영문 ID로 만든다. paragraph와 callout의 본문 필드는 text가 아니라 "
+            "content다. requiredMetadata에 없는 선택 metadata 필드(author, course, date)는 "
+            "null로 쓰지 말고 생략한다. 각 블록에는 위 반환 형식에 정의된 필드만 사용하고, "
             "근거에 없는 사실은 작성하지 않는다."
         ),
     )

@@ -10,6 +10,8 @@ import httpx
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.analysis import ImageEvidence
 
+JSON_MAX_OUTPUT_TOKENS = 4096
+
 
 class GeminiModels(Protocol):
     def generate_content(self, *, model: str, contents: Any, config: Any) -> Any: ...
@@ -48,20 +50,16 @@ class GeminiClient:
             raise AIServiceError(
                 ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
             ) from exception
-        response = self._generate_with_retries(client, content_parts(prompt, images))
+        contents = content_parts(prompt, images)
+        for attempt in range(self._max_retries + 1):
+            response = self._generate_with_retries(client, contents)
+            text = getattr(response, "text", None)
+            if is_json_object(text):
+                return text
+            if attempt < self._max_retries:
+                self._sleeper(retry_delay_seconds(attempt))
 
-        text = getattr(response, "text", None)
-        if not isinstance(text, str) or not text.strip():
-            raise AIServiceError(
-                ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다."
-            )
-        try:
-            json.loads(text)
-        except json.JSONDecodeError as exception:
-            raise AIServiceError(
-                ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다."
-            ) from exception
-        return text
+        raise AIServiceError(ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다.")
 
     def _generate_with_retries(self, client: GeminiSdkClient, contents: Any) -> Any:
         last_exception: Exception | None = None
@@ -116,7 +114,23 @@ def create_sdk_client(api_key: str, timeout_seconds: float) -> GeminiSdkClient:
 def response_config() -> Any:
     from google.genai import types
 
-    return types.GenerateContentConfig(response_mime_type="application/json")
+    # Gemini 3.5 Flash는 기본적으로 medium 수준의 thinking을 사용한다.
+    # 짧은 구조화 분석에는 low가 적절하며, 출력 토큰을 명시해 JSON이 중간에
+    # 잘리는 일을 줄인다.
+    return types.GenerateContentConfig(
+        response_mime_type="application/json",
+        max_output_tokens=JSON_MAX_OUTPUT_TOKENS,
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+    )
+
+
+def is_json_object(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        return isinstance(json.loads(value), dict)
+    except json.JSONDecodeError:
+        return False
 
 
 def content_parts(prompt: str, images: Sequence[ImageEvidence]) -> Any:

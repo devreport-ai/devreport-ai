@@ -7,8 +7,10 @@ from uuid import UUID
 import pytest
 
 from app.core.errors import AIServiceError, ErrorCode
+from app.prompts.report_generation import report_document_prompt
 from app.schemas.analysis import AnalysisContext, ImageEvidence, TextEvidence
 from app.schemas.generation import GenerationRequest
+from app.schemas.pipeline import ReportPlan, RequirementAnalysis, SourceAnalysis
 from app.services.report_generation_pipeline import ReportGenerationPipeline
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -143,3 +145,18 @@ def test_rejects_document_that_changes_requested_metadata():
         ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_report_document_prompt_uses_contract_block_field_names():
+    prompt = report_document_prompt(
+        request(),
+        RequirementAnalysis.model_validate(responses()[0]),
+        SourceAnalysis.model_validate(responses()[1]),
+        (),
+        ReportPlan.model_validate(responses()[3]),
+        set(),
+    )
+
+    assert '"type":"paragraph","content":"string"' in prompt
+    assert "paragraph와 callout의 본문 필드는 text가 아니라 content다." in prompt
+    assert "선택 metadata 필드(author, course, date)는 null로 쓰지 말고 생략한다." in prompt

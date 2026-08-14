@@ -48,8 +48,11 @@ cp .env.example .env
 ### 4. 서버 실행
 
 ```bash
-uv run uvicorn app.main:app --reload --port 8000
+uv run hypercorn app.main:app --bind 127.0.0.1:8000 --reload
 ```
+
+AI Service는 Hypercorn으로 실행한다. Hypercorn은 Backend Java Client의 HTTP/2 h2c 업그레이드를
+처리하며, HTTP/1.1 요청도 함께 지원한다.
 
 | 주소 | 설명 |
 | --- | --- |
@@ -70,9 +73,10 @@ uv run uvicorn app.main:app --reload --port 8000
 | `manifest` | `application/json` | bundle 파일 메타데이터 |
 | `files` | 파일 MIME | manifest 순서와 일치하는 반복 파일 part |
 
-AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 검증한다. 현재
-`MOCK_REPORT=true`에서는 유효한 bundle을 받으면 샘플 `ReportDocument`를 반환하며,
-실제 문서·코드·이미지 분석과 Gemini 호출은 후속 작업에서 추가한다. 상세 계약은
+AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 검증한다.
+`MOCK_REPORT=true`에서는 유효한 bundle을 받으면 샘플 `ReportDocument`를 반환한다.
+`false`이면 Gemini를 통해 요구사항·소스·이미지를 단계별로 분석하고,
+`ReportDocument`를 생성·검증한다. 상세 계약은
 [`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
 
 생성 API의 multipart 본문은 ASGI 수신 단계에서 최대 100 MiB로 제한한다. `Content-Length`
@@ -95,7 +99,7 @@ uv run ruff format .
 | `CONTRACTS_DIR` | 저장소 `contracts/` | 공통 계약 디렉터리 경로 |
 | `MOCK_REPORT` | `true` | true면 Gemini 호출 없이 샘플 보고서를 반환 (운영에서는 false 고정) |
 | `AI_INTERNAL_TOKEN` | 없음 | Backend 내부 생성 요청 인증용 공유 Secret (운영 필수) |
-| `GEMINI_MODEL` | `gemini-2.5-pro` | 사용할 Gemini 모델 |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | 무료 티어 우선 모델. 다른 모델은 설정 검증에서 거부 |
 | `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 (운영 필수) |
 | `GEMINI_TIMEOUT_SECONDS` | `300` | Gemini 호출 타임아웃 |
 | `GEMINI_MAX_RETRIES` | `2` | 스키마 검증 실패 시 재시도 횟수 |
@@ -106,6 +110,12 @@ uv run ruff format .
 - 사용자별 API Key는 MVP 범위에서 제외하며 필요성이 확인되면 확장한다.
 - 로그와 예외 메시지에 키를 남기지 않는다 (`app/core/logging.py`의 마스킹 필터).
 - 파일이나 DB에 저장하지 않는다.
+- 코드에서는 `gemini-3.5-flash-lite`만 허용한다. 무료 티어는 모델별 요청·토큰 한도를 넘으면
+  `429 RESOURCE_EXHAUSTED`를 반환한다.
+- 일반 **alerts-only Google Cloud Budget**은 사용량 또는 과금을 멈추지 않고 알림만 보낸다.
+  과금 프로젝트를 운영한다면 Gemini API가 대상인 **Spend cap** 또는 AI Studio의 프로젝트별
+  월간 spend cap을 설정한다. spend cap은 처리 지연으로 소폭 초과 과금될 수 있으므로, 애플리케이션의
+  동시 생성 제한과 Gemini API rate limit도 함께 적용한다.
 
 운영에서는 `APP_ENV=prod`, `MOCK_REPORT=false`, `AI_INTERNAL_TOKEN`, `GEMINI_API_KEY`를
 모두 주입한다. 하나라도 없거나 Mock이 켜져 있으면 프로세스가 기동하지 않는다. AI Service는
@@ -128,4 +138,4 @@ ai/
 
 - [x] `POST /internal/ai/reports/generate` multipart bundle Mock 구현
 - [x] `X-Internal-Token` AI Service 검증 추가 (배포 전 보안 task)
-- [ ] Gemini Client 및 생성 파이프라인 (추출 → 목차 설계 → 섹션 생성)
+- [x] Gemini Client 및 생성 파이프라인 (요구사항 → 소스 → 이미지 → 목차 → 문서 생성)
