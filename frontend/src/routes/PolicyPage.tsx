@@ -1,4 +1,6 @@
 /** 베타 공개 전 검토할 정책 초안과 데이터 처리 고지. */
+import { POLICY_VERSIONS } from '../features/auth/policyVersions'
+
 export default function PolicyPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6">
@@ -8,6 +10,10 @@ export default function PolicyPage() {
         <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           이 페이지는 베타 공개 전 검토를 위한 초안입니다. 정식 공개 전 법률·개인정보 담당자 검토와
           운영자 연락처·삭제 요청 SLA 확정이 필요합니다.
+        </p>
+        <p className="text-xs text-gray-500">
+          개인정보처리방침 {POLICY_VERSIONS.privacyPolicy} · 이용약관{' '}
+          {POLICY_VERSIONS.termsOfService}
         </p>
       </header>
 

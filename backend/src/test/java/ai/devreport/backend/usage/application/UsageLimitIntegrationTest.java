@@ -138,7 +138,7 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-first@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+					.content("{\"email\":\"rate-limit-first@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
 				.andExpect(status().isCreated());
 			mvc.perform(post("/api/auth/signup")
 					.header("Forwarded", "for=" + firstClientIp)
@@ -147,7 +147,7 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-second@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+					.content("{\"email\":\"rate-limit-second@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
 				.andExpect(jsonPath("$.details.retryAfterSeconds").isNumber());
@@ -158,7 +158,7 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-third@example.com\",\"password\":\"password123\",\"name\":\"사용자\"}"))
+					.content("{\"email\":\"rate-limit-third@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
 				.andExpect(status().isCreated());
 		} finally {
 			properties.getRateLimit().setSignup(originalLimit);
@@ -207,7 +207,7 @@ class UsageLimitIntegrationTest {
 	}
 
 	private String signupAndLogin(String email) {
-		auth.signup(email, "password123", "사용자");
+		auth.signup(email, "password123", "사용자", "2026-08-14", "2026-08-14");
 		return auth.login(email, "password123").accessToken();
 	}
 

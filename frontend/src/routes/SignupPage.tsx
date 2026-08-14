@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useSignup } from '../features/auth/api'
+import { POLICY_VERSIONS } from '../features/auth/policyVersions'
 import { emailError, nameError, passwordError } from '../features/auth/validation'
 import { toDisplayMessage } from '../lib/api/errors'
 import { AuthField } from './LoginPage'
@@ -28,7 +29,13 @@ export function SignupPage() {
     if (errors.name || errors.email || errors.password || !policyAgreed) return
 
     signup.mutate(
-      { name: name.trim(), email: email.trim(), password },
+      {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        privacyPolicyVersion: POLICY_VERSIONS.privacyPolicy,
+        termsOfServiceVersion: POLICY_VERSIONS.termsOfService,
+      },
       { onSuccess: () => void navigate('/', { replace: true }) },
     )
   }

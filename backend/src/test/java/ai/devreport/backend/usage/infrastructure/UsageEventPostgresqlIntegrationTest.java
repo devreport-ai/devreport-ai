@@ -66,7 +66,7 @@ class UsageEventPostgresqlIntegrationTest {
 	@Test
 	void projectCreationStoresTimestampAndIgnoresDuplicateEvent() throws Exception {
 		String email = "usage-events-postgresql-" + UUID.randomUUID() + "@example.com";
-		User user = auth.signup(email, "password123", "PostgreSQL 테스트");
+		User user = auth.signup(email, "password123", "PostgreSQL 테스트", "2026-08-14", "2026-08-14");
 		userId = user.getId();
 		String token = auth.login(email, "password123").accessToken();
 

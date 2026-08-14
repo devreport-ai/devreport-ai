@@ -72,7 +72,8 @@ class AuthController {
 	@ResponseStatus(HttpStatus.CREATED)
 	UserResponse signup(HttpServletRequest servletRequest, @Valid @RequestBody SignupRequest request) {
 		rateLimits.checkSignup(clientIp(servletRequest));
-		return UserResponse.from(authService.signup(request.email(), request.password(), request.name()));
+		return UserResponse.from(authService.signup(request.email(), request.password(), request.name(),
+			request.privacyPolicyVersion(), request.termsOfServiceVersion()));
 	}
 
 	@PostMapping("/login")
@@ -225,7 +226,9 @@ class AuthController {
 	record SignupRequest(
 		@NotBlank @Email @Size(max = 320) String email,
 		@NotBlank @Size(min = 8, max = 72) String password,
-		@NotBlank @Size(max = 100) String name
+		@NotBlank @Size(max = 100) String name,
+		@NotBlank @Size(max = 50) String privacyPolicyVersion,
+		@NotBlank @Size(max = 50) String termsOfServiceVersion
 	) {
 		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
 		public boolean isPasswordWithinByteLimit() {

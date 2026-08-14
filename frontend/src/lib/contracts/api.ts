@@ -1686,6 +1686,10 @@ export interface components {
        */
       password: string
       name: string
+      /** @description 회원가입 시 확인한 개인정보처리방침 버전 */
+      privacyPolicyVersion: string
+      /** @description 회원가입 시 확인한 이용약관 버전 */
+      termsOfServiceVersion: string
     }
     LoginRequest: {
       /** Format: email */

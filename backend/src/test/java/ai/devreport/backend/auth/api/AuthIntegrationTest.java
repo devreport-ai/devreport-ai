@@ -2,8 +2,10 @@ package ai.devreport.backend.auth.api;
 
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.domain.PolicyConsent;
 import ai.devreport.backend.auth.domain.RefreshToken;
 import ai.devreport.backend.auth.domain.User;
+import ai.devreport.backend.auth.infrastructure.PolicyConsentRepository;
 import ai.devreport.backend.auth.infrastructure.RefreshTokenRepository;
 import ai.devreport.backend.auth.infrastructure.UserRepository;
 
@@ -58,10 +60,52 @@ class AuthIntegrationTest {
 	RefreshTokenRepository refreshTokens;
 
 	@Autowired
+	PolicyConsentRepository policyConsents;
+
+	@Autowired
 	AuthController controller;
 
 	@Autowired
 	JwtEncoder jwtEncoder;
+
+	@Test
+	void signupRequiresCurrentPolicyVersionsAndRecordsServerConsentTime() throws Exception {
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"missing-consent@example.com","password":"password123","name":"미동의"}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"old-policy@example.com","password":"password123","name":"구버전",
+					"privacyPolicyVersion":"2026-01-01","termsOfServiceVersion":"2026-01-01"}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("POLICY_CONSENT_REQUIRED"));
+
+		Instant consentRequestStartedAt = Instant.now();
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"current-policy@example.com","password":"password123","name":"현재 정책",
+					"privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
+					"""))
+			.andExpect(status().isCreated());
+		Instant consentRequestFinishedAt = Instant.now();
+
+		User user = users.findByEmail("current-policy@example.com").orElseThrow();
+		PolicyConsent consent = policyConsents.findAll().stream()
+			.filter(candidate -> candidate.getUser().getId().equals(user.getId()))
+			.findFirst().orElseThrow();
+		assertThat(consent.getPrivacyPolicyVersion()).isEqualTo("2026-08-14");
+		assertThat(consent.getTermsOfServiceVersion()).isEqualTo("2026-08-14");
+		assertThat(consent.getConsentedAt()).isBetween(consentRequestStartedAt.minusSeconds(1),
+			consentRequestFinishedAt.plusSeconds(1));
+	}
 
 	@Test
 	void signupLoginRefreshLogoutAndAuthenticationFlow() throws Exception {
@@ -70,14 +114,14 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"테스터"}
+					{"email":"%s","password":"password123","name":"테스터","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
 					""".formatted(email)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.email").value("user@example.com"));
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"bytes@example.com","password":"%s","name":"바이트 검증"}
+					{"email":"bytes@example.com","password":"%s","name":"바이트 검증","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
 					""".formatted("가".repeat(25))))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
@@ -87,7 +131,7 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"user@example.com","password":"password123","name":"중복"}
+					{"email":"user@example.com","password":"password123","name":"중복","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
 					"""))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"));
@@ -212,7 +256,7 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"origin@example.com","password":"password123","name":"Origin"}
+					{"email":"origin@example.com","password":"password123","name":"Origin","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
 					"""))
 			.andExpect(status().isCreated());
 		MvcResult loginResult = mvc.perform(post("/api/auth/login")

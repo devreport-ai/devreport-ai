@@ -458,7 +458,7 @@ class ReportExportIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"사용자"}
+					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
 					""".formatted(email)))
 			.andExpect(status().isCreated());
 		String response = mvc.perform(post("/api/auth/login")
