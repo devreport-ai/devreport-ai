@@ -3,6 +3,7 @@ package ai.devreport.backend.auth.api;
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthService;
 import ai.devreport.backend.auth.domain.PolicyConsent;
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.auth.domain.RefreshToken;
 import ai.devreport.backend.auth.domain.User;
 import ai.devreport.backend.auth.infrastructure.PolicyConsentRepository;
@@ -92,8 +93,8 @@ class AuthIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{"email":"current-policy@example.com","password":"password123","name":"현재 정책",
-					"privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					"""))
+					"privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		Instant consentRequestFinishedAt = Instant.now();
 
@@ -101,8 +102,8 @@ class AuthIntegrationTest {
 		PolicyConsent consent = policyConsents.findAll().stream()
 			.filter(candidate -> candidate.getUser().getId().equals(user.getId()))
 			.findFirst().orElseThrow();
-		assertThat(consent.getPrivacyPolicyVersion()).isEqualTo("2026-08-14");
-		assertThat(consent.getTermsOfServiceVersion()).isEqualTo("2026-08-14");
+		assertThat(consent.getPrivacyPolicyVersion()).isEqualTo(PolicyVersions.PRIVACY_POLICY);
+		assertThat(consent.getTermsOfServiceVersion()).isEqualTo(PolicyVersions.TERMS_OF_SERVICE);
 		assertThat(consent.getConsentedAt()).isBetween(consentRequestStartedAt.minusSeconds(1),
 			consentRequestFinishedAt.plusSeconds(1));
 	}
@@ -114,15 +115,15 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"테스터","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					""".formatted(email)))
+					{"email":"%s","password":"password123","name":"테스터","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.email").value("user@example.com"));
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"bytes@example.com","password":"%s","name":"바이트 검증","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					""".formatted("가".repeat(25))))
+					{"email":"bytes@example.com","password":"%s","name":"바이트 검증","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted("가".repeat(25), PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
@@ -131,8 +132,8 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"user@example.com","password":"password123","name":"중복","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					"""))
+					{"email":"user@example.com","password":"password123","name":"중복","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"));
 		mvc.perform(post("/api/auth/login")
@@ -256,8 +257,8 @@ class AuthIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"origin@example.com","password":"password123","name":"Origin","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					"""))
+					{"email":"origin@example.com","password":"password123","name":"Origin","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		MvcResult loginResult = mvc.perform(post("/api/auth/login")
 				.header("Origin", "http://localhost:3000")

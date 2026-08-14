@@ -1,5 +1,6 @@
 package ai.devreport.backend.export.application;
 
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.export.domain.ReportExport;
 import ai.devreport.backend.export.infrastructure.PdfReportRenderer;
 import ai.devreport.backend.export.infrastructure.ReportExportRepository;
@@ -458,8 +459,8 @@ class ReportExportIntegrationTest {
 		mvc.perform(post("/api/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"2026-08-14","termsOfServiceVersion":"2026-08-14"}
-					""".formatted(email)))
+					{"email":"%s","password":"password123","name":"사용자","privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
 			.andExpect(status().isCreated());
 		String response = mvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)

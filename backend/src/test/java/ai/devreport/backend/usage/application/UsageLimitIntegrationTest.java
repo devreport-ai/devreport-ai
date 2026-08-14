@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.domain.PolicyVersions;
 import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
@@ -138,7 +139,9 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-first@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
+					.content("{\"email\":\"rate-limit-first@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\""
+						+ PolicyVersions.PRIVACY_POLICY + "\",\"termsOfServiceVersion\":\""
+						+ PolicyVersions.TERMS_OF_SERVICE + "\"}"))
 				.andExpect(status().isCreated());
 			mvc.perform(post("/api/auth/signup")
 					.header("Forwarded", "for=" + firstClientIp)
@@ -147,7 +150,9 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-second@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
+					.content("{\"email\":\"rate-limit-second@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\""
+						+ PolicyVersions.PRIVACY_POLICY + "\",\"termsOfServiceVersion\":\""
+						+ PolicyVersions.TERMS_OF_SERVICE + "\"}"))
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
 				.andExpect(jsonPath("$.details.retryAfterSeconds").isNumber());
@@ -158,7 +163,9 @@ class UsageLimitIntegrationTest {
 						return request;
 					})
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"email\":\"rate-limit-third@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\"2026-08-14\",\"termsOfServiceVersion\":\"2026-08-14\"}"))
+					.content("{\"email\":\"rate-limit-third@example.com\",\"password\":\"password123\",\"name\":\"사용자\",\"privacyPolicyVersion\":\""
+						+ PolicyVersions.PRIVACY_POLICY + "\",\"termsOfServiceVersion\":\""
+						+ PolicyVersions.TERMS_OF_SERVICE + "\"}"))
 				.andExpect(status().isCreated());
 		} finally {
 			properties.getRateLimit().setSignup(originalLimit);
@@ -207,7 +214,7 @@ class UsageLimitIntegrationTest {
 	}
 
 	private String signupAndLogin(String email) {
-		auth.signup(email, "password123", "사용자", "2026-08-14", "2026-08-14");
+		auth.signup(email, "password123", "사용자", PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE);
 		return auth.login(email, "password123").accessToken();
 	}
 
