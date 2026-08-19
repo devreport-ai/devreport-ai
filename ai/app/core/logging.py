@@ -4,8 +4,9 @@ import logging
 import re
 
 # docs 13번의 "로그 출력 금지" 원칙을 AI Service에도 적용한다.
-# Gemini 키 형태(AIza...)와 흔한 key=value 표기를 가린다.
-_GEMINI_KEY = re.compile(r"AIza[0-9A-Za-z_\-]{10,}")
+# Google API Key는 두 형식이 쓰인다. 예전 형식은 AIza로 시작하고,
+# 최근 발급 키는 AQ.으로 시작한다. 둘 다 가려야 한다.
+_GEMINI_KEY = re.compile(r"(?:AIza|AQ\.)[0-9A-Za-z_\-]{16,}")
 _KEY_VALUE = re.compile(r"(?i)(api[_-]?key\"?\s*[:=]\s*\"?)([^\s\",}]+)")
 
 
