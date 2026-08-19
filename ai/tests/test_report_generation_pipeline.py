@@ -6,6 +6,7 @@ from uuid import UUID
 
 import pytest
 
+from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import report_document_prompt
 from app.schemas.analysis import AnalysisContext, ImageEvidence, TextEvidence
@@ -25,10 +26,22 @@ class FakeGemini:
     def __init__(self, responses: list[dict[str, object]]) -> None:
         self.responses = responses
         self.calls: list[tuple[str, tuple[ImageEvidence, ...]]] = []
+        self.output_token_limits: list[int | None] = []
 
-    def generate_json(self, prompt: str, images: tuple[ImageEvidence, ...] = ()) -> str:
+    def generate_json(
+        self,
+        prompt: str,
+        images: tuple[ImageEvidence, ...] = (),
+        *,
+        max_output_tokens: int | None = None,
+        response_validator: object = None,
+    ) -> object:
         self.calls.append((prompt, images))
-        return json.dumps(self.responses.pop(0), ensure_ascii=False)
+        self.output_token_limits.append(max_output_tokens)
+        response = json.dumps(self.responses.pop(0), ensure_ascii=False)
+        if response_validator is None:
+            return response
+        return response_validator(response)
 
 
 def request() -> GenerationRequest:
@@ -145,6 +158,15 @@ def test_rejects_document_that_changes_requested_metadata():
         ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_uses_larger_output_token_limit_for_final_report_document():
+    gemini = FakeGemini(responses())
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    assert gemini.output_token_limits[:-1] == [None, None, None, None]
+    assert gemini.output_token_limits[-1] == REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 
 
 def test_report_document_prompt_uses_contract_block_field_names():

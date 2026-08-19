@@ -3,14 +3,16 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Sequence
 from time import sleep
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 import httpx
 
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.analysis import ImageEvidence
 
-JSON_MAX_OUTPUT_TOKENS = 4096
+ANALYSIS_MAX_OUTPUT_TOKENS = 4096
+REPORT_DOCUMENT_MAX_OUTPUT_TOKENS = 8192
+ValidatedT = TypeVar("ValidatedT")
 
 
 class GeminiModels(Protocol):
@@ -40,7 +42,14 @@ class GeminiClient:
         self._client_factory = client_factory or create_sdk_client
         self._sleeper = sleeper
 
-    def generate_json(self, prompt: str, images: Sequence[ImageEvidence] = ()) -> str:
+    def generate_json(
+        self,
+        prompt: str,
+        images: Sequence[ImageEvidence] = (),
+        *,
+        max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
+        response_validator: Callable[[str], ValidatedT] | None = None,
+    ) -> str | ValidatedT:
         if not self._api_key:
             raise AIServiceError(ErrorCode.AI_UNAVAILABLE, "Gemini API Key가 설정되지 않았습니다.")
 
@@ -52,38 +61,46 @@ class GeminiClient:
             ) from exception
         contents = content_parts(prompt, images)
         for attempt in range(self._max_retries + 1):
-            response = self._generate_with_retries(client, contents)
+            try:
+                response = self._generate_once(client, contents, max_output_tokens)
+            except Exception as exception:
+                if not is_retryable(exception) or attempt == self._max_retries:
+                    self._raise_generation_error(exception)
+                self._sleeper(retry_delay_seconds(attempt))
+                continue
+
             text = getattr(response, "text", None)
             if is_json_object(text):
-                return text
+                if response_validator is None:
+                    return text
+                try:
+                    return response_validator(text)
+                except AIServiceError as exception:
+                    if exception.code != ErrorCode.AI_INVALID_RESPONSE:
+                        raise
+                except (ValueError, json.JSONDecodeError):
+                    pass
             if attempt < self._max_retries:
                 self._sleeper(retry_delay_seconds(attempt))
 
         raise AIServiceError(ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다.")
 
-    def _generate_with_retries(self, client: GeminiSdkClient, contents: Any) -> Any:
-        last_exception: Exception | None = None
-        for attempt in range(self._max_retries + 1):
-            try:
-                return client.models.generate_content(
-                    model=self._model,
-                    contents=contents,
-                    config=response_config(),
-                )
-            except Exception as exception:
-                last_exception = exception
-                if not is_retryable(exception) or attempt == self._max_retries:
-                    break
-                self._sleeper(retry_delay_seconds(attempt))
+    def _generate_once(self, client: GeminiSdkClient, contents: Any, max_output_tokens: int) -> Any:
+        return client.models.generate_content(
+            model=self._model,
+            contents=contents,
+            config=response_config(max_output_tokens),
+        )
 
-        assert last_exception is not None
-        if is_timeout(last_exception):
+    @staticmethod
+    def _raise_generation_error(exception: Exception) -> None:
+        if is_timeout(exception):
             raise AIServiceError(
                 ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
-            ) from last_exception
+            ) from exception
         raise AIServiceError(
             ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
-        ) from last_exception
+        ) from exception
 
 
 def is_retryable(exception: Exception) -> bool:
@@ -111,7 +128,7 @@ def create_sdk_client(api_key: str, timeout_seconds: float) -> GeminiSdkClient:
     )
 
 
-def response_config() -> Any:
+def response_config(max_output_tokens: int) -> Any:
     from google.genai import types
 
     # Gemini 3.5 Flash는 기본적으로 medium 수준의 thinking을 사용한다.
@@ -119,7 +136,7 @@ def response_config() -> Any:
     # 잘리는 일을 줄인다.
     return types.GenerateContentConfig(
         response_mime_type="application/json",
-        max_output_tokens=JSON_MAX_OUTPUT_TOKENS,
+        max_output_tokens=max_output_tokens,
         thinking_config=types.ThinkingConfig(thinking_level="low"),
     )
 

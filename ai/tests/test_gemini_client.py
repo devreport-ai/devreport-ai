@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from app.clients.gemini_client import JSON_MAX_OUTPUT_TOKENS, GeminiClient, response_config
+from app.clients.gemini_client import ANALYSIS_MAX_OUTPUT_TOKENS, GeminiClient, response_config
 from app.core.errors import AIServiceError, ErrorCode
 
 
@@ -64,10 +64,10 @@ def test_returns_json_text_from_sdk_response():
 
 
 def test_uses_low_thinking_and_sufficient_output_limit_for_json_responses():
-    config = response_config()
+    config = response_config(ANALYSIS_MAX_OUTPUT_TOKENS)
 
     assert config.response_mime_type == "application/json"
-    assert config.max_output_tokens == JSON_MAX_OUTPUT_TOKENS
+    assert config.max_output_tokens == ANALYSIS_MAX_OUTPUT_TOKENS
     assert config.thinking_config.thinking_level.value.lower() == "low"
 
 
@@ -144,6 +144,47 @@ def test_retries_transient_sdk_failure_before_returning_response():
     result = client(HttpError(503), Response("{}"), max_retries=1).generate_json("prompt")
 
     assert result == "{}"
+
+
+def test_uses_one_retry_budget_for_transport_failures():
+    sdk_client = FakeClient([HttpError(503), HttpError(503), HttpError(503)])
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=10,
+        max_retries=2,
+        client_factory=lambda _key, _timeout: sdk_client,
+        sleeper=lambda _seconds: None,
+    )
+
+    with pytest.raises(AIServiceError) as raised:
+        gemini_client.generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_UNAVAILABLE
+    assert len(sdk_client.models.calls) == 3
+
+
+def test_retries_invalid_validated_response_with_the_same_budget():
+    sdk_client = FakeClient([Response('{"invalid":true}'), Response('{"result":true}')])
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=10,
+        max_retries=1,
+        client_factory=lambda _key, _timeout: sdk_client,
+        sleeper=lambda _seconds: None,
+    )
+    validations = 0
+
+    def validate(text: str) -> str:
+        nonlocal validations
+        validations += 1
+        if validations == 1:
+            raise AIServiceError(ErrorCode.AI_INVALID_RESPONSE, "invalid schema")
+        return text
+
+    assert gemini_client.generate_json("prompt", response_validator=validate) == '{"result":true}'
+    assert len(sdk_client.models.calls) == 2
 
 
 def test_does_not_retry_non_retryable_sdk_error():
