@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -8,6 +9,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+log = logging.getLogger(__name__)
 
 
 class ErrorCode(StrEnum):
@@ -91,6 +94,7 @@ class AIServiceError(Exception):
 
 
 async def ai_service_error_handler(_request: Request, exc: AIServiceError) -> JSONResponse:
+    log.warning("AI 오류 응답 code=%s status=%d", exc.code, exc.status_code)
     return JSONResponse(status_code=exc.status_code, content=exc.to_payload())
 
 
@@ -137,7 +141,8 @@ async def validation_exception_handler(
 
 
 async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
-    # 예외 원문에 API Key가 섞일 수 있으므로 그대로 노출하지 않는다.
+    # 응답에는 예외 타입만 남기고, 원인 추적은 마스킹된 로그로만 남긴다.
+    log.exception("AI Service 처리 중 예상하지 못한 오류", exc_info=exc)
     return JSONResponse(
         status_code=500,
         content=build_error_payload(

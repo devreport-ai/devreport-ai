@@ -4,14 +4,20 @@ import json
 from collections.abc import Sequence
 from typing import Any
 
-from app.schemas.analysis import ImageEvidence, TextEvidence
+from app.schemas.analysis import ImageEvidence, OmittedFile, TextEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import ImageAnalysis, ReportPlan, RequirementAnalysis, SourceAnalysis
 
-PROMPT_VERSION = "report-generation-v1"
+PROMPT_VERSION = "report-generation-v2"
+STABLE_ID_RULE = (
+    "각 section·block id는 정규식 ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$을 지키는 영문 ID로 "
+    "만들고, block id는 문서 전체에서 유일해야 한다."
+)
 
 
-def requirement_analysis_prompt(documents: Sequence[TextEvidence]) -> str:
+def requirement_analysis_prompt(
+    documents: Sequence[TextEvidence], omitted: Sequence[OmittedFile] = ()
+) -> str:
     return _prompt(
         task="과제 요구사항을 추출한다.",
         output_shape={
@@ -20,7 +26,10 @@ def requirement_analysis_prompt(documents: Sequence[TextEvidence]) -> str:
                 {"id": "req-unique-id", "description": "string", "evidenceFileIds": ["uuid"]}
             ],
         },
-        evidence={"documents": _text_evidence(documents)},
+        evidence={
+            "documents": _text_evidence(documents),
+            "omittedFiles": _omitted_files(omitted),
+        },
         extra_rule=(
             "문서가 없으면 요구사항을 추측하지 말고 빈 requirements와 "
             "그 사실을 설명하는 summary를 반환한다."
@@ -28,15 +37,23 @@ def requirement_analysis_prompt(documents: Sequence[TextEvidence]) -> str:
     )
 
 
-def source_analysis_prompt(source_files: Sequence[TextEvidence]) -> str:
+def source_analysis_prompt(
+    source_files: Sequence[TextEvidence], omitted: Sequence[OmittedFile] = ()
+) -> str:
     return _prompt(
         task="프로젝트 소스 코드와 설정 파일에서 실제 구현된 기능·구조·기술 선택을 분석한다.",
         output_shape={
             "summary": "string",
             "findings": [{"title": "string", "description": "string", "evidenceFileIds": ["uuid"]}],
         },
-        evidence={"sourceFiles": _text_evidence(source_files)},
-        extra_rule="제공된 파일에 없는 구현은 사실처럼 작성하지 않는다.",
+        evidence={
+            "sourceFiles": _text_evidence(source_files),
+            "omittedFiles": _omitted_files(omitted),
+        },
+        extra_rule=(
+            "제공된 파일에 없는 구현은 사실처럼 작성하지 않는다. omittedFiles는 전달되지 않은 "
+            "파일 목록이므로 근거로 쓰지 않고, 분석 범위가 제한된 사실만 summary에 남긴다."
+        ),
     )
 
 
@@ -82,7 +99,10 @@ def report_plan_prompt(
             "availableFileIds": sorted(available_file_ids),
             "availableImageIds": sorted(available_image_ids),
         },
-        extra_rule="evidenceFileIds와 imageFileIds에는 제공된 available 목록의 ID만 사용한다.",
+        extra_rule=(
+            "evidenceFileIds와 imageFileIds에는 제공된 available 목록의 ID만 사용한다. "
+            f"{STABLE_ID_RULE}"
+        ),
     )
 
 
@@ -93,6 +113,7 @@ def report_document_prompt(
     images: Sequence[ImageAnalysis],
     plan: ReportPlan,
     available_image_ids: set[str],
+    omitted: Sequence[OmittedFile] = (),
 ) -> str:
     return _prompt(
         task="섹션 계획과 분석 근거만 사용해 ReportDocument JSON을 작성한다.",
@@ -129,6 +150,12 @@ def report_document_prompt(
                             "title": "string?",
                             "content": "string",
                         },
+                        {
+                            "id": "stable-block-id",
+                            "type": "table",
+                            "columns": ["string"],
+                            "rows": [["string"]],
+                        },
                         {"id": "stable-block-id", "type": "pageBreak"},
                     ],
                 }
@@ -142,11 +169,12 @@ def report_document_prompt(
             "images": [image.model_dump(mode="json", by_alias=True) for image in images],
             "plan": plan.model_dump(mode="json", by_alias=True),
             "availableImageIds": sorted(available_image_ids),
+            "omittedFiles": _omitted_files(omitted),
         },
         extra_rule=(
             "metadata는 requiredMetadata와 정확히 같아야 한다. image block은 실제 이미지 근거가 "
-            "있고 availableImageIds에 있는 fileId만 사용한다. 각 section·block id는 "
-            "안정적인 영문 ID로 만든다. paragraph와 callout의 본문 필드는 text가 아니라 "
+            f"있고 availableImageIds에 있는 fileId만 사용한다. {STABLE_ID_RULE} "
+            "paragraph와 callout의 본문 필드는 text가 아니라 "
             "content다. requiredMetadata에 없는 선택 metadata 필드(author, course, date)는 "
             "null로 쓰지 말고 생략한다. 각 블록에는 위 반환 형식에 정의된 필드만 사용하고, "
             "근거에 없는 사실은 작성하지 않는다."
@@ -179,10 +207,16 @@ def _text_evidence(items: Sequence[TextEvidence]) -> list[dict[str, Any]]:
             "path": item.path,
             "mimeType": item.mime_type,
             "truncated": item.truncated,
+            # 인코딩 폴백으로 읽은 파일은 일부 문자가 깨져 있을 수 있다.
+            "lossy": item.lossy,
             "content": item.content,
         }
         for item in items
     ]
+
+
+def _omitted_files(items: Sequence[OmittedFile]) -> list[dict[str, Any]]:
+    return [{"path": item.path, "reason": item.reason} for item in items]
 
 
 def _request_data(request: GenerationRequest) -> dict[str, Any]:

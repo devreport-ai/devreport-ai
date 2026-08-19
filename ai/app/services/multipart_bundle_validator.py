@@ -20,7 +20,8 @@ class MultipartBundleValidator:
     ) -> None:
         if len(manifest.files) != len(files):
             raise invalid_bundle()
-        if any(file.file_id not in allowed_file_ids for file in manifest.files):
+        selected_file_ids = set(allowed_file_ids)
+        if any(file.file_id not in selected_file_ids for file in manifest.files):
             raise invalid_bundle()
 
         for manifest_file, uploaded_file in zip(manifest.files, files, strict=True):

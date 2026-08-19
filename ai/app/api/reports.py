@@ -1,4 +1,5 @@
 import json
+import logging
 from secrets import compare_digest
 from typing import Annotated, Any, TypeVar
 
@@ -8,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.clients.gemini_client import GeminiClient
 from app.core.config import Settings, get_settings
+from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.generation import GenerationManifest, GenerationRequest
 from app.services.bundle_normalizer import BundleNormalizer
@@ -18,6 +20,7 @@ from app.services.report_generation_pipeline import ReportGenerationPipeline
 router = APIRouter(prefix="/internal/ai/reports", tags=["internal reports"])
 INTERNAL_TOKEN_HEADER = "X-Internal-Token"
 
+log = logging.getLogger(__name__)
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -31,34 +34,47 @@ async def generate_report(
     internal_token: Annotated[str | None, Header(alias=INTERNAL_TOKEN_HEADER)] = None,
 ) -> dict[str, Any]:
     """검증된 Backend multipart bundle을 Mock 또는 Gemini 파이프라인으로 처리한다."""
-    if (
-        not internal_token
-        or not settings.ai_internal_token
-        or not compare_digest(internal_token, settings.ai_internal_token)
-    ):
+    if not is_authorized(internal_token, settings.ai_internal_token):
         raise AIServiceError(ErrorCode.AI_UNAUTHORIZED, "내부 요청 인증에 실패했습니다.")
 
     generation_request = parse_json_model(request, GenerationRequest)
     generation_manifest = parse_json_model(await manifest.read(), GenerationManifest)
     MultipartBundleValidator.validate(generation_manifest, files or [], generation_request.file_ids)
-    context = await BundleNormalizer().normalize(generation_manifest, files or [])
+    log.info(
+        "생성 요청 수신 files=%d mock=%s",
+        len(generation_manifest.files),
+        settings.mock_report,
+    )
 
     if settings.mock_report:
+        # Mock은 계약 확인용이므로 bundle 내용을 읽지 않고 샘플 문서를 반환한다.
         return MockReportGenerator(
             sample_report_path=settings.sample_report_path,
             report_schema_path=settings.report_schema_path,
         ).generate()
 
+    context = await BundleNormalizer(settings.max_analyzed_images).normalize(
+        generation_manifest, files or []
+    )
     pipeline = ReportGenerationPipeline(
         GeminiClient(
             api_key=settings.gemini_api_key,
             model=settings.gemini_model,
             timeout_seconds=settings.gemini_timeout_seconds,
             max_retries=settings.gemini_max_retries,
+            deadline=Deadline(settings.generation_deadline_seconds),
         ),
         settings.report_schema_path,
     )
     return await run_in_threadpool(pipeline.generate, generation_request, context)
+
+
+def is_authorized(internal_token: str | None, expected_token: str | None) -> bool:
+    # compare_digest는 비ASCII 문자열에 TypeError를 던진다. 잘못된 헤더가 500이 되지
+    # 않도록 바이트로 비교한다.
+    if not internal_token or not expected_token:
+        return False
+    return compare_digest(internal_token.encode("utf-8"), expected_token.encode("utf-8"))
 
 
 def parse_json_model(raw_value: str | bytes, model: type[ModelT]) -> ModelT:

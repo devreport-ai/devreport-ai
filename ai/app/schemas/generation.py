@@ -15,9 +15,16 @@ class GenerationRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    file_ids: list[UUID] = Field(alias="fileIds", min_length=1)
+    file_ids: list[UUID] = Field(alias="fileIds", min_length=1, max_length=MAX_BUNDLE_FILE_COUNT)
     metadata: ReportMetadata
     instructions: str
+
+    @field_validator("file_ids")
+    @classmethod
+    def validate_unique_file_ids(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("fileIds must not contain duplicates")
+        return value
 
     @field_validator("instructions")
     @classmethod
@@ -77,7 +84,16 @@ class GenerationManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: Literal[1]
-    files: list[ManifestFile] = Field(max_length=MAX_BUNDLE_FILE_COUNT)
+    # 빈 bundle을 허용하면 근거 없이 지시문만으로 보고서를 지어내게 된다.
+    files: list[ManifestFile] = Field(min_length=1, max_length=MAX_BUNDLE_FILE_COUNT)
+
+    @model_validator(mode="after")
+    def validate_unique_paths(self) -> GenerationManifest:
+        # fileId는 ZIP 하나에서 나온 모든 파일이 공유하므로 중복이 정상이다.
+        # bundle 안에서 유일해야 하는 값은 multipart 파일 이름이 되는 path다.
+        if len({file.path for file in self.files}) != len(self.files):
+            raise ValueError("manifest files must not contain duplicate paths")
+        return self
 
     @model_validator(mode="after")
     def validate_total_size(self) -> GenerationManifest:
