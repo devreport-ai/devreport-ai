@@ -74,3 +74,13 @@ def test_formatter_leaves_a_masked_traceback_cache_for_other_handlers():
 
     assert "AIzaSyD-1234567890abcdefghij" not in record.exc_text
     assert "AIzaSyD-1234567890abcdefghij" not in reused
+
+
+def test_masks_new_style_google_api_key():
+    # 최근 발급 키는 AIza가 아니라 AQ.으로 시작한다.
+    key = "AQ." + "Xb9TESTKEYSHAPEONLY_abcdefghij-klmnop0123456789QQ"
+
+    masked = mask_secrets(f"gemini 호출 실패 {key}")
+
+    assert key not in masked
+    assert "***REDACTED***" in masked
