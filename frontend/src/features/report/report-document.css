@@ -103,7 +103,7 @@
 /* ── 출력 전용 페이지 (#39) — Chromium 이 preferCSSPageSize 로 찍는다 ── */
 @page {
   size: a4;
-  margin: 0; /* 여백은 .report-sheet 의 padding 이 담당한다 */
+  margin: 0 0 22mm; /* 하단 고정 푸터가 본문과 겹치지 않게 페이지마다 공간을 예약한다 */
 }
 .print-page {
   box-shadow: none;
@@ -1062,11 +1062,11 @@
 @media print {
   .report-document {
     width: 210mm;
-    min-height: 297mm;
+    min-height: 275mm;
     overflow: visible;
   }
   .report-document .rpt-document-shell {
-    min-height: 297mm;
+    min-height: 275mm;
     padding-bottom: 22mm;
   }
   .report-document .rpt-document-footer {

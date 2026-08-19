@@ -2105,10 +2105,12 @@ button:disabled {
     sans-serif;
   cursor: pointer;
   opacity: 0;
+  pointer-events: none;
 }
 .editor-preview-block:hover .rpt-block__edit,
 .rpt-block__edit:focus-visible {
   opacity: 1;
+  pointer-events: auto;
 }
 .editor-preview-block:hover {
   outline: 2px solid rgba(37, 99, 235, 0.2);
