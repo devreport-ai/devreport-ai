@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 APP_VERSION = "0.1.0"
+FREE_TIER_GEMINI_MODEL = "gemini-3.5-flash-lite"
+AppEnvironment = Literal["local", "test", "prod", "production"]
 
 
 class Settings(BaseSettings):
@@ -18,7 +21,7 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    app_env: str = "local"
+    app_env: AppEnvironment = "local"
     log_level: str = "INFO"
 
     # contracts는 세 파트 공통 계약이라 저장소 루트 기준으로 참조한다.
@@ -32,7 +35,8 @@ class Settings(BaseSettings):
     # Backend와 AI Service 사이의 내부 요청 인증 Secret.
     ai_internal_token: str | None = None
 
-    gemini_model: str = "gemini-2.5-pro"
+    # 무료 티어 사용량 제한 안에서 운영할 Flash 모델만 허용한다.
+    gemini_model: Literal["gemini-3.5-flash-lite"] = FREE_TIER_GEMINI_MODEL
     # AI Service 서버 키. 사용자별 키 전달은 MVP 범위가 아니다.
     gemini_api_key: str | None = None
     gemini_timeout_seconds: float = 300.0
@@ -48,7 +52,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
-        if self.app_env.strip().lower() not in {"prod", "production"}:
+        if self.app_env not in {"prod", "production"}:
             return self
         if self.mock_report:
             raise ValueError("MOCK_REPORT는 운영 환경에서 false여야 합니다.")

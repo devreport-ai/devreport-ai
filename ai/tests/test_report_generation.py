@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import reports
 from app.core.config import Settings, get_settings
 from app.core.errors import AIServiceError, ErrorCode
 from app.main import app
@@ -22,7 +23,6 @@ SECOND_FILE_ID = UUID("00000000-0000-4000-8000-000000000002")
 SECOND_SOURCE_PATH = f"source/{SECOND_FILE_ID}/src/Service.java"
 SECOND_SOURCE_CONTENT = b"class Service {}"
 INTERNAL_TOKEN = "test-internal-token"
-
 
 
 @pytest.fixture(autouse=True)
@@ -102,7 +102,7 @@ def test_generate_rejects_empty_file_ids_with_common_error_payload():
 def test_generate_rejects_metadata_without_title():
     request = valid_request() | {"metadata": {"author": "김예찬"}}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -111,7 +111,7 @@ def test_generate_rejects_metadata_without_title():
 def test_generate_rejects_metadata_with_blank_title():
     request = valid_request() | {"metadata": {"title": "   "}}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -120,7 +120,7 @@ def test_generate_rejects_metadata_with_blank_title():
 def test_generate_rejects_unknown_metadata_field():
     request = valid_request() | {"metadata": {"title": "보고서", "unknown": "value"}}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -129,7 +129,7 @@ def test_generate_rejects_unknown_metadata_field():
 def test_generate_rejects_metadata_with_invalid_date():
     request = valid_request() | {"metadata": {"title": "보고서", "date": "2026-99-99"}}
 
-    response = client.post("/internal/ai/reports/generate", files=multipart_data(request=request))
+    response = generate(multipart_data(request=request))
 
     assert response.status_code == 400
     assert response.json()["code"] == "AI_INVALID_REQUEST"
@@ -158,6 +158,39 @@ def test_generate_returns_unavailable_when_mock_is_disabled():
 
     assert response.status_code == 503
     assert response.json()["code"] == "AI_UNAVAILABLE"
+
+
+def test_generate_uses_pipeline_when_mock_is_disabled(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, object] = {}
+
+    class FakePipeline:
+        def __init__(self, gemini: object, report_schema_path: Path) -> None:
+            captured["gemini"] = gemini
+            captured["report_schema_path"] = report_schema_path
+
+        def generate(self, request: object, context: object) -> dict[str, object]:
+            captured["request"] = request
+            captured["context"] = context
+            return {"metadata": {"title": "실습보고서"}, "sections": []}
+
+    monkeypatch.setattr(reports, "ReportGenerationPipeline", FakePipeline)
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        mock_report=False, ai_internal_token=INTERNAL_TOKEN, gemini_api_key="test-api-key"
+    )
+    try:
+        response = client.post(
+            "/internal/ai/reports/generate",
+            files=multipart_data(),
+            headers={"X-Internal-Token": INTERNAL_TOKEN},
+        )
+    finally:
+        app.dependency_overrides.pop(get_settings)
+
+    assert response.status_code == 200
+    assert response.json() == {"metadata": {"title": "실습보고서"}, "sections": []}
+    assert captured["report_schema_path"] == Settings().report_schema_path
+    assert captured["request"] is not None
+    assert captured["context"] is not None
 
 
 def test_mock_generator_converts_invalid_utf8_contract_file_to_ai_error(tmp_path: Path):
