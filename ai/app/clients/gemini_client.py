@@ -77,7 +77,9 @@ class GeminiClient:
             self._ensure_time_left()
             contents = content_parts(retry_prompt(prompt, rejection), images)
             try:
-                response = self._generate_once(client, contents, max_output_tokens, response_schema)
+                response = self._generate_once(
+                    client, contents, max_output_tokens, response_schema, self._call_timeout()
+                )
             except Exception as exception:
                 if not is_retryable(exception) or attempt == self._max_retries:
                     self._raise_generation_error(exception)
@@ -123,12 +125,19 @@ class GeminiClient:
         contents: Any,
         max_output_tokens: int,
         response_schema: Any | None,
+        timeout_seconds: float,
     ) -> Any:
         return client.models.generate_content(
             model=self._model,
             contents=contents,
-            config=response_config(max_output_tokens, response_schema),
+            config=response_config(max_output_tokens, response_schema, timeout_seconds),
         )
+
+    def _call_timeout(self) -> float:
+        # 호출당 타임아웃이 남은 예산보다 길면 호출 하나가 전체 예산을 넘길 수 있다.
+        if self._deadline is None:
+            return self._timeout_seconds
+        return min(self._timeout_seconds, max(self._deadline.remaining(), 0.0))
 
     def _ensure_time_left(self) -> None:
         if self._deadline is not None:
@@ -215,7 +224,9 @@ def create_sdk_client(api_key: str, timeout_seconds: float) -> GeminiSdkClient:
     )
 
 
-def response_config(max_output_tokens: int, response_schema: Any | None = None) -> Any:
+def response_config(
+    max_output_tokens: int, response_schema: Any | None = None, timeout_seconds: float | None = None
+) -> Any:
     from google.genai import types
 
     # Gemini 3.5 Flash는 기본적으로 medium 수준의 thinking을 사용한다.
@@ -226,7 +237,18 @@ def response_config(max_output_tokens: int, response_schema: Any | None = None) 
         response_schema=response_schema,
         max_output_tokens=max_output_tokens,
         thinking_config=types.ThinkingConfig(thinking_level="low"),
+        http_options=http_timeout_options(timeout_seconds),
     )
+
+
+def http_timeout_options(timeout_seconds: float | None) -> Any:
+    """호출별 타임아웃을 남은 생성 예산에 맞춘다. SDK timeout 단위는 밀리초다."""
+    if timeout_seconds is None:
+        return None
+
+    from google.genai import types
+
+    return types.HttpOptions(timeout=max(int(timeout_seconds * 1000), 1))
 
 
 def is_json_object(value: Any) -> bool:

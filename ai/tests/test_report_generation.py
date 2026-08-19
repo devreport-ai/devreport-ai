@@ -326,3 +326,46 @@ def test_generate_rejects_non_ascii_internal_token_as_unauthorized():
 
     assert response.status_code == 401
     assert response.json()["code"] == "AI_UNAUTHORIZED"
+
+
+def test_generate_rejects_manifest_with_duplicate_paths():
+    # fileId는 ZIP 하나에서 나온 파일들이 공유하므로 중복이 정상이고, path는 유일해야 한다.
+    duplicated = valid_manifest()
+    duplicated["files"].append(dict(duplicated["files"][0]))
+    parts = multipart_data(manifest=duplicated)
+    parts.append(("files", (SOURCE_PATH, SOURCE_CONTENT, "text/plain")))
+
+    response = generate(parts)
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_accepts_manifest_sharing_one_file_id_across_zip_entries():
+    zip_manifest = {
+        "version": 1,
+        "files": [
+            {
+                "fileId": str(FILE_ID),
+                "category": "source",
+                "path": SOURCE_PATH,
+                "mimeType": "text/plain",
+                "size": len(SOURCE_CONTENT),
+            },
+            {
+                "fileId": str(FILE_ID),
+                "category": "source",
+                "path": f"source/{FILE_ID}/src/Service.java",
+                "mimeType": "text/plain",
+                "size": len(SECOND_SOURCE_CONTENT),
+            },
+        ],
+    }
+    parts = multipart_data(manifest=zip_manifest)
+    parts.append(
+        ("files", (f"source/{FILE_ID}/src/Service.java", SECOND_SOURCE_CONTENT, "text/plain"))
+    )
+
+    response = generate(parts)
+
+    assert response.status_code == 200

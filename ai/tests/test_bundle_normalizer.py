@@ -246,3 +246,41 @@ async def test_omits_image_larger_than_the_inline_request_limit():
     assert [(item.file_id, item.reason) for item in context.omitted] == [
         (FILE_ID, "image-too-large")
     ]
+
+
+@pytest.mark.anyio
+async def test_rejects_bundle_that_only_contains_empty_text_files():
+    # 빈 파일을 근거로 세면 내용이 없는 bundle이 Gemini 호출까지 진행된다.
+    with pytest.raises(AIServiceError) as raised:
+        await BundleNormalizer().normalize(
+            manifest("source", f"source/{FILE_ID}/src/App.java", "text/plain", 0),
+            [upload(f"source/{FILE_ID}/src/App.java", b"   \n", "text/plain")],
+        )
+
+    assert raised.value.code == ErrorCode.AI_FILE_PROCESSING_FAILED
+
+
+@pytest.mark.anyio
+async def test_omits_empty_text_file_but_keeps_the_rest():
+    files = GenerationManifest.model_validate(
+        {
+            "version": 1,
+            "files": [
+                manifest_file(FILE_ID, "source", f"source/{FILE_ID}/Empty.java", "text/plain", 0),
+                manifest_file(
+                    SECOND_FILE_ID, "source", f"source/{SECOND_FILE_ID}/App.java", "text/plain", 12
+                ),
+            ],
+        }
+    )
+
+    context = await BundleNormalizer().normalize(
+        files,
+        [
+            upload(f"source/{FILE_ID}/Empty.java", b"", "text/plain"),
+            upload(f"source/{SECOND_FILE_ID}/App.java", b"class App {}", "text/plain"),
+        ],
+    )
+
+    assert [item.file_id for item in context.source_files] == [SECOND_FILE_ID]
+    assert [(item.file_id, item.reason) for item in context.omitted] == [(FILE_ID, "empty")]

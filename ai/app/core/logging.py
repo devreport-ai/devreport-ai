@@ -29,7 +29,13 @@ class SecretMaskingFormatter(logging.Formatter):
     """예외 traceback에도 키가 섞일 수 있으므로 최종 출력 전체를 마스킹한다."""
 
     def format(self, record: logging.LogRecord) -> str:
+        # Formatter는 traceback 원문을 record.exc_text에 캐시하고 다른 포매터가 이를
+        # 재사용한다. 마스킹하지 않은 캐시를 버리고 마스킹된 값으로 다시 채운다.
+        record.exc_text = None
         return mask_secrets(super().format(record))
+
+    def formatException(self, exc_info: object) -> str:
+        return mask_secrets(super().formatException(exc_info))
 
 
 def configure_logging(level: str) -> None:

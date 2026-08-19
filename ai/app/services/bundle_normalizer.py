@@ -65,6 +65,10 @@ class BundleNormalizer:
                 # 텍스트로 읽을 수 없는 파일 하나 때문에 생성 전체를 실패시키지 않는다.
                 omitted.append(omit(manifest_file, "unreadable"))
                 continue
+            if not evidence.content.strip():
+                # 빈 파일을 근거로 세면 내용이 없는 bundle이 생성까지 진행된다.
+                omitted.append(omit(manifest_file, "empty"))
+                continue
 
             remaining_text_chars -= len(evidence.content)
             if manifest_file.category == "documents":

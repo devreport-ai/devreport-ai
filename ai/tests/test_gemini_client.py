@@ -316,3 +316,36 @@ def test_uses_a_larger_output_limit_for_the_final_document_than_for_analysis():
     from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 
     assert REPORT_DOCUMENT_MAX_OUTPUT_TOKENS > ANALYSIS_MAX_OUTPUT_TOKENS
+
+
+def test_never_lets_a_single_call_outlive_the_remaining_generation_budget():
+    sdk_client = FakeClient([Response("{}")])
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=120,
+        max_retries=0,
+        client_factory=lambda _key, _timeout: sdk_client,
+        deadline=Deadline(5.0),
+    )
+
+    gemini_client.generate_json("prompt")
+
+    # SDK timeout 단위는 밀리초다.
+    timeout_ms = sdk_client.models.calls[0]["config"].http_options.timeout
+    assert 0 < timeout_ms <= 5_000
+
+
+def test_uses_the_call_timeout_when_no_deadline_is_set():
+    sdk_client = FakeClient([Response("{}")])
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=90,
+        max_retries=0,
+        client_factory=lambda _key, _timeout: sdk_client,
+    )
+
+    gemini_client.generate_json("prompt")
+
+    assert sdk_client.models.calls[0]["config"].http_options.timeout == 90_000

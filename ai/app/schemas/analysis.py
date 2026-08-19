@@ -6,6 +6,7 @@ from uuid import UUID
 
 OmissionReason = Literal[
     "unreadable",
+    "empty",
     "text-budget-exhausted",
     "image-limit-exceeded",
     "image-too-large",
