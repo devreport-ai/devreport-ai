@@ -21,7 +21,7 @@ export default function TemplateChoicePage() {
 function TemplateChoiceContent({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const project = useProject(projectId)
-  const recovery = loadGenerationRecovery(projectId)
+  const [recovery] = useState(() => loadGenerationRecovery(projectId))
   const [templateId, setTemplateId] = useState(recovery?.templateId ?? 'default')
   const job = useGenerationJob(recovery?.jobId ?? null)
   const cancelGeneration = useCancelGeneration()

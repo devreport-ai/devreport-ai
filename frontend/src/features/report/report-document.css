@@ -1063,9 +1063,17 @@
   .report-document {
     width: 210mm;
     min-height: 297mm;
+    overflow: visible;
   }
   .report-document .rpt-document-shell {
     min-height: 297mm;
+    padding-bottom: 22mm;
+  }
+  .report-document .rpt-document-footer {
+    position: fixed;
+    right: 18mm;
+    bottom: 9mm;
+    left: 18mm;
   }
   .report-document .rpt-block,
   .report-document .rpt-section,

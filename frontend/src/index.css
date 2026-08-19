@@ -417,7 +417,7 @@ button:disabled {
 .app-content {
   width: min(100%, 1160px);
   margin: 0 auto;
-  padding: 54px 56px 72px;
+  padding: 38px 56px 72px;
 }
 .page-header {
   display: flex;
@@ -492,16 +492,16 @@ button:disabled {
 .project-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 .project-card {
   position: relative;
   display: grid;
-  min-height: 150px;
+  min-height: 164px;
   gap: 18px;
   border: 1px solid var(--v2-border);
   border-radius: var(--radius-card);
-  padding: 20px;
+  padding: 22px;
   background: var(--v2-surface);
   box-shadow: var(--shadow-card);
   transition: 140ms ease;
@@ -579,7 +579,7 @@ button:disabled {
 }
 .trash-section {
   margin-top: 38px;
-  padding: 22px;
+  padding: 24px;
 }
 .trash-section__description {
   margin: -5px 0 16px;
@@ -637,10 +637,10 @@ button:disabled {
 /* Project detail, files and generation */
 .project-detail-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 26px;
 }
 .project-detail-header h1 {
   margin: 6px 0 0;
@@ -843,6 +843,7 @@ button:disabled {
   display: flex;
   height: 64px;
   align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid var(--v2-border);
   padding: 0 56px;
   background: var(--v2-surface);
@@ -868,6 +869,9 @@ button:disabled {
   font-size: 14px;
 }
 .policy-draft-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
   border: 1px solid #fde68a;
   border-radius: 9px;
   padding: 13px 15px;
@@ -979,7 +983,7 @@ button:disabled {
     padding-left: 0;
   }
   .app-content {
-    padding: 36px 20px 56px;
+    padding: 30px 20px 56px;
   }
   .project-card-grid {
     grid-template-columns: 1fr;
@@ -1082,9 +1086,6 @@ button:disabled {
 .topbar-link:hover {
   color: var(--v2-accent);
 }
-.app-content {
-  padding-top: 38px;
-}
 .page-error {
   margin: -12px 0 20px;
 }
@@ -1100,21 +1101,11 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.project-card-grid {
-  gap: 16px;
-}
-.project-card {
-  min-height: 164px;
-  padding: 22px;
-}
 .project-card__icon {
   color: #3b82f6;
 }
 .project-card__actions button {
   background: #f8fafc;
-}
-.trash-section {
-  padding: 24px;
 }
 .trash-section__header {
   display: flex;
@@ -1144,10 +1135,6 @@ button:disabled {
   background: #f1f5f9;
 }
 
-.project-detail-header {
-  align-items: center;
-  margin-bottom: 26px;
-}
 .project-detail-heading {
   display: flex;
   min-width: 0;
@@ -1977,9 +1964,6 @@ button:disabled {
   flex: 1;
   font-size: 14px;
 }
-.editor-section-title::before {
-  content: attr(data-title);
-}
 .editor-section-rename {
   display: inline-flex;
   align-items: center;
@@ -2097,6 +2081,7 @@ button:disabled {
   box-shadow: 0 5px 18px rgba(15, 23, 42, 0.1);
 }
 .editor-preview-block {
+  position: relative;
   display: block;
   width: 100%;
   border: 0;
@@ -2106,14 +2091,30 @@ button:disabled {
   text-align: left;
   cursor: text;
 }
+.rpt-block__edit {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  padding: 3px 6px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font:
+    600 10px/1.2 'Pretendard Variable',
+    sans-serif;
+  cursor: pointer;
+  opacity: 0;
+}
+.editor-preview-block:hover .rpt-block__edit,
+.rpt-block__edit:focus-visible {
+  opacity: 1;
+}
 .editor-preview-block:hover {
   outline: 2px solid rgba(37, 99, 235, 0.2);
   outline-offset: 3px;
 }
 
-.plain-page__header {
-  justify-content: space-between;
-}
 .plain-page__back-link {
   color: var(--v2-muted);
   font-size: 13px;
@@ -2121,11 +2122,6 @@ button:disabled {
 }
 .plain-page__back-link:hover {
   color: var(--v2-accent);
-}
-.policy-draft-warning {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
 }
 .policy-draft-warning svg {
   flex: 0 0 auto;
@@ -2155,9 +2151,6 @@ button:disabled {
   .app-topbar {
     min-height: 58px;
     padding: 0 20px;
-  }
-  .app-content {
-    padding-top: 30px;
   }
   .template-gallery-heading {
     display: grid;

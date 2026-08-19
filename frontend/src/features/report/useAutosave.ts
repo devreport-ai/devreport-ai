@@ -12,7 +12,7 @@ import type { ReportDocument } from '../../lib/contracts/types'
 
 const AUTOSAVE_DEBOUNCE_MS = 1500
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'conflict' | 'error'
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'conflict' | 'error' | 'invalid'
 
 export interface AutosaveInput {
   reportId: string
@@ -42,7 +42,8 @@ export function useAutosave(input: AutosaveInput): {
   savedDocument: ReportDocument
 } {
   const { reportId, document, templateId, templateVersion, presentationSettings } = input
-  const [status, setStatus] = useState<SaveStatus>('idle')
+  const [status, setStatus] = useState<Exclude<SaveStatus, 'invalid'>>('idle')
+  const savable = hasRequiredContent(document)
   const [savedTemplateId, setSavedTemplateId] = useState(input.server.templateId)
   const [savedTemplateVersion, setSavedTemplateVersion] = useState(input.server.templateVersion)
   // 렌더에서 dirty 를 판정하려면 ref 가 아니라 state 가 필요하다 (ref 읽기는 lint 금지)
@@ -57,6 +58,7 @@ export function useAutosave(input: AutosaveInput): {
     version: input.server.version,
   })
   useEffect(() => {
+    if (!savable) return
     const dirty =
       document !== saved.current.document ||
       templateId !== saved.current.templateId ||
@@ -94,7 +96,23 @@ export function useAutosave(input: AutosaveInput): {
     }, AUTOSAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [reportId, document, templateId, templateVersion, presentationSettings])
+  }, [reportId, document, templateId, templateVersion, presentationSettings, savable])
 
-  return { status, savedTemplateId, savedTemplateVersion, savedDocument }
+  return {
+    status: savable ? status : 'invalid',
+    savedTemplateId,
+    savedTemplateVersion,
+    savedDocument,
+  }
+}
+
+function hasRequiredContent(document: ReportDocument): boolean {
+  return (
+    document.metadata.title.trim().length > 0 &&
+    document.sections.every(
+      (section) =>
+        section.title.trim().length > 0 &&
+        section.blocks.every((block) => block.type !== 'image' || block.alt.trim().length > 0),
+    )
+  )
 }

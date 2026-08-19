@@ -6,21 +6,6 @@ import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
 import '@fontsource-variable/noto-serif-kr'
 
-const TEMPLATE_LABELS: Record<string, string> = {
-  default: 'DEVREPORT AI',
-  github: 'DOCS / REPORTS / IMPLEMENTATION.MD',
-  'github-style': 'DEVREPORT-AI / PROJECT-REPORT',
-  latex: 'RESEARCH PAPER',
-  'research-report': 'RESEARCH NOTE · 2026/08',
-  'business-report': 'EXECUTIVE REPORT',
-  'editorial-sage': 'PROJECT JOURNAL · VOL. 01',
-  'side-panel': 'DEVREPORT AI · CASE STUDY',
-  'minimal-mono': 'REPORT / 009',
-  compact: 'DATA REPORT',
-  'dark-tech': 'SYSTEM REPORT // 011',
-  portfolio: 'CASE STUDY 2026',
-}
-
 export function ReportDocumentView({
   document: report,
   template,
@@ -35,11 +20,11 @@ export function ReportDocumentView({
   onEditBlock?: (block: ReportBlock) => void
 }) {
   const blockCount = report.sections.reduce((count, section) => count + section.blocks.length, 0)
-  const label = TEMPLATE_LABELS[template.id] ?? template.galleryName.toUpperCase()
+  const label = template.label
 
   return (
     <div className={`report-sheet report-document ${template.className} ${className}`.trim()}>
-      {template.id === 'side-panel' && (
+      {template.sideRail && (
         <aside className="rpt-side-rail" aria-hidden>
           <span className="rpt-side-rail__mark">D</span>
           <strong>{report.metadata.title}</strong>
@@ -63,7 +48,7 @@ export function ReportDocumentView({
       )}
 
       <div className="rpt-document-shell">
-        {['github', 'github-style', 'dark-tech'].includes(template.id) && (
+        {template.chrome && (
           <div className="rpt-document-chrome" aria-hidden>
             <span>{label}</span>
             <b>HTML</b>
@@ -76,7 +61,7 @@ export function ReportDocumentView({
             <h1>{report.metadata.title}</h1>
             <MetaLine metadata={report.metadata} />
           </div>
-          {['editorial-sage', 'portfolio'].includes(template.id) && (
+          {template.heroVisual && (
             <div className="rpt-hero-visual" aria-hidden>
               <span>PROJECT</span>
               <b>IMAGE / 01</b>
@@ -87,7 +72,7 @@ export function ReportDocumentView({
           )}
         </header>
 
-        {template.id === 'dark-tech' && (
+        {template.pipeline && (
           <div className="rpt-pipeline" aria-hidden>
             {['INGEST', 'GENERATE', 'RENDER', 'EDIT'].map((stage, index) => (
               <span key={stage}>
@@ -98,7 +83,7 @@ export function ReportDocumentView({
           </div>
         )}
 
-        {['research-report', 'business-report', 'compact', 'dark-tech'].includes(template.id) && (
+        {template.statStrip && (
           <div className="rpt-stat-strip" aria-hidden>
             <span>
               <b>{report.sections.length}</b>
@@ -116,7 +101,7 @@ export function ReportDocumentView({
         )}
 
         <div className="rpt-content-layout">
-          {template.id === 'github' && (
+          {template.toc && (
             <nav className="rpt-toc" aria-label="문서 목차">
               <strong>CONTENTS</strong>
               {report.sections.map((section, index) => (
@@ -176,18 +161,11 @@ function ReportBlockView({
   }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="rpt-block editor-preview-block"
-      onClick={() => onEdit(block)}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return
-        event.preventDefault()
-        onEdit(block)
-      }}
-    >
+    <div className="rpt-block editor-preview-block">
       <BlockView block={block} imageUrl={imageUrl} />
+      <button type="button" className="rpt-block__edit" onClick={() => onEdit(block)}>
+        이 블록 편집
+      </button>
     </div>
   )
 }

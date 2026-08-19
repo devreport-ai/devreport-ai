@@ -46,12 +46,16 @@ export function ReportEditor({
 }) {
   const [state, dispatch] = useReducer(editorReducer, report, (r): EditorState => {
     const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null)
+    const hasSavedTemplate = r.templateId !== null
     return {
       document: r.document,
       templateId: chosen?.id ?? r.templateId,
-      templateVersion: chosen?.version ?? r.templateVersion,
+      templateVersion: hasSavedTemplate
+        ? r.templateVersion
+        : (chosen?.version ?? r.templateVersion),
       past: [],
       future: [],
+      historyGroup: null,
     }
   })
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -200,11 +204,14 @@ export function ReportEditor({
             {editingMetadata ? (
               <MetadataEditor
                 metadata={state.document.metadata}
-                onChange={(metadata) => {
-                  if (metadata.title === '') return
-                  dispatch({ type: 'updateMetadata', metadata })
+                onChange={(metadata) =>
+                  dispatch({ type: 'updateMetadata', metadata, historyGroup: 'metadata' })
+                }
+                onClose={() => {
+                  if (!state.document.metadata.title.trim()) return
+                  dispatch({ type: 'endHistoryGroup' })
+                  setEditingMetadata(false)
                 }}
-                onClose={() => setEditingMetadata(false)}
               />
             ) : (
               <>
@@ -252,11 +259,19 @@ export function ReportEditor({
                   section={section}
                   editing={editingSectionId === section.id}
                   onEditTitle={() => setEditingSectionId(section.id)}
-                  onTitleChange={(title) => {
-                    if (title === '') return
-                    dispatch({ type: 'updateSectionTitle', sectionId: section.id, title })
+                  onTitleChange={(title) =>
+                    dispatch({
+                      type: 'updateSectionTitle',
+                      sectionId: section.id,
+                      title,
+                      historyGroup: `section:${section.id}`,
+                    })
+                  }
+                  onCloseTitle={() => {
+                    if (!section.title.trim()) return
+                    dispatch({ type: 'endHistoryGroup' })
+                    setEditingSectionId(null)
                   }}
-                  onCloseTitle={() => setEditingSectionId(null)}
                 >
                   <SortableContext
                     items={section.blocks.map((b) => b.id)}
@@ -270,9 +285,18 @@ export function ReportEditor({
                         editing={editingId === block.id}
                         onEdit={() => setEditingId(block.id)}
                         onChange={(next) => {
-                          dispatch({ type: 'updateBlock', sectionId: section.id, block: next })
+                          dispatch({
+                            type: 'updateBlock',
+                            sectionId: section.id,
+                            block: next,
+                            historyGroup: `block:${block.id}`,
+                          })
                         }}
-                        onClose={() => setEditingId(null)}
+                        onClose={() => {
+                          if (block.type === 'image' && !block.alt.trim()) return
+                          dispatch({ type: 'endHistoryGroup' })
+                          setEditingId(null)
+                        }}
                         onDelete={() =>
                           dispatch({
                             type: 'deleteBlock',
@@ -302,9 +326,6 @@ export function ReportEditor({
         <section className="editor-preview-panel">
           <header className="editor-preview-header">
             <h2>실시간 미리보기</h2>
-            <span>
-              <Icon name="eye" size={15} /> 90%
-            </span>
           </header>
           <div className="editor-preview-frame">
             <ReportDocumentView
@@ -355,15 +376,6 @@ function Toolbar({
   return (
     <header className="editor-toolbar">
       <BrandMark compact />
-      <div className="editor-toolbar__divider" aria-hidden />
-      <nav className="editor-tabs" aria-label="편집기 보기">
-        <span className="editor-tab editor-tab--active">
-          <Icon name="file-text" size={15} /> 콘텐츠
-        </span>
-        <span className="editor-tab">
-          <Icon name="pencil" size={15} /> 디자인
-        </span>
-      </nav>
       <span className="editor-toolbar__spacer" />
       <span aria-live="polite" className="editor-save-status">
         <span
@@ -376,6 +388,7 @@ function Toolbar({
         {status === 'saving' && '저장 중…'}
         {status === 'saved' && '저장됨'}
         {status === 'error' && '저장 실패'}
+        {status === 'invalid' && '필수값 확인'}
         {status === 'conflict' && '충돌 발생'}
       </span>
       <label className="editor-template-select">
@@ -399,7 +412,7 @@ function Toolbar({
         onClick={onUndo}
         disabled={state.past.length === 0}
         className="editor-icon-action"
-        aria-label="↩ 실행 취소"
+        aria-label="실행 취소"
         title="실행 취소"
       >
         <Icon name="undo" size={17} />
@@ -409,7 +422,7 @@ function Toolbar({
         onClick={onRedo}
         disabled={state.future.length === 0}
         className="editor-icon-action"
-        aria-label="↪ 다시 실행"
+        aria-label="다시 실행"
         title="다시 실행"
       >
         <Icon name="redo" size={17} />
@@ -451,10 +464,16 @@ function MetadataEditor({
         <input
           value={metadata.title}
           required
+          aria-invalid={!metadata.title.trim()}
           onChange={(event) => onChange({ ...metadata, title: event.target.value })}
           className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
         />
       </label>
+      {!metadata.title.trim() && (
+        <p className="inline-alert" role="alert">
+          제목을 입력해 주세요.
+        </p>
+      )}
       {(['author', 'course', 'date'] as const).map((key) => (
         <label key={key} className="block text-sm">
           <span className="text-gray-600">
@@ -472,6 +491,7 @@ function MetadataEditor({
         <button
           type="button"
           onClick={onClose}
+          disabled={!metadata.title.trim()}
           className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
         >
           편집 종료
@@ -521,20 +541,27 @@ function SortableSection({
               aria-label="섹션 제목"
               value={section.title}
               required
+              aria-invalid={!section.title.trim()}
               onChange={(event) => onTitleChange(event.target.value)}
               className="field-control editor-section-title-input"
             />
-            <button type="button" onClick={onCloseTitle} className="text-xs underline">
+            <button
+              type="button"
+              onClick={onCloseTitle}
+              disabled={!section.title.trim()}
+              className="text-xs underline"
+            >
               편집 종료
             </button>
+            {!section.title.trim() && (
+              <span className="inline-alert" role="alert">
+                제목을 입력해 주세요.
+              </span>
+            )}
           </>
         ) : (
           <>
-            <span
-              className="editor-section-title"
-              data-title={section.title}
-              aria-label={section.title}
-            />
+            <span className="editor-section-title">{section.title}</span>
             <button
               type="button"
               onClick={onEditTitle}

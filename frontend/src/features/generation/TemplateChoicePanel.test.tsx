@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
+import { Route, Routes } from 'react-router'
 import { TemplateChoicePanel } from './TemplateChoicePanel'
 import type { useGenerationJob } from './api'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -51,5 +52,46 @@ describe('TemplateChoicePanel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('AI 응답 오류')
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it('취소 요청 실패는 생성 상태와 무관하게 표시한다', () => {
+    renderWithProviders(
+      <TemplateChoicePanel
+        job={idleJob}
+        onRetry={() => undefined}
+        cancelError={new Error('취소 요청 실패')}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('알 수 없는 오류가 발생했습니다.')
+  })
+
+  it('생성이 완료되면 지연 없이 보고서로 이동한다', async () => {
+    const completedJob = {
+      data: { status: 'COMPLETED', progress: 100, reportId: 'report-1' },
+      error: null,
+      timedOut: false,
+    } as unknown as ReturnType<typeof useGenerationJob>
+    const onComplete = vi.fn()
+
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <TemplateChoicePanel
+              job={completedJob}
+              recovered
+              onRetry={() => undefined}
+              onComplete={onComplete}
+            />
+          }
+        />
+        <Route path="/reports/:reportId" element={<p>보고서 도착</p>} />
+      </Routes>,
+    )
+
+    expect(await screen.findByText('보고서 도착')).toBeInTheDocument()
+    expect(onComplete).toHaveBeenCalledOnce()
   })
 })

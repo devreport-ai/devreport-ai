@@ -74,10 +74,10 @@ describe('ReportEditor', () => {
   it('블록 입력을 확인 없이 미리보기에 즉시 반영한다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 
-    fireEvent.click(screen.getByText('첫 문단입니다.'))
+    fireEvent.click(screen.getAllByRole('button', { name: '이 블록 편집' })[0])
     fireEvent.change(screen.getByLabelText('내용'), { target: { value: '고친 문단' } })
 
-    expect(screen.getByRole('button', { name: '고친 문단' })).toBeInTheDocument()
+    expect(screen.getAllByText('고친 문단')).toHaveLength(2)
     expect(screen.queryByText('첫 문단입니다.')).toBeNull()
   })
 
@@ -87,7 +87,7 @@ describe('ReportEditor', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '블록 삭제' })[0])
     expect(screen.queryByText('첫 문단입니다.')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: '↩ 실행 취소' }))
+    fireEvent.click(screen.getByRole('button', { name: '실행 취소' }))
     expect(screen.getByText('첫 문단입니다.')).toBeInTheDocument()
   })
 
@@ -118,6 +118,42 @@ describe('ReportEditor', () => {
     expect(screen.getByText('새 개요')).toBeInTheDocument()
   })
 
+  it('빈 필수값은 미리보기에 반영하되 저장과 편집 종료를 막는다', async () => {
+    vi.useFakeTimers()
+    try {
+      renderWithProviders(<ReportEditor report={report()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: '문서 정보 편집' }))
+      const title = screen.getByDisplayValue('실습 보고서')
+      fireEvent.change(title, { target: { value: '' } })
+
+      expect(title).toHaveValue('')
+      expect(screen.getByText('필수값 확인')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '편집 종료' })).toBeDisabled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      expect(
+        (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
+          ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+        ),
+      ).toBe(false)
+
+      fireEvent.change(title, { target: { value: '새 보고서' } })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      expect(
+        (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
+          ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+        ),
+      ).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('사이드 패널 템플릿은 실제 문서 레일 구조를 렌더링한다', () => {
     const { container } = renderWithProviders(<ReportEditor report={report()} />)
 
@@ -142,7 +178,7 @@ describe('ReportEditor', () => {
       )
       expect(put).toBeDefined()
       expect(String((put![1] as RequestInit).body)).toContain('"templateId":"compact"')
-      expect(String((put![1] as RequestInit).body)).toContain('"templateVersion":2')
+      expect(String((put![1] as RequestInit).body)).toContain('"templateVersion":1')
     } finally {
       vi.useRealTimers()
     }
@@ -162,5 +198,25 @@ describe('ReportEditor', () => {
       <ReportEditor report={saved} initialTemplateId="compact" />,
     )
     expect(container.querySelector('.tpl-default')).not.toBeNull()
+  })
+
+  it('이미 저장된 템플릿 버전을 자동으로 덮어쓰지 않는다', async () => {
+    vi.useFakeTimers()
+    try {
+      const saved: Report = { ...report(), templateId: 'default', templateVersion: 1 }
+      renderWithProviders(<ReportEditor report={saved} />)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      expect(
+        (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
+          ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+        ),
+      ).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

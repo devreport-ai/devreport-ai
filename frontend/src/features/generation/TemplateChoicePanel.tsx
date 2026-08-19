@@ -3,7 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Icon } from '../../components/ui'
 import { toDisplayMessage } from '../../lib/api/errors'
-import { REPORT_TEMPLATES, type ReportTemplate } from '../report/templates'
+import {
+  REPORT_TEMPLATES,
+  REPORT_TEMPLATE_CATEGORIES,
+  type ReportTemplate,
+} from '../report/templates'
 import type { useGenerationJob } from './api'
 
 export function TemplateChoicePanel({
@@ -62,10 +66,7 @@ export function TemplateChoicePanel({
     navigatedRef.current = true
     onComplete?.()
     const reportId = job.data?.reportId
-    const timer = window.setTimeout(() => {
-      if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
-    }, 400)
-    return () => window.clearTimeout(timer)
+    if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
   }, [confirmed, failed, finished, job.data?.reportId, navigate, onComplete, templateId])
 
   const chooseTemplate = (next: string) => {
@@ -128,21 +129,19 @@ export function TemplateChoicePanel({
         </div>
 
         <div className="template-gallery-filters" role="group" aria-label="템플릿 분류">
-          {(['전체', '일반 보고서', '개발 문서', '학술', '에디토리얼', '컴팩트'] as const).map(
-            (item) => (
-              <button
-                key={item}
-                type="button"
-                aria-pressed={category === item}
-                className={
-                  category === item ? 'template-filter template-filter--active' : 'template-filter'
-                }
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ),
-          )}
+          {(['전체', ...REPORT_TEMPLATE_CATEGORIES] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              aria-pressed={category === item}
+              className={
+                category === item ? 'template-filter template-filter--active' : 'template-filter'
+              }
+              onClick={() => setCategory(item)}
+            >
+              {item}
+            </button>
+          ))}
         </div>
 
         <div className="template-gallery-grid">
@@ -214,10 +213,13 @@ export function TemplateChoicePanel({
             <button type="button" className="secondary-button" onClick={onRetry}>
               다시 시도
             </button>
-            {cancelError !== undefined && cancelError !== null && (
-              <p>{toDisplayMessage(cancelError)}</p>
-            )}
           </div>
+        )}
+
+        {cancelError !== undefined && cancelError !== null && (
+          <p className="inline-alert" role="alert">
+            {toDisplayMessage(cancelError)}
+          </p>
         )}
       </div>
     </main>

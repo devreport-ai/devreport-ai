@@ -15,6 +15,7 @@ export function BlockEditor({
   onClose: () => void
   imageFiles?: FileResponse[]
 }) {
+  const invalid = block.type === 'image' && !block.alt.trim()
   return (
     <div className="space-y-2 rounded border border-blue-400 bg-blue-50/50 p-2">
       <Fields draft={block} onChange={onChange} imageFiles={imageFiles} />
@@ -22,11 +23,17 @@ export function BlockEditor({
         <button
           type="button"
           onClick={onClose}
+          disabled={invalid}
           className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
         >
           편집 종료
         </button>
       </div>
+      {invalid && (
+        <p className="inline-alert" role="alert">
+          대체 텍스트를 입력해 주세요.
+        </p>
+      )}
     </div>
   )
 }
@@ -82,9 +89,8 @@ function Fields({
             label="대체 텍스트"
             value={draft.alt}
             required
-            onChange={(alt) => {
-              if (alt !== '') onChange({ ...draft, alt })
-            }}
+            invalid={!draft.alt.trim()}
+            onChange={(alt) => onChange({ ...draft, alt })}
           />
           <label className="block text-sm">
             <span className="text-gray-600">이미지 파일</span>
@@ -217,11 +223,13 @@ function Input({
   label,
   value,
   required,
+  invalid,
   onChange,
 }: {
   label: string
   value: string
   required?: boolean
+  invalid?: boolean
   onChange: (value: string) => void
 }) {
   return (
@@ -230,6 +238,7 @@ function Input({
       <input
         value={value}
         required={required}
+        aria-invalid={invalid}
         onChange={(e) => onChange(e.target.value)}
         className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
       />
