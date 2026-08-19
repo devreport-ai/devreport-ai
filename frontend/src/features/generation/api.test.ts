@@ -88,12 +88,33 @@ describe('nextPollInterval', () => {
 describe('generation recovery', () => {
   it('프로젝트별 작업과 템플릿을 세션에 저장하고 지운다', () => {
     sessionStorage.clear()
-    saveGenerationRecovery('project-1', { jobId: 'job-1', templateId: 'compact' })
+    saveGenerationRecovery('project-1', {
+      jobId: 'job-1',
+      templateId: 'compact',
+      confirmed: true,
+    })
 
-    expect(loadGenerationRecovery('project-1')).toEqual({ jobId: 'job-1', templateId: 'compact' })
+    expect(loadGenerationRecovery('project-1')).toEqual({
+      jobId: 'job-1',
+      templateId: 'compact',
+      confirmed: true,
+    })
 
     clearGenerationRecovery('project-1')
     expect(loadGenerationRecovery('project-1')).toBeNull()
+  })
+
+  it('이전 세션 데이터는 미확정 상태로 복구한다', () => {
+    sessionStorage.setItem(
+      'devreport:generation:project-1',
+      JSON.stringify({ jobId: 'job-1', templateId: 'default' }),
+    )
+
+    expect(loadGenerationRecovery('project-1')).toEqual({
+      jobId: 'job-1',
+      templateId: 'default',
+      confirmed: false,
+    })
   })
 
   it('손상된 복구 상태는 안전하게 버린다', () => {

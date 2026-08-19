@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { AppNav } from '../components/AppNav'
+import { AppTopBar, Icon, PageHeader, SurfaceCard } from '../components/ui'
 import {
   useCreateProject,
   useDeleteProject,
@@ -63,59 +64,71 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="app-page">
       <AppNav screen="프로젝트" />
-      <main className="mx-auto max-w-3xl p-6">
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <label htmlFor="project-name" className="sr-only">
-            프로젝트 이름
-          </label>
-          <input
-            id="project-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="새 프로젝트 이름"
-            maxLength={100}
-            className="flex-1 rounded border border-gray-300 px-3 py-2"
-          />
-          <button
-            type="submit"
-            disabled={!name.trim() || createProject.isPending}
-            className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-40"
-          >
-            {createProject.isPending ? '만드는 중…' : '만들기'}
-          </button>
-        </form>
+      <AppTopBar current="프로젝트" />
+      <main className="app-content">
+        <PageHeader
+          eyebrow="WORKSPACE"
+          title="프로젝트"
+          description="보고서 작업을 위한 프로젝트를 만들고 관리합니다."
+          actions={
+            <form onSubmit={handleCreate} className="create-project-inline">
+              <label htmlFor="project-name" className="sr-only">
+                프로젝트 이름
+              </label>
+              <input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="새 프로젝트 이름"
+                maxLength={100}
+                className="field-control"
+              />
+              <button
+                type="submit"
+                disabled={!name.trim() || createProject.isPending}
+                className="primary-button"
+              >
+                <Icon name="plus" size={16} />
+                {createProject.isPending ? '만드는 중…' : '프로젝트 만들기'}
+              </button>
+            </form>
+          }
+        />
 
         {createProject.error && (
-          <p role="alert" className="mt-2 text-sm text-red-600">
+          <p role="alert" className="inline-alert page-error">
             {toDisplayMessage(createProject.error)}
           </p>
         )}
 
-        <section className="mt-8">
-          <h2 className="text-lg font-semibold">프로젝트</h2>
+        <section>
+          <div className="section-heading">
+            <h2>프로젝트</h2>
+            {data && <p>{data.totalElements}개 프로젝트</p>}
+          </div>
 
-          {isPending && <p className="mt-2 text-gray-500">불러오는 중…</p>}
+          {isPending && <p className="inline-hint">불러오는 중…</p>}
 
           {error && (
-            <p role="alert" className="mt-2 text-red-600">
+            <p role="alert" className="inline-alert">
               {toDisplayMessage(error)}
             </p>
           )}
 
           {data && data.items.length === 0 && (
-            <p className="mt-2 text-gray-500">아직 프로젝트가 없습니다. 위에서 만들어 주세요.</p>
+            <p className="inline-hint">아직 프로젝트가 없습니다. 위에서 만들어 주세요.</p>
           )}
 
           {data && data.items.length > 0 && (
-            <ul className="mt-2 divide-y divide-gray-200">
+            <ul className="project-card-grid">
               {data.items.map((project) => (
-                <li key={project.id}>
+                <li key={project.id} className="project-card">
                   {editingId === project.id ? (
                     <form
                       onSubmit={(event) => handleRename(event, project.id)}
-                      className="flex gap-2 py-2"
+                      className="project-card__edit"
                     >
                       <label htmlFor={`edit-project-${project.id}`} className="sr-only">
                         프로젝트 이름
@@ -125,50 +138,53 @@ export default function ProjectsPage() {
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
                         maxLength={100}
-                        className="min-w-0 flex-1 rounded border border-gray-300 px-3 py-2"
+                        className="field-control"
                       />
                       <button
                         type="submit"
                         disabled={!editingName.trim() || updateProject.isPending}
-                        className="rounded bg-gray-900 px-3 py-1 text-sm text-white disabled:opacity-40"
+                        className="primary-button"
                       >
                         저장
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="rounded border border-gray-300 px-3 py-1 text-sm"
+                        className="secondary-button"
                       >
                         취소
                       </button>
                     </form>
                   ) : (
-                    <div className="flex items-center gap-3 py-2">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="min-w-0 flex-1 py-1 hover:underline"
-                      >
+                    <>
+                      <div className="project-card__top">
+                        <span className="project-card__icon" aria-hidden>
+                          {project.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="project-card__date">{formatDate(project.updatedAt)}</span>
+                      </div>
+                      <Link to={`/projects/${project.id}`} className="project-card__title">
                         {project.name}
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(project.id)
-                          setEditingName(project.name)
-                        }}
-                        className="shrink-0 rounded border border-gray-300 px-2 py-1 text-sm"
-                      >
-                        이름 수정
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(project.id, project.name)}
-                        disabled={deleteProject.isPending}
-                        className="shrink-0 rounded border border-gray-300 px-2 py-1 text-sm text-gray-600 disabled:opacity-40"
-                      >
-                        휴지통 이동
-                      </button>
-                    </div>
+                      <div className="project-card__actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(project.id)
+                            setEditingName(project.name)
+                          }}
+                        >
+                          이름 수정
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(project.id, project.name)}
+                          disabled={deleteProject.isPending}
+                        >
+                          휴지통 이동
+                        </button>
+                      </div>
+                    </>
                   )}
                 </li>
               ))}
@@ -176,12 +192,12 @@ export default function ProjectsPage() {
           )}
 
           {updateProject.error && (
-            <p role="alert" className="mt-2 text-sm text-red-600">
+            <p role="alert" className="inline-alert">
               {toDisplayMessage(updateProject.error)}
             </p>
           )}
           {deleteProject.error && (
-            <p role="alert" className="mt-2 text-sm text-red-600">
+            <p role="alert" className="inline-alert">
               {toDisplayMessage(deleteProject.error)}
             </p>
           )}
@@ -197,30 +213,36 @@ export default function ProjectsPage() {
           )}
         </section>
 
-        <section className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-lg font-semibold">휴지통</h2>
-          <p className="mt-1 text-sm text-gray-600">
+        <SurfaceCard className="trash-section">
+          <div className="trash-section__header">
+            <div className="trash-section__icon" aria-hidden>
+              <Icon name="trash" size={17} />
+            </div>
+            <div>
+              <h2>휴지통</h2>
+              <p>30일 보관</p>
+            </div>
+          </div>
+          <p className="trash-section__description">
             삭제한 프로젝트와 파일은 30일 동안 복구할 수 있으며 이후 완전히 삭제됩니다.
           </p>
 
-          {trashed.isPending && <p className="mt-2 text-gray-500">휴지통을 불러오는 중…</p>}
+          {trashed.isPending && <p className="inline-hint">휴지통을 불러오는 중…</p>}
           {trashed.error && (
-            <p role="alert" className="mt-2 text-red-600">
+            <p role="alert" className="inline-alert">
               {toDisplayMessage(trashed.error)}
             </p>
           )}
           {trashed.data && trashed.data.items.length === 0 && (
-            <p className="mt-2 text-gray-500">휴지통이 비어 있습니다.</p>
+            <p className="inline-hint">휴지통이 비어 있습니다.</p>
           )}
           {trashed.data && trashed.data.items.length > 0 && (
-            <ul className="mt-2 divide-y divide-gray-200">
+            <ul className="m-0 list-none p-0">
               {trashed.data.items.map((project) => (
-                <li key={project.id} className="flex items-center gap-3 py-2">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{project.name}</span>
-                    <time dateTime={project.deletedAt} className="block text-sm text-gray-500">
-                      {formatDate(project.deletedAt)} 삭제
-                    </time>
+                <li key={project.id} className="trash-row">
+                  <span>
+                    <span className="trash-row__name">{project.name}</span>
+                    <time dateTime={project.deletedAt}>{formatDate(project.deletedAt)} 삭제</time>
                   </span>
                   <button
                     type="button"
@@ -228,7 +250,6 @@ export default function ProjectsPage() {
                       restoreProject.mutate(project.id, { onSuccess: () => setTrashPage(0) })
                     }
                     disabled={restoreProject.isPending}
-                    className="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
                   >
                     복구
                   </button>
@@ -237,7 +258,7 @@ export default function ProjectsPage() {
             </ul>
           )}
           {restoreProject.error && (
-            <p role="alert" className="mt-2 text-sm text-red-600">
+            <p role="alert" className="inline-alert">
               {toDisplayMessage(restoreProject.error)}
             </p>
           )}
@@ -251,7 +272,7 @@ export default function ProjectsPage() {
               onPageChange={setTrashPage}
             />
           )}
-        </section>
+        </SurfaceCard>
       </main>
     </div>
   )
@@ -273,12 +294,11 @@ function Pagination({
   if (totalPages <= 1) return null
 
   return (
-    <nav aria-label={label} className="mt-4 flex items-center justify-center gap-3">
+    <nav aria-label={label} className="pagination">
       <button
         type="button"
         onClick={() => onPageChange(page - 1)}
         disabled={page === 0 || isFetching}
-        className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
       >
         이전 페이지
       </button>
@@ -289,7 +309,6 @@ function Pagination({
         type="button"
         onClick={() => onPageChange(page + 1)}
         disabled={page + 1 >= totalPages || isFetching}
-        className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
       >
         다음 페이지
       </button>

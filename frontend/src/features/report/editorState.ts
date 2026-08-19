@@ -13,12 +13,13 @@ export interface EditorState {
   templateVersion: number | null
   past: ReportDocument[]
   future: ReportDocument[]
+  historyGroup: string | null
 }
 
 export type EditorAction =
-  | { type: 'updateMetadata'; metadata: ReportDocument['metadata'] }
-  | { type: 'updateSectionTitle'; sectionId: string; title: string }
-  | { type: 'updateBlock'; sectionId: string; block: ReportBlock }
+  | { type: 'updateMetadata'; metadata: ReportDocument['metadata']; historyGroup?: string }
+  | { type: 'updateSectionTitle'; sectionId: string; title: string; historyGroup?: string }
+  | { type: 'updateBlock'; sectionId: string; block: ReportBlock; historyGroup?: string }
   | { type: 'addBlock'; sectionId: string; afterBlockId: string | null; block: ReportBlock }
   | { type: 'deleteBlock'; sectionId: string; blockId: string }
   | { type: 'moveBlock'; sectionId: string; blockId: string; toIndex: number }
@@ -31,6 +32,7 @@ export type EditorAction =
     }
   | { type: 'moveSection'; sectionId: string; toIndex: number }
   | { type: 'setTemplate'; templateId: string; templateVersion: number }
+  | { type: 'endHistoryGroup' }
   | { type: 'undo' }
   | { type: 'redo' }
 
@@ -46,18 +48,43 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         document: previous,
         past: state.past.slice(0, -1),
         future: [state.document, ...state.future],
+        historyGroup: null,
       }
     }
     case 'redo': {
       const [next, ...rest] = state.future
       if (!next) return state
-      return { ...state, document: next, past: [...state.past, state.document], future: rest }
+      return {
+        ...state,
+        document: next,
+        past: [...state.past, state.document],
+        future: rest,
+        historyGroup: null,
+      }
     }
     case 'setTemplate':
       // document 가 아니라 envelope 값이라 히스토리에 안 쌓는다 (Ctrl+Z 대상 아님)
-      return { ...state, templateId: action.templateId, templateVersion: action.templateVersion }
-    default:
-      return pushHistory(state, applyDocumentAction(state.document, action))
+      return {
+        ...state,
+        templateId: action.templateId,
+        templateVersion: action.templateVersion,
+        historyGroup: null,
+      }
+    case 'endHistoryGroup':
+      return state.historyGroup === null ? state : { ...state, historyGroup: null }
+    default: {
+      const document = applyDocumentAction(state.document, action)
+      const historyGroup =
+        action.type === 'updateMetadata' ||
+        action.type === 'updateSectionTitle' ||
+        action.type === 'updateBlock'
+          ? (action.historyGroup ?? null)
+          : null
+      if (historyGroup !== null && historyGroup === state.historyGroup) {
+        return document === state.document ? state : { ...state, document, future: [] }
+      }
+      return pushHistory({ ...state, historyGroup }, document)
+    }
   }
 }
 
@@ -73,7 +100,7 @@ function pushHistory(state: EditorState, document: ReportDocument): EditorState 
 
 function applyDocumentAction(
   document: ReportDocument,
-  action: Exclude<EditorAction, { type: 'undo' | 'redo' | 'setTemplate' }>,
+  action: Exclude<EditorAction, { type: 'undo' | 'redo' | 'setTemplate' | 'endHistoryGroup' }>,
 ): ReportDocument {
   switch (action.type) {
     case 'updateMetadata':

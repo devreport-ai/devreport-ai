@@ -67,6 +67,7 @@ export const generationKeys = {
 export interface GenerationRecovery {
   jobId: string
   templateId: string
+  confirmed: boolean
 }
 
 function recoveryKey(projectId: string): string {
@@ -78,18 +79,24 @@ export function loadGenerationRecovery(projectId: string): GenerationRecovery | 
     const raw = sessionStorage.getItem(recoveryKey(projectId))
     if (!raw) return null
     const value: unknown = JSON.parse(raw)
+    const record = value as Record<string, unknown>
     if (
       typeof value !== 'object' ||
       value === null ||
-      typeof (value as Record<string, unknown>).jobId !== 'string' ||
-      typeof (value as Record<string, unknown>).templateId !== 'string' ||
-      !(value as Record<string, unknown>).jobId ||
-      !(value as Record<string, unknown>).templateId
+      typeof record.jobId !== 'string' ||
+      typeof record.templateId !== 'string' ||
+      !record.jobId ||
+      !record.templateId ||
+      (record.confirmed !== undefined && typeof record.confirmed !== 'boolean')
     ) {
       sessionStorage.removeItem(recoveryKey(projectId))
       return null
     }
-    return value as GenerationRecovery
+    return {
+      jobId: record.jobId,
+      templateId: record.templateId,
+      confirmed: record.confirmed === true,
+    }
   } catch {
     try {
       sessionStorage.removeItem(recoveryKey(projectId))

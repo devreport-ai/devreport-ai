@@ -103,7 +103,7 @@
 /* ── 출력 전용 페이지 (#39) — Chromium 이 preferCSSPageSize 로 찍는다 ── */
 @page {
   size: a4;
-  margin: 0; /* 여백은 .report-sheet 의 padding 이 담당한다 */
+  margin: 0 0 22mm; /* 하단 고정 푸터가 본문과 겹치지 않게 페이지마다 공간을 예약한다 */
 }
 .print-page {
   box-shadow: none;
@@ -140,47 +140,58 @@
 }
 
 /* ── 템플릿: GitHub 문서 (github-markdown-css 참고, MIT) ── */
-.tpl-github {
+.tpl-github,
+.tpl-github-style {
   font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 10.5pt;
   line-height: 1.6;
   color: #1f2328;
 }
-.tpl-github h1 {
+.tpl-github h1,
+.tpl-github-style h1 {
   font-size: 20pt;
   padding-bottom: 2mm;
   border-bottom: 0.3mm solid #d1d9e0;
 }
-.tpl-github h2 {
+.tpl-github h2,
+.tpl-github-style h2 {
   font-size: 13.5pt;
   padding-bottom: 1.5mm;
   border-bottom: 0.3mm solid #d1d9e0;
 }
-.tpl-github .rpt-meta {
+.tpl-github .rpt-meta,
+.tpl-github-style .rpt-meta {
   font-size: 9.5pt;
   color: #59636e;
 }
-.tpl-github pre {
+.tpl-github pre,
+.tpl-github-style pre {
   background: #f6f8fa;
   border-radius: 2mm;
   font-size: 9pt;
 }
 .tpl-github th,
-.tpl-github td {
+.tpl-github td,
+.tpl-github-style th,
+.tpl-github-style td {
   border-color: #d1d9e0;
 }
-.tpl-github th {
+.tpl-github th,
+.tpl-github-style th {
   background: #f6f8fa;
 }
-.tpl-github tbody tr:nth-child(even) td {
+.tpl-github tbody tr:nth-child(even) td,
+.tpl-github-style tbody tr:nth-child(even) td {
   background: #f6f8fa;
 }
-.tpl-github .rpt-callout {
+.tpl-github .rpt-callout,
+.tpl-github-style .rpt-callout {
   border-color: #0969da;
   background: #ddf4ff;
   border-radius: 0 2mm 2mm 0;
 }
-.tpl-github .rpt-callout-title {
+.tpl-github .rpt-callout-title,
+.tpl-github-style .rpt-callout-title {
   color: #0969da;
 }
 
@@ -255,4 +266,819 @@
 }
 .tpl-compact th {
   background: #f7f7f7;
+}
+
+/* ── devreport.pen HTML Template Library / 12 Designs ── */
+.report-document {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  font-family: 'Geist Variable', 'Pretendard Variable', sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.65;
+}
+.report-document .rpt-document-shell {
+  position: relative;
+  min-height: 297mm;
+  padding: 20mm 18mm 18mm;
+}
+.report-document .rpt-document-chrome,
+.report-document .rpt-side-rail,
+.report-document .rpt-hero-visual,
+.report-document .rpt-pipeline,
+.report-document .rpt-stat-strip,
+.report-document .rpt-toc {
+  display: none;
+}
+.report-document .rpt-document-header {
+  margin-bottom: 14mm;
+}
+.report-document .rpt-kicker {
+  margin: 0 0 6mm;
+  color: #2563eb;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.report-document .rpt-document-heading h1 {
+  margin: 0 0 3mm;
+  font-size: 27pt;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+.report-document .rpt-meta {
+  margin: 0;
+  font-size: 9pt;
+}
+.report-document .rpt-section {
+  margin: 0 0 9mm;
+}
+.report-document .rpt-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  margin: 0 0 4mm;
+  border: 0;
+  padding: 0;
+  font-size: 14pt;
+  line-height: 1.3;
+}
+.report-document .rpt-section-number {
+  color: #2563eb;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 8pt;
+  letter-spacing: 0.08em;
+}
+.report-document .rpt-block {
+  margin-bottom: 3mm;
+}
+.report-document .rpt-block > :last-child {
+  margin-bottom: 0;
+}
+.report-document .rpt-document-footer {
+  position: absolute;
+  right: 18mm;
+  bottom: 9mm;
+  left: 18mm;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 7mm;
+  border-top: 0.3mm solid #dbe3ef;
+  padding-top: 3mm;
+  color: #64748b;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 7.5pt;
+  letter-spacing: 0.06em;
+}
+
+/* 01 Modern Blue */
+.report-document.tpl-default::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 8mm;
+  background: #2563eb;
+  content: '';
+}
+.report-document.tpl-default .rpt-document-shell {
+  padding-top: 25mm;
+}
+.report-document.tpl-default .rpt-section h2::before {
+  width: 1.2mm;
+  height: 6mm;
+  flex: 0 0 auto;
+  background: #2563eb;
+  content: '';
+}
+.report-document.tpl-default .rpt-callout {
+  border: 0;
+  border-radius: 2mm;
+  padding: 4mm;
+  color: #1e3a8a;
+  background: #eff6ff;
+}
+.report-document.tpl-default table {
+  border-top: 0.7mm solid #2563eb;
+}
+.report-document.tpl-default th {
+  color: #1e3a8a;
+  background: #eff6ff;
+}
+
+/* 02 Developer Docs */
+.report-document.tpl-github {
+  color: #172033;
+  font-family: 'Geist Variable', sans-serif;
+}
+.report-document.tpl-github .rpt-document-shell {
+  padding-top: 14mm;
+}
+.report-document.tpl-github .rpt-document-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -14mm -18mm 12mm;
+  padding: 5mm 18mm;
+  color: #cbd5e1;
+  background: #111827;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 8pt;
+  letter-spacing: 0.04em;
+}
+.report-document.tpl-github .rpt-document-chrome b {
+  color: #4ade80;
+}
+.report-document.tpl-github .rpt-kicker {
+  display: none;
+}
+.report-document.tpl-github .rpt-document-heading h1 {
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 25pt;
+}
+.report-document.tpl-github .rpt-content-layout {
+  display: grid;
+  grid-template-columns: 43mm minmax(0, 1fr);
+  gap: 10mm;
+}
+.report-document.tpl-github .rpt-toc {
+  display: grid;
+  align-content: start;
+  gap: 3mm;
+  border-right: 0.3mm solid #d8dee9;
+  padding-right: 6mm;
+}
+.report-document.tpl-github .rpt-toc > strong {
+  margin-bottom: 2mm;
+  color: #64748b;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 7.5pt;
+  letter-spacing: 0.12em;
+}
+.report-document.tpl-github .rpt-toc span {
+  display: grid;
+  grid-template-columns: 7mm 1fr;
+  gap: 2mm;
+  font-size: 8.5pt;
+}
+.report-document.tpl-github .rpt-toc b,
+.report-document.tpl-github .rpt-section-number {
+  color: #2563eb;
+  font-family: 'Geist Mono Variable', monospace;
+}
+.report-document.tpl-github .rpt-section h2 {
+  padding-bottom: 2mm;
+  border-bottom: 0.4mm solid #d8dee9;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 12pt;
+  text-transform: uppercase;
+}
+.report-document.tpl-github pre {
+  border: 0.3mm solid #243247;
+  color: #dbeafe;
+  background: #111827;
+  font-family: 'Geist Mono Variable', monospace;
+}
+
+/* 03 GitHub Style */
+.report-document.tpl-github-style {
+  color: #1f2328;
+  font-family: 'Geist Variable', sans-serif;
+}
+.report-document.tpl-github-style .rpt-document-shell {
+  padding-top: 15mm;
+}
+.report-document.tpl-github-style .rpt-document-chrome {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10mm;
+  border: 0.3mm solid #d1d9e0;
+  border-radius: 2mm;
+  padding: 3mm 4mm;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 8pt;
+}
+.report-document.tpl-github-style .rpt-document-chrome b {
+  color: #1a7f37;
+}
+.report-document.tpl-github-style .rpt-kicker {
+  display: none;
+}
+.report-document.tpl-github-style .rpt-document-heading h1 {
+  border-bottom: 0.3mm solid #d1d9e0;
+  padding-bottom: 3mm;
+  font-size: 25pt;
+}
+.report-document.tpl-github-style .rpt-section h2 {
+  border-bottom: 0.3mm solid #d1d9e0;
+  padding-bottom: 2mm;
+}
+.report-document.tpl-github-style .rpt-section-number {
+  display: none;
+}
+.report-document.tpl-github-style .rpt-callout {
+  border: 0.3mm solid #54aeff;
+  border-left: 1.2mm solid #0969da;
+  border-radius: 1.5mm;
+  background: #ddf4ff;
+}
+
+/* 04 Academic Paper */
+.report-document.tpl-latex {
+  color: #171717;
+  font-family: 'Noto Serif KR Variable', 'Noto Serif KR', serif;
+  font-size: 10.5pt;
+  line-height: 1.85;
+}
+.report-document.tpl-latex .rpt-document-header {
+  margin: 4mm auto 15mm;
+  border-bottom: 0.5mm solid #171717;
+  padding: 0 10mm 8mm;
+  text-align: center;
+}
+.report-document.tpl-latex .rpt-kicker {
+  color: #525252;
+  font-family: 'Noto Serif KR Variable', serif;
+  letter-spacing: 0.12em;
+}
+.report-document.tpl-latex .rpt-document-heading h1 {
+  font-size: 21pt;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+.report-document.tpl-latex .rpt-section h2 {
+  gap: 2mm;
+  font-size: 12.5pt;
+}
+.report-document.tpl-latex .rpt-section-number {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+.report-document.tpl-latex .rpt-section-number::after {
+  content: '.';
+}
+.report-document.tpl-latex .rpt-callout {
+  border: 0.3mm solid #171717;
+  padding: 4mm;
+  background: transparent;
+}
+
+/* 05 Research Report */
+.report-document.tpl-research-report {
+  color: #243c33;
+  font-family: 'Geist Variable', sans-serif;
+  background: #f8faf7;
+}
+.report-document.tpl-research-report .rpt-document-header {
+  margin: -20mm -18mm 0;
+  padding: 18mm;
+  color: #f0f7f2;
+  background: #234638;
+}
+.report-document.tpl-research-report .rpt-kicker,
+.report-document.tpl-research-report .rpt-meta {
+  color: #b9d2c3;
+}
+.report-document.tpl-research-report .rpt-document-heading h1 {
+  max-width: 125mm;
+  font-family: 'Noto Serif KR Variable', serif;
+  font-size: 27pt;
+}
+.report-document.tpl-research-report .rpt-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 -18mm 13mm;
+  border-bottom: 0.3mm solid #b8c9bd;
+  background: #e9f0eb;
+}
+.report-document.tpl-research-report .rpt-stat-strip span {
+  display: grid;
+  gap: 1mm;
+  padding: 5mm 8mm;
+  color: #61756a;
+  font-size: 7pt;
+  letter-spacing: 0.08em;
+}
+.report-document.tpl-research-report .rpt-stat-strip span + span {
+  border-left: 0.3mm solid #b8c9bd;
+}
+.report-document.tpl-research-report .rpt-stat-strip b {
+  color: #234638;
+  font-size: 17pt;
+}
+.report-document.tpl-research-report .rpt-section h2,
+.report-document.tpl-research-report .rpt-section-number {
+  color: #315b49;
+}
+
+/* 06 Business Report */
+.report-document.tpl-business-report {
+  color: #172033;
+  font-family: 'Geist Variable', sans-serif;
+}
+.report-document.tpl-business-report::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4mm;
+  background: #1d4ed8;
+  content: '';
+}
+.report-document.tpl-business-report .rpt-document-header {
+  margin-top: 5mm;
+  border-bottom: 0.4mm solid #cbd5e1;
+  padding-bottom: 8mm;
+}
+.report-document.tpl-business-report .rpt-document-heading h1 {
+  max-width: 130mm;
+  color: #172033;
+  font-size: 28pt;
+}
+.report-document.tpl-business-report .rpt-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  margin-bottom: 13mm;
+}
+.report-document.tpl-business-report .rpt-stat-strip span {
+  display: grid;
+  gap: 1mm;
+  border: 0.3mm solid #bfdbfe;
+  border-radius: 2mm;
+  padding: 5mm;
+  color: #64748b;
+  background: #eff6ff;
+  font-size: 7pt;
+  letter-spacing: 0.08em;
+}
+.report-document.tpl-business-report .rpt-stat-strip b {
+  color: #1d4ed8;
+  font-size: 19pt;
+}
+.report-document.tpl-business-report .rpt-section h2,
+.report-document.tpl-business-report .rpt-section-number {
+  color: #1d4ed8;
+}
+
+/* 07 Editorial Sage */
+.report-document.tpl-editorial-sage {
+  color: #31443a;
+  font-family: 'Noto Serif KR Variable', serif;
+  background: #f7f7f1;
+}
+.report-document.tpl-editorial-sage .rpt-document-header {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 12mm;
+  margin: -20mm -18mm 16mm;
+  padding: 20mm 18mm 15mm;
+  background: #e8eee7;
+}
+.report-document.tpl-editorial-sage .rpt-document-heading h1 {
+  font-size: 30pt;
+  line-height: 1.1;
+}
+.report-document.tpl-editorial-sage .rpt-kicker {
+  color: #657c6d;
+  font-family: 'Geist Mono Variable', monospace;
+}
+.report-document.tpl-editorial-sage .rpt-hero-visual {
+  display: grid;
+  min-height: 54mm;
+  align-content: end;
+  gap: 1mm;
+  padding: 6mm;
+  color: #e5eee8;
+  background: #5d7565;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 7pt;
+  letter-spacing: 0.1em;
+}
+.report-document.tpl-editorial-sage .rpt-hero-visual b {
+  font-size: 11pt;
+}
+.report-document.tpl-editorial-sage .rpt-hero-visual i {
+  display: block;
+  width: 100%;
+  height: 0.3mm;
+  background: rgb(255 255 255 / 0.3);
+}
+.report-document.tpl-editorial-sage .rpt-section h2 {
+  color: #476454;
+  font-size: 16pt;
+}
+.report-document.tpl-editorial-sage .rpt-section-number {
+  color: #819687;
+}
+.report-document.tpl-editorial-sage .rpt-callout {
+  border: 0;
+  border-radius: 0;
+  padding: 6mm;
+  color: #3f5b4b;
+  background: #e5ede6;
+  font-size: 12pt;
+}
+
+/* 08 Side Panel Burgundy */
+.report-document.tpl-side-panel {
+  color: #3d3437;
+  font-family: 'Geist Variable', sans-serif;
+  background: #fbfaf8;
+}
+.report-document.tpl-side-panel .rpt-side-rail {
+  position: absolute;
+  z-index: 1;
+  inset: 0 auto 0 0;
+  display: flex;
+  width: 56mm;
+  flex-direction: column;
+  padding: 18mm 9mm 10mm;
+  color: #fdf2f4;
+  background: #7f1d35;
+}
+.report-document.tpl-side-panel .rpt-side-rail__mark {
+  display: grid;
+  width: 12mm;
+  height: 12mm;
+  place-items: center;
+  margin-bottom: 15mm;
+  border: 0.5mm solid rgb(255 255 255 / 0.5);
+  border-radius: 50%;
+  font-family: 'Geist Mono Variable', monospace;
+  font-weight: 700;
+}
+.report-document.tpl-side-panel .rpt-side-rail > strong {
+  font-family: 'Noto Serif KR Variable', serif;
+  font-size: 20pt;
+  line-height: 1.2;
+}
+.report-document.tpl-side-panel .rpt-side-rail > span:not(.rpt-side-rail__mark) {
+  margin-top: 4mm;
+  color: #e8b8c4;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 7pt;
+  letter-spacing: 0.1em;
+}
+.report-document.tpl-side-panel .rpt-side-rail dl {
+  display: grid;
+  gap: 5mm;
+  margin-top: 15mm;
+  border-top: 0.3mm solid rgb(255 255 255 / 0.25);
+  padding-top: 8mm;
+}
+.report-document.tpl-side-panel .rpt-side-rail dl div {
+  display: grid;
+  gap: 1mm;
+}
+.report-document.tpl-side-panel .rpt-side-rail dt {
+  color: #e8b8c4;
+  font-size: 7pt;
+}
+.report-document.tpl-side-panel .rpt-side-rail dd {
+  margin: 0;
+  font-size: 9pt;
+}
+.report-document.tpl-side-panel .rpt-side-rail small {
+  margin-top: auto;
+  font-family: 'Geist Mono Variable', monospace;
+  letter-spacing: 0.12em;
+}
+.report-document.tpl-side-panel .rpt-document-shell {
+  margin-left: 56mm;
+  padding: 20mm 15mm 18mm;
+}
+.report-document.tpl-side-panel .rpt-document-header {
+  margin-left: 0;
+}
+.report-document.tpl-side-panel .rpt-kicker {
+  color: #991b3b;
+}
+.report-document.tpl-side-panel .rpt-document-heading h1 {
+  margin-left: 0;
+  padding-top: 0;
+  color: #3d2430;
+  font-size: 28pt;
+}
+.report-document.tpl-side-panel .rpt-meta,
+.report-document.tpl-side-panel .rpt-section {
+  margin-left: 0;
+}
+.report-document.tpl-side-panel .rpt-section h2,
+.report-document.tpl-side-panel .rpt-section-number {
+  color: #991b3b;
+}
+.report-document.tpl-side-panel .rpt-document-footer {
+  left: 15mm;
+  right: 15mm;
+}
+
+/* 09 Minimal Mono */
+.report-document.tpl-minimal-mono {
+  color: #111;
+  font-family: 'Geist Variable', sans-serif;
+}
+.report-document.tpl-minimal-mono .rpt-document-header {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14mm;
+  margin: 2mm 0 13mm;
+  border-bottom: 1.2mm solid #111;
+  padding-bottom: 12mm;
+}
+.report-document.tpl-minimal-mono .rpt-kicker {
+  color: #111;
+}
+.report-document.tpl-minimal-mono .rpt-document-heading h1 {
+  max-width: 110mm;
+  font-size: 30pt;
+  font-weight: 620;
+}
+.report-document.tpl-minimal-mono .rpt-meta {
+  margin-top: 12mm;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 8pt;
+  line-height: 2;
+  text-transform: uppercase;
+}
+.report-document.tpl-minimal-mono .rpt-section {
+  display: grid;
+  grid-template-columns: 15mm 1fr;
+  gap: 5mm;
+  border-bottom: 0.3mm solid #d4d4d4;
+  padding-bottom: 7mm;
+}
+.report-document.tpl-minimal-mono .rpt-section h2 {
+  display: contents;
+}
+.report-document.tpl-minimal-mono .rpt-section-number {
+  color: #111;
+  font-size: 9pt;
+}
+.report-document.tpl-minimal-mono .rpt-section h2 > span:last-child {
+  grid-column: 2;
+  font-size: 14pt;
+}
+.report-document.tpl-minimal-mono .rpt-section > .rpt-block {
+  grid-column: 2;
+}
+.report-document.tpl-minimal-mono .rpt-callout {
+  border: 0;
+  border-top: 0.7mm solid #111;
+  border-bottom: 0.7mm solid #111;
+  padding: 5mm 0;
+  background: transparent;
+  font-size: 12pt;
+}
+
+/* 10 Compact Data */
+.report-document.tpl-compact {
+  color: #1e293b;
+  font-family: 'Geist Variable', sans-serif;
+  font-size: 8.8pt;
+  line-height: 1.45;
+}
+.report-document.tpl-compact .rpt-document-shell {
+  padding: 13mm 13mm 15mm;
+}
+.report-document.tpl-compact .rpt-document-header {
+  margin: -13mm -13mm 0;
+  padding: 9mm 13mm 7mm;
+  color: #f8fafc;
+  background: #1e3a5f;
+}
+.report-document.tpl-compact .rpt-kicker,
+.report-document.tpl-compact .rpt-meta {
+  color: #bfdbfe;
+}
+.report-document.tpl-compact .rpt-document-heading h1 {
+  font-size: 21pt;
+}
+.report-document.tpl-compact .rpt-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 -13mm 9mm;
+  border-bottom: 0.3mm solid #cbd5e1;
+  background: #eff6ff;
+}
+.report-document.tpl-compact .rpt-stat-strip span {
+  display: grid;
+  padding: 4mm 6mm;
+  color: #64748b;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 6.5pt;
+}
+.report-document.tpl-compact .rpt-stat-strip b {
+  color: #1e3a5f;
+  font-size: 15pt;
+}
+.report-document.tpl-compact .rpt-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5mm;
+}
+.report-document.tpl-compact .rpt-section {
+  margin: 0;
+  border: 0.3mm solid #dbe3ef;
+  border-radius: 1.5mm;
+  padding: 4mm;
+}
+.report-document.tpl-compact .rpt-section h2 {
+  margin-bottom: 3mm;
+  color: #1e3a5f;
+  background: transparent;
+  font-size: 10pt;
+}
+
+/* 11 Dark Tech */
+.report-document.tpl-dark-tech {
+  color: #d7e2f0;
+  font-family: 'Geist Mono Variable', monospace;
+  background: #0b1220;
+}
+.report-document.tpl-dark-tech .rpt-document-shell {
+  padding: 16mm 15mm 16mm;
+}
+.report-document.tpl-dark-tech .rpt-document-chrome {
+  display: flex;
+  justify-content: space-between;
+  color: #5eead4;
+  font-size: 7.5pt;
+  letter-spacing: 0.08em;
+}
+.report-document.tpl-dark-tech .rpt-document-chrome b {
+  color: #4ade80;
+}
+.report-document.tpl-dark-tech .rpt-document-header {
+  margin: 9mm 0 8mm;
+  border-bottom: 0.4mm solid #26364d;
+  padding-bottom: 8mm;
+}
+.report-document.tpl-dark-tech .rpt-kicker {
+  display: none;
+}
+.report-document.tpl-dark-tech .rpt-document-heading h1 {
+  color: #f8fafc;
+  font-size: 28pt;
+  letter-spacing: -0.04em;
+}
+.report-document.tpl-dark-tech .rpt-meta {
+  color: #7dd3fc;
+}
+.report-document.tpl-dark-tech .rpt-pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 10mm;
+  border: 0.3mm solid #26364d;
+}
+.report-document.tpl-dark-tech .rpt-pipeline span {
+  display: grid;
+  gap: 1mm;
+  padding: 4mm;
+  color: #94a3b8;
+  font-size: 7pt;
+}
+.report-document.tpl-dark-tech .rpt-pipeline span + span {
+  border-left: 0.3mm solid #26364d;
+}
+.report-document.tpl-dark-tech .rpt-pipeline b {
+  color: #22d3ee;
+}
+.report-document.tpl-dark-tech .rpt-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  margin-bottom: 9mm;
+}
+.report-document.tpl-dark-tech .rpt-stat-strip span {
+  display: grid;
+  border: 0.3mm solid #26364d;
+  padding: 4mm;
+  color: #64748b;
+  font-size: 7pt;
+}
+.report-document.tpl-dark-tech .rpt-stat-strip b {
+  color: #5eead4;
+  font-size: 15pt;
+}
+.report-document.tpl-dark-tech .rpt-section h2,
+.report-document.tpl-dark-tech .rpt-section-number {
+  color: #22d3ee;
+}
+.report-document.tpl-dark-tech pre {
+  border: 0.3mm solid #334155;
+  color: #86efac;
+  background: #050a12;
+}
+.report-document.tpl-dark-tech table,
+.report-document.tpl-dark-tech th,
+.report-document.tpl-dark-tech td {
+  border-color: #334155;
+}
+.report-document.tpl-dark-tech th {
+  color: #67e8f9;
+  background: #111c2e;
+}
+.report-document.tpl-dark-tech .rpt-document-footer {
+  border-color: #26364d;
+  color: #64748b;
+}
+
+/* 12 Portfolio Case Study */
+.report-document.tpl-portfolio {
+  color: #24243a;
+  font-family: 'Geist Variable', sans-serif;
+  background: #fbfaff;
+}
+.report-document.tpl-portfolio .rpt-document-header {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 12mm;
+  margin: -20mm -18mm 14mm;
+  padding: 18mm;
+  color: #fff;
+  background: linear-gradient(135deg, #4338ca 0%, #7c3aed 100%);
+}
+.report-document.tpl-portfolio .rpt-kicker,
+.report-document.tpl-portfolio .rpt-meta {
+  color: #ddd6fe;
+}
+.report-document.tpl-portfolio .rpt-document-heading h1 {
+  color: #fff;
+  font-size: 29pt;
+}
+.report-document.tpl-portfolio .rpt-hero-visual {
+  display: grid;
+  min-height: 55mm;
+  place-content: center;
+  border: 0.4mm solid rgb(255 255 255 / 0.45);
+  border-radius: 3mm;
+  background: rgb(255 255 255 / 0.12);
+  text-align: center;
+}
+.report-document.tpl-portfolio .rpt-hero-visual b {
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 11pt;
+}
+.report-document.tpl-portfolio .rpt-hero-visual i {
+  display: block;
+  width: 35mm;
+  height: 0.8mm;
+  margin: 2mm auto 0;
+  background: rgb(255 255 255 / 0.35);
+}
+.report-document.tpl-portfolio .rpt-section h2,
+.report-document.tpl-portfolio .rpt-section-number {
+  color: #5b21b6;
+}
+.report-document.tpl-portfolio .rpt-callout {
+  border: 0;
+  border-radius: 2mm;
+  padding: 5mm;
+  color: #4c1d95;
+  background: #ede9fe;
+}
+
+@media print {
+  .report-document {
+    width: 210mm;
+    min-height: 275mm;
+    overflow: visible;
+  }
+  .report-document .rpt-document-shell {
+    min-height: 275mm;
+    padding-bottom: 22mm;
+  }
+  .report-document .rpt-document-footer {
+    position: fixed;
+    right: 18mm;
+    bottom: 9mm;
+    left: 18mm;
+  }
+  .report-document .rpt-block,
+  .report-document .rpt-section,
+  .report-document .rpt-stat-strip,
+  .report-document .rpt-pipeline {
+    break-inside: avoid;
+  }
 }

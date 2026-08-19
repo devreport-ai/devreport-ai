@@ -18,7 +18,14 @@ function doc(blockIds: string[]): ReportDocument {
 }
 
 function state(blockIds: string[] = ['a', 'b', 'c']): EditorState {
-  return { document: doc(blockIds), templateId: null, templateVersion: null, past: [], future: [] }
+  return {
+    document: doc(blockIds),
+    templateId: null,
+    templateVersion: null,
+    past: [],
+    future: [],
+    historyGroup: null,
+  }
 }
 
 const para = (id: string, content: string): ReportBlock => ({ id, type: 'paragraph', content })
@@ -59,6 +66,30 @@ describe('editorReducer', () => {
     })
     expect((s1.document.sections[0].blocks[0] as { content: string }).content).toBe('고침')
     expect(s1.past).toHaveLength(1)
+  })
+
+  it('연속 입력은 하나의 실행 취소 단위로 합친다', () => {
+    const s1 = editorReducer(state(), {
+      type: 'updateBlock',
+      sectionId: 'sec-1',
+      block: para('a', '고'),
+      historyGroup: 'block:a',
+    })
+    const s2 = editorReducer(s1, {
+      type: 'updateBlock',
+      sectionId: 'sec-1',
+      block: para('a', '고침'),
+      historyGroup: 'block:a',
+    })
+
+    expect(s2.past).toHaveLength(1)
+    expect(
+      (
+        editorReducer(s2, { type: 'undo' }).document.sections[0].blocks[0] as {
+          content: string
+        }
+      ).content,
+    ).toBe('내용-a')
   })
 
   it('블록을 지정 위치 뒤에 추가한다', () => {

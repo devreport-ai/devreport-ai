@@ -12,6 +12,7 @@ import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { fileKeys, uploadProjectFile } from './api'
 import { toDisplayMessage } from '../../lib/api/errors'
+import { Icon } from '../../components/ui'
 
 /**
  * 파일 선택창에서 미리 걸러 줄 확장자.
@@ -41,6 +42,7 @@ let sequence = 0
 export function UploadPanel({ projectId }: { projectId: string }) {
   const client = useQueryClient()
   const [items, setItems] = useState<UploadItem[]>([])
+  const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const update = (key: string, patch: Partial<UploadItem>) => {
@@ -72,8 +74,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     }
   }
 
-  const handleSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(event.target.files ?? [])
+  const queueFiles = (picked: File[]) => {
     if (picked.length === 0) return
 
     const next = picked.map<UploadItem>((file) => ({
@@ -84,11 +85,20 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     }))
     setItems((prev) => [...prev, ...next])
 
-    // 같은 파일을 다시 고를 수 있도록 input 을 비운다. 안 비우면 change 가 안 걸린다.
-    event.target.value = ''
-
     // 병렬 업로드. 하나가 실패해도 나머지는 계속 올라가야 하므로 allSettled 를 쓴다.
     void Promise.allSettled(next.map(runUpload)).then(refreshFileList)
+  }
+
+  const handleSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    queueFiles(Array.from(event.target.files ?? []))
+    // 같은 파일을 다시 고를 수 있도록 input 을 비운다. 안 비우면 change 가 안 걸린다.
+    event.target.value = ''
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setDragging(false)
+    queueFiles(Array.from(event.dataTransfer.files))
   }
 
   const completed = items.filter((i) => i.state === 'done').length
@@ -96,15 +106,33 @@ export function UploadPanel({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold">파일 업로드</h2>
-
-      <p className="mt-1 text-sm text-gray-600">ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</p>
+      <div className="detail-card__header">
+        <div>
+          <h2>파일 업로드</h2>
+          <p className="inline-hint">분석에 필요한 자료를 추가하세요.</p>
+        </div>
+      </div>
 
       <label
         htmlFor="file-input"
-        className="mt-3 inline-block cursor-pointer rounded border border-gray-300 px-4 py-2 hover:bg-gray-50"
+        className={dragging ? 'upload-dropzone upload-dropzone--dragging' : 'upload-dropzone'}
+        onDragEnter={(event) => {
+          event.preventDefault()
+          setDragging(true)
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => {
+          if (event.currentTarget === event.target) setDragging(false)
+        }}
+        onDrop={handleDrop}
       >
-        파일 선택
+        <span className="upload-dropzone__icon" aria-hidden>
+          <Icon name="upload" size={17} />
+        </span>
+        <strong>
+          파일 선택 <span>또는 여기에 파일을 놓아 주세요</span>
+        </strong>
+        <span>ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</span>
       </label>
       <input
         id="file-input"
@@ -118,27 +146,27 @@ export function UploadPanel({ projectId }: { projectId: string }) {
 
       {items.length > 0 && (
         <>
-          <p className="mt-3 text-sm text-gray-700">
+          <p className="inline-hint">
             {completed} / {items.length} 완료
             {failed.length > 0 && <span className="text-red-600"> · {failed.length}개 실패</span>}
           </p>
 
-          <ul className="mt-2 space-y-2">
+          <ul className="upload-items">
             {items.map((item) => (
-              <li key={item.key} className="rounded border border-gray-200 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate text-sm">{item.file.name}</span>
-                  <span className="shrink-0 text-sm text-gray-600">
+              <li key={item.key} className="upload-item">
+                <div className="upload-item__heading">
+                  <span className="upload-item__name">{item.file.name}</span>
+                  <span className="upload-item__state">
                     {item.state === 'uploading' && `${Math.round(item.progress * 100)}%`}
                     {item.state === 'done' && '완료'}
                     {item.state === 'pending' && '대기'}
-                    {item.state === 'error' && <span className="text-red-600">실패</span>}
+                    {item.state === 'error' && <span className="field-error">실패</span>}
                   </span>
                 </div>
 
                 {item.state === 'uploading' && (
                   <progress
-                    className="mt-2 w-full"
+                    className="upload-item__progress"
                     max={1}
                     value={item.progress}
                     aria-label={`${item.file.name} 업로드 진행률`}
@@ -146,8 +174,8 @@ export function UploadPanel({ projectId }: { projectId: string }) {
                 )}
 
                 {item.state === 'error' && (
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <span role="alert" className="text-sm text-red-600">
+                  <div className="upload-item__heading">
+                    <span role="alert" className="field-error">
                       {item.message}
                     </span>
                     <button
@@ -157,7 +185,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
                           if (ok) refreshFileList()
                         })
                       }
-                      className="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
+                      className="secondary-button"
                     >
                       다시 시도
                     </button>

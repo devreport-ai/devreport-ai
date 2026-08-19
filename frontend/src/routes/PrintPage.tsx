@@ -1,7 +1,7 @@
 /**
  * 출력 전용 보고서 페이지 (#39) — Backend Chromium 이 PDF 로 찍는 화면.
  *
- * 편집 UI·앱 chrome 없이 문서만 그린다. 렌더링은 편집기와 같은 BlockView·
+ * 편집 UI·앱 chrome 없이 문서만 그린다. 렌더링은 편집기와 같은 ReportDocumentView·
  * 템플릿 CSS 를 쓰므로 미리보기와 레이아웃이 일치한다.
  * 데이터·폰트·이미지가 모두 준비된 뒤에만 완료 신호를 켠다. 실패 시에는 켜지
  * 않는다 — Chromium 이 타임아웃으로 실패해야 깨진 PDF 가 나가지 않는다.
@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router'
 import { fetchExportImage, useRenderData } from '../features/print/api'
 import { markReadyWhenLoaded, parseRenderToken } from '../features/print/printReady'
-import { BlockView } from '../features/report/BlockView'
+import { ReportDocumentView } from '../features/report/ReportDocumentView'
 import { FALLBACK_TEMPLATE, findTemplate } from '../features/report/templates'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import '../features/report/report-document.css'
@@ -80,27 +80,11 @@ function PrintContent({ exportId, token }: { exportId: string; token: string | n
   const template = findTemplate(templateId) ?? FALLBACK_TEMPLATE
 
   return (
-    <div className={`report-sheet print-page ${template.className}`}>
-      <h1>{doc.metadata.title}</h1>
-      <MetaLine metadata={doc.metadata} />
-      {doc.sections.map((section) => (
-        <section key={section.id}>
-          <h2>{section.title}</h2>
-          {section.blocks.map((block) => (
-            <BlockView
-              key={block.id}
-              block={block}
-              imageUrl={block.type === 'image' ? imageUrls?.[block.fileId] : undefined}
-            />
-          ))}
-        </section>
-      ))}
-    </div>
+    <ReportDocumentView
+      document={doc}
+      template={template}
+      imageUrls={imageUrls ?? {}}
+      className="print-page"
+    />
   )
-}
-
-function MetaLine({ metadata }: { metadata: { author?: string; course?: string; date?: string } }) {
-  const parts = [metadata.author, metadata.course, metadata.date].filter(Boolean)
-  if (parts.length === 0) return null
-  return <p className="rpt-meta">{parts.join(' · ')}</p>
 }
