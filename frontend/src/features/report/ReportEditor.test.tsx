@@ -66,18 +66,18 @@ describe('ReportEditor', () => {
     fireEvent.change(screen.getByLabelText('템플릿'), { target: { value: 'compact' } })
 
     expect(container.querySelector('.tpl-compact')).not.toBeNull()
+    expect(container.querySelector('.rpt-stat-strip')).not.toBeNull()
     expect(screen.getByText('첫 문단입니다.')).toBeInTheDocument()
     expect(screen.getByText('class A {}')).toBeInTheDocument()
   })
 
-  it('블록을 편집하면 반영된다', () => {
+  it('블록 입력을 확인 없이 미리보기에 즉시 반영한다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 
     fireEvent.click(screen.getByText('첫 문단입니다.'))
     fireEvent.change(screen.getByLabelText('내용'), { target: { value: '고친 문단' } })
-    fireEvent.click(screen.getByRole('button', { name: '확인' }))
 
-    expect(screen.getByText('고친 문단')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '고친 문단' })).toBeInTheDocument()
     expect(screen.queryByText('첫 문단입니다.')).toBeNull()
   })
 
@@ -108,15 +108,22 @@ describe('ReportEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '문서 정보 편집' }))
     const title = screen.getByDisplayValue('실습 보고서')
     fireEvent.change(title, { target: { value: '최종 보고서' } })
-    fireEvent.click(screen.getAllByRole('button', { name: '확인' })[0])
     expect(screen.getByRole('heading', { name: '최종 보고서' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '편집 종료' }))
 
     fireEvent.click(screen.getByRole('button', { name: '개요 섹션 제목 편집' }))
     fireEvent.change(screen.getByRole('textbox', { name: '섹션 제목' }), {
       target: { value: '새 개요' },
     })
-    fireEvent.click(screen.getAllByRole('button', { name: '확인' })[0])
     expect(screen.getByText('새 개요')).toBeInTheDocument()
+  })
+
+  it('사이드 패널 템플릿은 실제 문서 레일 구조를 렌더링한다', () => {
+    const { container } = renderWithProviders(<ReportEditor report={report()} />)
+
+    fireEvent.change(screen.getByLabelText('템플릿'), { target: { value: 'side-panel' } })
+
+    expect(container.querySelector('.tpl-side-panel .rpt-side-rail')).not.toBeNull()
   })
 
   it('생성 흐름에서 고른 템플릿은 편집 없이도 자동 저장된다', async () => {

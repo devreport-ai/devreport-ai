@@ -20,8 +20,8 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { editorReducer, type EditorState } from './editorState'
-import { BlockView } from './BlockView'
 import { BlockEditor } from './BlockEditor'
+import { ReportDocumentView } from './ReportDocumentView'
 import { ADDABLE_BLOCK_TYPES, createBlock, type AddableBlockType } from './newBlock'
 import { REPORT_TEMPLATES, FALLBACK_TEMPLATE, findTemplate } from './templates'
 import { useAutosave, type SaveStatus } from './useAutosave'
@@ -54,11 +54,7 @@ export function ReportEditor({
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingMetadata, setEditingMetadata] = useState(false)
-  const [metadataDraft, setMetadataDraft] = useState<ReportDocument['metadata']>(
-    report.document.metadata,
-  )
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
-  const [sectionTitleDraft, setSectionTitleDraft] = useState('')
   const imageUrls = useImageUrls(report.projectId, state.document)
   const files = useAllProjectFiles(report.projectId)
   const imageFiles = (files.data?.items ?? []).filter(isImageFile)
@@ -202,15 +198,9 @@ export function ReportEditor({
           <div className="editor-info-card">
             {editingMetadata ? (
               <MetadataEditor
-                metadata={metadataDraft}
-                onChange={setMetadataDraft}
-                onApply={() => {
-                  const title = metadataDraft.title.trim()
-                  if (!title) return
-                  dispatch({ type: 'updateMetadata', metadata: { ...metadataDraft, title } })
-                  setEditingMetadata(false)
-                }}
-                onCancel={() => setEditingMetadata(false)}
+                metadata={state.document.metadata}
+                onChange={(metadata) => dispatch({ type: 'updateMetadata', metadata })}
+                onClose={() => setEditingMetadata(false)}
               />
             ) : (
               <>
@@ -226,10 +216,7 @@ export function ReportEditor({
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setMetadataDraft(state.document.metadata)
-                      setEditingMetadata(true)
-                    }}
+                    onClick={() => setEditingMetadata(true)}
                     aria-label="문서 정보 편집"
                     className="icon-button"
                   >
@@ -260,19 +247,11 @@ export function ReportEditor({
                   key={section.id}
                   section={section}
                   editing={editingSectionId === section.id}
-                  titleDraft={sectionTitleDraft}
-                  onEditTitle={() => {
-                    setSectionTitleDraft(section.title)
-                    setEditingSectionId(section.id)
-                  }}
-                  onTitleChange={setSectionTitleDraft}
-                  onApplyTitle={() => {
-                    const title = sectionTitleDraft.trim()
-                    if (!title) return
+                  onEditTitle={() => setEditingSectionId(section.id)}
+                  onTitleChange={(title) =>
                     dispatch({ type: 'updateSectionTitle', sectionId: section.id, title })
-                    setEditingSectionId(null)
-                  }}
-                  onCancelTitle={() => setEditingSectionId(null)}
+                  }
+                  onCloseTitle={() => setEditingSectionId(null)}
                 >
                   <SortableContext
                     items={section.blocks.map((b) => b.id)}
@@ -285,11 +264,10 @@ export function ReportEditor({
                         imageFiles={imageFiles}
                         editing={editingId === block.id}
                         onEdit={() => setEditingId(block.id)}
-                        onApply={(next) => {
+                        onChange={(next) => {
                           dispatch({ type: 'updateBlock', sectionId: section.id, block: next })
-                          setEditingId(null)
                         }}
-                        onCancel={() => setEditingId(null)}
+                        onClose={() => setEditingId(null)}
                         onDelete={() =>
                           dispatch({
                             type: 'deleteBlock',
@@ -324,35 +302,13 @@ export function ReportEditor({
             </span>
           </header>
           <div className="editor-preview-frame">
-            <div className={`report-sheet editor-preview-sheet ${template.className}`}>
-              <h1>{state.document.metadata.title}</h1>
-              <MetaLine metadata={state.document.metadata} />
-              {state.document.sections.map((section) => (
-                <section key={section.id}>
-                  <h2>{section.title}</h2>
-                  {section.blocks.map((block) => (
-                    <div
-                      key={block.id}
-                      role="button"
-                      tabIndex={0}
-                      className="editor-preview-block"
-                      onClick={() => setEditingId(block.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          setEditingId(block.id)
-                        }
-                      }}
-                    >
-                      <BlockView
-                        block={block}
-                        imageUrl={block.type === 'image' ? imageUrls[block.fileId] : undefined}
-                      />
-                    </div>
-                  ))}
-                </section>
-              ))}
-            </div>
+            <ReportDocumentView
+              document={state.document}
+              template={template}
+              imageUrls={imageUrls}
+              className="editor-preview-sheet"
+              onEditBlock={(block) => setEditingId(block.id)}
+            />
           </div>
         </section>
       </div>
@@ -473,22 +429,14 @@ function Toolbar({
   )
 }
 
-function MetaLine({ metadata }: { metadata: Report['document']['metadata'] }) {
-  const parts = [metadata.author, metadata.course, metadata.date].filter(Boolean)
-  if (parts.length === 0) return null
-  return <p className="rpt-meta">{parts.join(' · ')}</p>
-}
-
 function MetadataEditor({
   metadata,
   onChange,
-  onApply,
-  onCancel,
+  onClose,
 }: {
   metadata: ReportDocument['metadata']
   onChange: (metadata: ReportDocument['metadata']) => void
-  onApply: () => void
-  onCancel: () => void
+  onClose: () => void
 }) {
   return (
     <div className="mb-4 space-y-2 rounded border border-blue-300 bg-blue-50/50 p-3">
@@ -517,17 +465,10 @@ function MetadataEditor({
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={onApply}
+          onClick={onClose}
           className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
         >
-          확인
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-gray-300 px-3 py-1 text-sm"
-        >
-          취소
+          편집 종료
         </button>
       </div>
     </div>
@@ -538,20 +479,16 @@ function SortableSection({
   section,
   children,
   editing,
-  titleDraft,
   onEditTitle,
   onTitleChange,
-  onApplyTitle,
-  onCancelTitle,
+  onCloseTitle,
 }: {
   section: ReportSection
   children: React.ReactNode
   editing: boolean
-  titleDraft: string
   onEditTitle: () => void
   onTitleChange: (title: string) => void
-  onApplyTitle: () => void
-  onCancelTitle: () => void
+  onCloseTitle: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
@@ -576,15 +513,12 @@ function SortableSection({
           <>
             <input
               aria-label="섹션 제목"
-              value={titleDraft}
+              value={section.title}
               onChange={(event) => onTitleChange(event.target.value)}
               className="field-control editor-section-title-input"
             />
-            <button type="button" onClick={onApplyTitle} className="text-xs underline">
-              확인
-            </button>
-            <button type="button" onClick={onCancelTitle} className="text-xs underline">
-              취소
+            <button type="button" onClick={onCloseTitle} className="text-xs underline">
+              편집 종료
             </button>
           </>
         ) : (
@@ -615,16 +549,16 @@ function SortableBlock({
   imageFiles,
   editing,
   onEdit,
-  onApply,
-  onCancel,
+  onChange,
+  onClose,
   onDelete,
 }: {
   block: ReportBlock
   imageFiles: import('../../lib/contracts/types').FileResponse[]
   editing: boolean
   onEdit: () => void
-  onApply: (block: ReportBlock) => void
-  onCancel: () => void
+  onChange: (block: ReportBlock) => void
+  onClose: () => void
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
@@ -633,7 +567,7 @@ function SortableBlock({
 
   if (editing) {
     return (
-      <BlockEditor block={block} imageFiles={imageFiles} onApply={onApply} onCancel={onCancel} />
+      <BlockEditor block={block} imageFiles={imageFiles} onChange={onChange} onClose={onClose} />
     )
   }
 

@@ -1,40 +1,30 @@
 /**
  * 블록 편집 폼 — 클릭한 블록을 그 자리에서 textarea/입력칸으로 고친다.
- * 원문(인라인 마크다운 포함)을 그대로 편집하고, 확인 시 updateBlock 으로 반영된다.
+ * 원문(인라인 마크다운 포함)을 그대로 편집하고, 입력 즉시 미리보기에 반영한다.
  */
-import { useState } from 'react'
 import type { FileResponse, ReportBlock } from '../../lib/contracts/types'
 
 export function BlockEditor({
   block,
-  onApply,
-  onCancel,
+  onChange,
+  onClose,
   imageFiles = [],
 }: {
   block: ReportBlock
-  onApply: (block: ReportBlock) => void
-  onCancel: () => void
+  onChange: (block: ReportBlock) => void
+  onClose: () => void
   imageFiles?: FileResponse[]
 }) {
-  const [draft, setDraft] = useState<ReportBlock>(block)
-
   return (
     <div className="space-y-2 rounded border border-blue-400 bg-blue-50/50 p-2">
-      <Fields draft={draft} onChange={setDraft} imageFiles={imageFiles} />
+      <Fields draft={block} onChange={onChange} imageFiles={imageFiles} />
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => onApply(draft)}
+          onClick={onClose}
           className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
         >
-          확인
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-gray-300 px-3 py-1 text-sm"
-        >
-          취소
+          편집 종료
         </button>
       </div>
     </div>

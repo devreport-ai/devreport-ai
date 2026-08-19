@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router'
 import { fetchExportImage, useRenderData } from '../features/print/api'
 import { markReadyWhenLoaded, parseRenderToken } from '../features/print/printReady'
-import { BlockView } from '../features/report/BlockView'
+import { ReportDocumentView } from '../features/report/ReportDocumentView'
 import { FALLBACK_TEMPLATE, findTemplate } from '../features/report/templates'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import '../features/report/report-document.css'
@@ -80,34 +80,11 @@ function PrintContent({ exportId, token }: { exportId: string; token: string | n
   const template = findTemplate(templateId) ?? FALLBACK_TEMPLATE
 
   return (
-    <div className={`report-sheet print-page print-page-v2 ${template.className}`}>
-      <span className="print-page-v2__accent" aria-hidden />
-      <header className="print-page-v2__header">
-        <p>DEVREPORT AI</p>
-        <h1>{doc.metadata.title}</h1>
-        <MetaLine metadata={doc.metadata} />
-      </header>
-      {doc.sections.map((section) => (
-        <section key={section.id}>
-          <h2 className="print-page-v2__section-title">
-            <i aria-hidden />
-            {section.title}
-          </h2>
-          {section.blocks.map((block) => (
-            <BlockView
-              key={block.id}
-              block={block}
-              imageUrl={block.type === 'image' ? imageUrls?.[block.fileId] : undefined}
-            />
-          ))}
-        </section>
-      ))}
-    </div>
+    <ReportDocumentView
+      document={doc}
+      template={template}
+      imageUrls={imageUrls ?? {}}
+      className="print-page"
+    />
   )
-}
-
-function MetaLine({ metadata }: { metadata: { author?: string; course?: string; date?: string } }) {
-  const parts = [metadata.author, metadata.course, metadata.date].filter(Boolean)
-  if (parts.length === 0) return null
-  return <p className="rpt-meta">{parts.join(' · ')}</p>
 }
