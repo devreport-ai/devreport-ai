@@ -1,7 +1,7 @@
 /** 베타 공개 전 검토할 정책 초안과 데이터 처리 고지. */
 import { POLICY_VERSIONS } from '../features/auth/policyVersions'
 import { Link } from 'react-router'
-import { BrandMark } from '../components/ui'
+import { BrandMark, Icon } from '../components/ui'
 
 export default function PolicyPage() {
   return (
@@ -10,6 +10,9 @@ export default function PolicyPage() {
         <Link to="/login" aria-label="DevReport AI">
           <BrandMark compact />
         </Link>
+        <Link to="/login" className="plain-page__back-link">
+          로그인으로 돌아가기
+        </Link>
       </header>
 
       <div className="policy-content">
@@ -17,8 +20,11 @@ export default function PolicyPage() {
           <p className="eyebrow">DEVREPORT AI / POLICIES</p>
           <h1>개인정보처리방침·이용약관</h1>
           <p className="policy-draft-warning">
-            이 페이지는 베타 공개 전 검토를 위한 초안입니다. 정식 공개 전 법률·개인정보 담당자
-            검토와 운영자 연락처·삭제 요청 SLA 확정이 필요합니다.
+            <Icon name="alert" size={16} />
+            <span>
+              이 페이지는 베타 공개 전 검토를 위한 초안입니다. 정식 공개 전 법률·개인정보 담당자
+              검토와 운영자 연락처·삭제 요청 SLA 확정이 필요합니다.
+            </span>
           </p>
           <p>
             개인정보처리방침 {POLICY_VERSIONS.privacyPolicy} · 이용약관{' '}

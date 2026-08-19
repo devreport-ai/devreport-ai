@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { AppNav } from '../components/AppNav'
-import { PageHeader, SurfaceCard } from '../components/ui'
+import { AppTopBar, Icon, PageHeader, SurfaceCard } from '../components/ui'
 import {
   useCreateProject,
   useDeleteProject,
@@ -66,47 +66,42 @@ export default function ProjectsPage() {
   return (
     <div className="app-page">
       <AppNav screen="프로젝트" />
+      <AppTopBar current="프로젝트" />
       <main className="app-content">
         <PageHeader
           eyebrow="WORKSPACE"
           title="프로젝트"
-          description="개발 자료를 모으고 AI 보고서 작업을 이어가세요."
+          description="보고서 작업을 위한 프로젝트를 만들고 관리합니다."
+          actions={
+            <form onSubmit={handleCreate} className="create-project-inline">
+              <label htmlFor="project-name" className="sr-only">
+                프로젝트 이름
+              </label>
+              <input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="새 프로젝트 이름"
+                maxLength={100}
+                className="field-control"
+              />
+              <button
+                type="submit"
+                disabled={!name.trim() || createProject.isPending}
+                className="primary-button"
+              >
+                <Icon name="plus" size={16} />
+                {createProject.isPending ? '만드는 중…' : '프로젝트 만들기'}
+              </button>
+            </form>
+          }
         />
 
-        <SurfaceCard className="create-project-card">
-          <div className="create-project-card__heading">
-            <div>
-              <h2>프로젝트 시작</h2>
-              <p>프로젝트를 만든 뒤 자료를 업로드할 수 있습니다.</p>
-            </div>
-          </div>
-          <form onSubmit={handleCreate} className="create-project-form">
-            <label htmlFor="project-name" className="sr-only">
-              프로젝트 이름
-            </label>
-            <input
-              id="project-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="새 프로젝트 이름"
-              maxLength={100}
-              className="field-control"
-            />
-            <button
-              type="submit"
-              disabled={!name.trim() || createProject.isPending}
-              className="primary-button"
-            >
-              {createProject.isPending ? '만드는 중…' : '만들기'}
-            </button>
-          </form>
-
-          {createProject.error && (
-            <p role="alert" className="inline-alert">
-              {toDisplayMessage(createProject.error)}
-            </p>
-          )}
-        </SurfaceCard>
+        {createProject.error && (
+          <p role="alert" className="inline-alert page-error">
+            {toDisplayMessage(createProject.error)}
+          </p>
+        )}
 
         <section>
           <div className="section-heading">
@@ -219,9 +214,14 @@ export default function ProjectsPage() {
         </section>
 
         <SurfaceCard className="trash-section">
-          <div className="section-heading">
-            <h2>휴지통</h2>
-            <p>30일 보관</p>
+          <div className="trash-section__header">
+            <div className="trash-section__icon" aria-hidden>
+              <Icon name="trash" size={17} />
+            </div>
+            <div>
+              <h2>휴지통</h2>
+              <p>30일 보관</p>
+            </div>
           </div>
           <p className="trash-section__description">
             삭제한 프로젝트와 파일은 30일 동안 복구할 수 있으며 이후 완전히 삭제됩니다.

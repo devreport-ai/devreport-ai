@@ -1,7 +1,7 @@
 /** 로그인 이후 공통 앱 Shell — 데스크톱 Sidebar, 작은 화면 상단 바. */
 import { Link, NavLink } from 'react-router'
 import { useLogout, useMe } from '../features/auth/api'
-import { BrandMark } from './ui'
+import { BrandMark, Icon } from './ui'
 
 export function AppNav({ screen }: { screen?: string }) {
   const me = useMe()
@@ -16,11 +16,11 @@ export function AppNav({ screen }: { screen?: string }) {
 
         <nav aria-label="주요 메뉴" className="app-sidebar__menu">
           <NavLink to="/" end className="app-nav-link">
-            <span aria-hidden>⌂</span>
+            <Icon name="folder" />
             프로젝트
           </NavLink>
           <span className="app-nav-link app-nav-link--muted" aria-disabled="true">
-            <span aria-hidden>▤</span>
+            <Icon name="file-text" />
             보고서
           </span>
         </nav>

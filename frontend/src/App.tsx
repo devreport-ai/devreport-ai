@@ -15,6 +15,7 @@ import { SignupPage } from './routes/SignupPage'
 import PrintPage from './routes/PrintPage'
 import ProjectsPage from './routes/ProjectsPage'
 import ProjectPage from './routes/ProjectPage'
+import TemplateChoicePage from './routes/TemplateChoicePage'
 import ReportPage from './routes/ReportPage'
 import NotFoundPage from './routes/NotFoundPage'
 import PolicyPage from './routes/PolicyPage'
@@ -42,6 +43,14 @@ export default function App() {
         element={
           <RequireAuth>
             <ProjectPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/projects/:projectId/templates"
+        element={
+          <RequireAuth>
+            <TemplateChoicePage />
           </RequireAuth>
         }
       />

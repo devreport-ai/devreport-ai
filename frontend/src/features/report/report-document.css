@@ -140,47 +140,58 @@
 }
 
 /* ── 템플릿: GitHub 문서 (github-markdown-css 참고, MIT) ── */
-.tpl-github {
+.tpl-github,
+.tpl-github-style {
   font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 10.5pt;
   line-height: 1.6;
   color: #1f2328;
 }
-.tpl-github h1 {
+.tpl-github h1,
+.tpl-github-style h1 {
   font-size: 20pt;
   padding-bottom: 2mm;
   border-bottom: 0.3mm solid #d1d9e0;
 }
-.tpl-github h2 {
+.tpl-github h2,
+.tpl-github-style h2 {
   font-size: 13.5pt;
   padding-bottom: 1.5mm;
   border-bottom: 0.3mm solid #d1d9e0;
 }
-.tpl-github .rpt-meta {
+.tpl-github .rpt-meta,
+.tpl-github-style .rpt-meta {
   font-size: 9.5pt;
   color: #59636e;
 }
-.tpl-github pre {
+.tpl-github pre,
+.tpl-github-style pre {
   background: #f6f8fa;
   border-radius: 2mm;
   font-size: 9pt;
 }
 .tpl-github th,
-.tpl-github td {
+.tpl-github td,
+.tpl-github-style th,
+.tpl-github-style td {
   border-color: #d1d9e0;
 }
-.tpl-github th {
+.tpl-github th,
+.tpl-github-style th {
   background: #f6f8fa;
 }
-.tpl-github tbody tr:nth-child(even) td {
+.tpl-github tbody tr:nth-child(even) td,
+.tpl-github-style tbody tr:nth-child(even) td {
   background: #f6f8fa;
 }
-.tpl-github .rpt-callout {
+.tpl-github .rpt-callout,
+.tpl-github-style .rpt-callout {
   border-color: #0969da;
   background: #ddf4ff;
   border-radius: 0 2mm 2mm 0;
 }
-.tpl-github .rpt-callout-title {
+.tpl-github .rpt-callout-title,
+.tpl-github-style .rpt-callout-title {
   color: #0969da;
 }
 
@@ -255,4 +266,184 @@
 }
 .tpl-compact th {
   background: #f7f7f7;
+}
+
+/* ── 최신 HTML 템플릿 갤러리 ── */
+.tpl-editorial,
+.tpl-editorial-sage {
+  font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', sans-serif;
+  line-height: 1.7;
+}
+.tpl-editorial {
+  color: #1e293b;
+}
+.tpl-editorial h1,
+.tpl-editorial-sage h1 {
+  margin-bottom: 12mm;
+  font-size: 27pt;
+  line-height: 1.15;
+}
+.tpl-editorial h2,
+.tpl-editorial-sage h2 {
+  border: 0;
+  padding: 0;
+  font-size: 15pt;
+}
+.tpl-editorial .rpt-callout,
+.tpl-editorial-sage .rpt-callout {
+  border: 0;
+  border-radius: 2mm;
+  background: #f1f5f9;
+}
+.tpl-editorial-sage {
+  color: #33483e;
+}
+.tpl-editorial-sage h2 {
+  color: #476454;
+  border-bottom: 0.5mm solid #b8c9bd;
+}
+.tpl-editorial-sage .rpt-callout {
+  background: #edf4ee;
+}
+.tpl-side-panel {
+  padding: 0;
+  font-family: 'Pretendard Variable', sans-serif;
+  color: #334155;
+}
+.tpl-side-panel h1,
+.tpl-side-panel .rpt-meta,
+.tpl-side-panel section {
+  margin-left: 34mm;
+}
+.tpl-side-panel h1 {
+  padding-top: 22mm;
+  color: #991b1b;
+  font-size: 24pt;
+}
+.tpl-side-panel h2 {
+  color: #991b1b;
+  border-bottom-color: #fecaca;
+}
+.tpl-side-panel .rpt-callout {
+  border-color: #991b1b;
+  background: #fff1f2;
+}
+.tpl-minimal-mono,
+.tpl-portfolio {
+  font-family: 'Pretendard Variable', sans-serif;
+  color: #1e293b;
+}
+.tpl-minimal-mono h1,
+.tpl-portfolio h1 {
+  font-size: 28pt;
+  line-height: 1.15;
+}
+.tpl-minimal-mono h2,
+.tpl-portfolio h2 {
+  border: 0;
+  padding: 0;
+  font-size: 13pt;
+  letter-spacing: 0.02em;
+}
+.tpl-minimal-mono .rpt-meta {
+  font-family: ui-monospace, monospace;
+  font-size: 8.5pt;
+  letter-spacing: 0.08em;
+}
+.tpl-minimal-mono pre {
+  color: #e2e8f0;
+  background: #1e293b;
+}
+.tpl-research-report,
+.tpl-business-report {
+  font-family: 'Pretendard Variable', sans-serif;
+  line-height: 1.7;
+}
+.tpl-research-report h1 {
+  font-family: Georgia, 'Noto Serif KR', serif;
+  text-align: center;
+  font-size: 21pt;
+}
+.tpl-research-report .rpt-meta {
+  text-align: center;
+}
+.tpl-research-report h2 {
+  font-size: 13pt;
+}
+.tpl-business-report h1 {
+  color: #1d4ed8;
+  font-size: 24pt;
+}
+.tpl-business-report h2 {
+  color: #1d4ed8;
+  border-bottom-color: #bfdbfe;
+}
+.tpl-business-report .rpt-callout {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+.tpl-dark-tech {
+  font-family: ui-monospace, 'Pretendard Variable', monospace;
+  color: #1e293b;
+  background: #f8fafc;
+}
+.tpl-dark-tech h1 {
+  color: #0f172a;
+  font-size: 20pt;
+}
+.tpl-dark-tech h2 {
+  color: #2563eb;
+  border-bottom: 0.3mm solid #cbd5e1;
+  font-size: 12pt;
+}
+.tpl-dark-tech pre {
+  color: #bfdbfe;
+  background: #0f172a;
+  border-radius: 1mm;
+}
+.tpl-portfolio h1 {
+  color: #475569;
+}
+.tpl-portfolio .rpt-callout {
+  border-color: #64748b;
+  background: #f1f5f9;
+}
+
+.print-page-v2 {
+  position: relative;
+  overflow: hidden;
+  padding-top: 26mm;
+}
+.print-page-v2__accent {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 8mm;
+  background: #2563eb;
+}
+.print-page-v2__header {
+  margin-bottom: 15mm;
+}
+.print-page-v2__header > p {
+  margin-bottom: 8mm;
+  color: #2563eb;
+  font-family: ui-monospace, monospace;
+  font-size: 8pt;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+.print-page-v2__header h1 {
+  margin-bottom: 3mm;
+}
+.print-page-v2__section-title {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  border-bottom: 0;
+  padding: 0;
+}
+.print-page-v2__section-title i {
+  display: block;
+  width: 1.2mm;
+  height: 6mm;
+  background: #2563eb;
 }

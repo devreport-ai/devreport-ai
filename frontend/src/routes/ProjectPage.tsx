@@ -7,23 +7,20 @@
  * 생성을 요청하면 곧바로 템플릿 선택으로 넘어간다(#36). 생성은 뒤에서 돌지만
  * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useState } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AppNav } from '../components/AppNav'
+import { AppTopBar, Icon } from '../components/ui'
 import { UploadPanel } from '../features/files/UploadPanel'
 import { useDeleteFile, useProjectFiles } from '../features/files/api'
 import {
-  clearGenerationRecovery,
   loadGenerationRecovery,
   saveGenerationRecovery,
-  useCancelGeneration,
-  useGenerationJob,
   useStartGeneration,
 } from '../features/generation/api'
-import { TemplateChoicePanel } from '../features/generation/TemplateChoicePanel'
 import { findTemplate } from '../features/report/templates'
 import { useProject, useProjectReports } from '../features/projects/api'
-import { ApiError, toDisplayMessage } from '../lib/api/errors'
+import { toDisplayMessage } from '../lib/api/errors'
 import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
@@ -32,13 +29,13 @@ export default function ProjectPage() {
 }
 
 function ProjectPageContent({ projectId }: { projectId: string }) {
+  const navigate = useNavigate()
   const project = useProject(projectId)
   const files = useProjectFiles(projectId)
   const [reportPage, setReportPage] = useState(0)
   const reports = useProjectReports(projectId, reportPage)
   const deleteFile = useDeleteFile(projectId)
   const startGeneration = useStartGeneration(projectId)
-  const cancelGeneration = useCancelGeneration()
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [title, setTitle] = useState('')
@@ -48,21 +45,6 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const [instructions, setInstructions] = useState('')
   const [policyAgreed, setPolicyAgreed] = useState(false)
   const recovery = loadGenerationRecovery(projectId)
-  const [recovered, setRecovered] = useState(recovery !== null)
-  const [jobId, setJobId] = useState<string | null>(recovery?.jobId ?? null)
-  const [templateId, setTemplateId] = useState(recovery?.templateId)
-
-  const job = useGenerationJob(jobId)
-
-  useEffect(() => {
-    const terminalWithoutReport =
-      job.data?.status === 'FAILED' ||
-      job.data?.status === 'CANCELED' ||
-      (job.data?.status === 'COMPLETED' && !job.data.reportId)
-    if ((job.error instanceof ApiError && job.error.status === 404) || terminalWithoutReport) {
-      clearGenerationRecovery(projectId)
-    }
-  }, [job.data?.reportId, job.data?.status, job.error, projectId])
 
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
@@ -89,35 +71,46 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
       },
       {
         onSuccess: ({ jobId: id }) => {
-          const next = { jobId: id, templateId: templateId ?? 'default' }
+          const next = { jobId: id, templateId: 'default' }
           saveGenerationRecovery(projectId, next)
-          setRecovered(false)
-          setJobId(id)
+          void navigate(`/projects/${projectId}/templates`)
         },
       },
     )
   }
 
   // timedOut 을 빼면 상한에 걸린 뒤에도 running 이 true 로 굳어 버튼이 영구 비활성이 된다.
-  const running =
-    jobId !== null && job.data !== undefined && !isFinished(job.data.status) && !job.timedOut
   // 계약상 필수는 fileIds(1개 이상)·metadata.title·instructions 세 가지다.
-  const canSubmit =
-    selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== '' && !running
+  const canSubmit = selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== ''
+
+  if (recovery !== null) {
+    return <Navigate to={`/projects/${projectId}/templates`} replace />
+  }
 
   return (
     <div className="app-page">
       <AppNav screen={project.data?.name ?? '보고서 만들기'} />
+      <AppTopBar root="프로젝트" current={project.data?.name ?? '프로젝트'}>
+        <Link to="/" className="topbar-link">
+          프로젝트 목록
+        </Link>
+      </AppTopBar>
       <main className="app-content">
         <header className="project-detail-header">
-          <div>
-            <p className="eyebrow">PROJECT WORKSPACE</p>
-            {project.data && <h1>{project.data.name}</h1>}
-            {project.data && <p>프로젝트 자료를 관리하고 보고서를 다시 열 수 있습니다.</p>}
+          <div className="project-detail-heading">
+            <div className="project-detail-icon" aria-hidden>
+              <Icon name="folder" size={21} />
+            </div>
+            <div>
+              <p className="eyebrow">PROJECT WORKSPACE</p>
+              {project.data && <h1>{project.data.name}</h1>}
+              {project.data && <p>프로젝트 자료를 관리하고 보고서를 다시 열 수 있습니다.</p>}
+            </div>
           </div>
-          <Link to="/" className="secondary-button">
-            프로젝트 목록
-          </Link>
+          <span className="status-badge status-badge--active">
+            <span className="status-badge__dot" aria-hidden />
+            진행 중
+          </span>
         </header>
 
         {project.isPending && <p className="inline-hint">프로젝트를 불러오는 중…</p>}
@@ -130,7 +123,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
         <div className="detail-stack">
           <ReportList page={reportPage} reports={reports} onPageChange={setReportPage} />
 
-          <section className="surface-card detail-card">
+          <section className="surface-card detail-card detail-card--upload">
             <UploadPanel projectId={projectId} />
             <p className="inline-hint">
               업로드 자료는 보고서 생성 과정에서 AI 제공자에게 전달될 수 있습니다.{' '}
@@ -140,7 +133,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             </p>
           </section>
 
-          <section className="surface-card detail-card">
+          <section className="surface-card detail-card detail-card--files">
             <div className="detail-card__header">
               <div>
                 <h2>분석할 파일 선택</h2>
@@ -191,88 +184,63 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             )}
           </section>
 
-          <section className="surface-card detail-card">
-            {jobId !== null ? (
-              <TemplateChoicePanel
-                job={job}
-                initialTemplateId={templateId}
-                recovered={recovered}
-                onTemplateChange={(next) => {
-                  setTemplateId(next)
-                  saveGenerationRecovery(projectId, { jobId, templateId: next })
-                }}
-                onRetry={() => {
-                  clearGenerationRecovery(projectId)
-                  setRecovered(false)
-                  setJobId(null)
-                }}
-                onComplete={() => clearGenerationRecovery(projectId)}
-                onCancel={() => {
-                  if (!window.confirm('보고서 생성을 취소할까요?')) return
-                  cancelGeneration.mutate(jobId, {
-                    onSuccess: () => {
-                      clearGenerationRecovery(projectId)
-                      setRecovered(false)
-                      setJobId(null)
-                    },
-                  })
-                }}
-                canceling={cancelGeneration.isPending}
-                cancelError={cancelGeneration.error}
-              />
-            ) : (
-              <form onSubmit={handleGenerate} className="generation-form">
-                <h2>보고서 정보</h2>
-
-                <Field id="title" label="제목" required value={title} onChange={setTitle} />
-                <Field id="author" label="작성자" value={author} onChange={setAuthor} />
-                <Field id="course" label="과목" value={course} onChange={setCourse} />
-                <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
-
+          <section className="surface-card detail-card detail-card--information">
+            <form onSubmit={handleGenerate} className="generation-form">
+              <div className="detail-card__header">
                 <div>
-                  <label htmlFor="instructions" className="field-label">
-                    작성 지시사항 <span className="text-red-600">*</span>
-                  </label>
-                  <textarea
-                    id="instructions"
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    rows={4}
-                    placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
-                    className="field-control"
-                  />
+                  <h2>보고서 정보</h2>
+                  <p className="inline-hint">보고서 표지와 생성 방향을 설정합니다.</p>
                 </div>
+              </div>
 
-                <label className="generation-form__agreement">
-                  <input
-                    type="checkbox"
-                    checked={policyAgreed}
-                    onChange={(event) => setPolicyAgreed(event.target.checked)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    자료가 AI 제공자에게 전달될 수 있음을 확인했습니다.{' '}
-                    <Link to="/policies#ai-data" className="underline">
-                      자세히 보기
-                    </Link>
-                  </span>
+              <Field id="title" label="제목" required value={title} onChange={setTitle} />
+              <Field id="author" label="작성자" value={author} onChange={setAuthor} />
+              <Field id="course" label="과목" value={course} onChange={setCourse} />
+              <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
+
+              <div>
+                <label htmlFor="instructions" className="field-label">
+                  작성 지시사항 <span className="text-red-600">*</span>
                 </label>
+                <textarea
+                  id="instructions"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  rows={4}
+                  placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
+                  className="field-control"
+                />
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={!canSubmit || !policyAgreed || startGeneration.isPending}
-                  className="primary-button"
-                >
-                  {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
-                </button>
+              <label className="generation-form__agreement">
+                <input
+                  type="checkbox"
+                  checked={policyAgreed}
+                  onChange={(event) => setPolicyAgreed(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  자료가 AI 제공자에게 전달될 수 있음을 확인했습니다.{' '}
+                  <Link to="/policies#ai-data" className="underline">
+                    자세히 보기
+                  </Link>
+                </span>
+              </label>
 
-                {startGeneration.error && (
-                  <p role="alert" className="inline-alert">
-                    {toDisplayMessage(startGeneration.error)}
-                  </p>
-                )}
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={!canSubmit || !policyAgreed || startGeneration.isPending}
+                className="primary-button"
+              >
+                {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
+              </button>
+
+              {startGeneration.error && (
+                <p role="alert" className="inline-alert">
+                  {toDisplayMessage(startGeneration.error)}
+                </p>
+              )}
+            </form>
           </section>
         </div>
       </main>
@@ -375,10 +343,6 @@ function todayLocal(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
-function isFinished(status: string): boolean {
-  return status === 'COMPLETED' || status === 'FAILED' || status === 'CANCELED'
-}
-
 function Field({
   id,
   label,
@@ -433,7 +397,7 @@ function FileRow({
         disabled={!usable}
       />
       <span className="file-row__icon" aria-hidden>
-        F
+        <Icon name="file-text" size={15} />
       </span>
       <label htmlFor={`file-${file.id}`} className="file-row__main">
         <span className="file-row__name">{file.originalName}</span>
@@ -442,8 +406,13 @@ function FileRow({
           {!usable && <span>AI 분석 대상 아님</span>}
         </span>
       </label>
-      <button type="button" onClick={onDelete} className="file-row__delete">
-        삭제
+      <button
+        type="button"
+        onClick={onDelete}
+        className="file-row__delete"
+        aria-label={`${file.originalName} 삭제`}
+      >
+        <Icon name="trash" size={15} />
       </button>
     </li>
   )

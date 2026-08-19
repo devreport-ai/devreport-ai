@@ -12,6 +12,7 @@ import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { fileKeys, uploadProjectFile } from './api'
 import { toDisplayMessage } from '../../lib/api/errors'
+import { Icon } from '../../components/ui'
 
 /**
  * 파일 선택창에서 미리 걸러 줄 확장자.
@@ -41,6 +42,7 @@ let sequence = 0
 export function UploadPanel({ projectId }: { projectId: string }) {
   const client = useQueryClient()
   const [items, setItems] = useState<UploadItem[]>([])
+  const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const update = (key: string, patch: Partial<UploadItem>) => {
@@ -72,8 +74,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     }
   }
 
-  const handleSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(event.target.files ?? [])
+  const queueFiles = (picked: File[]) => {
     if (picked.length === 0) return
 
     const next = picked.map<UploadItem>((file) => ({
@@ -84,11 +85,20 @@ export function UploadPanel({ projectId }: { projectId: string }) {
     }))
     setItems((prev) => [...prev, ...next])
 
-    // 같은 파일을 다시 고를 수 있도록 input 을 비운다. 안 비우면 change 가 안 걸린다.
-    event.target.value = ''
-
     // 병렬 업로드. 하나가 실패해도 나머지는 계속 올라가야 하므로 allSettled 를 쓴다.
     void Promise.allSettled(next.map(runUpload)).then(refreshFileList)
+  }
+
+  const handleSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    queueFiles(Array.from(event.target.files ?? []))
+    // 같은 파일을 다시 고를 수 있도록 input 을 비운다. 안 비우면 change 가 안 걸린다.
+    event.target.value = ''
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setDragging(false)
+    queueFiles(Array.from(event.dataTransfer.files))
   }
 
   const completed = items.filter((i) => i.state === 'done').length
@@ -103,11 +113,25 @@ export function UploadPanel({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <label htmlFor="file-input" className="upload-dropzone">
+      <label
+        htmlFor="file-input"
+        className={dragging ? 'upload-dropzone upload-dropzone--dragging' : 'upload-dropzone'}
+        onDragEnter={(event) => {
+          event.preventDefault()
+          setDragging(true)
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => {
+          if (event.currentTarget === event.target) setDragging(false)
+        }}
+        onDrop={handleDrop}
+      >
         <span className="upload-dropzone__icon" aria-hidden>
-          ↑
+          <Icon name="upload" size={17} />
         </span>
-        <strong>파일을 선택하거나 끌어다 놓으세요</strong>
+        <strong>
+          파일 선택 <span>또는 여기에 파일을 놓아 주세요</span>
+        </strong>
         <span>ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</span>
       </label>
       <input

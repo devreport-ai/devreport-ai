@@ -80,12 +80,19 @@ function PrintContent({ exportId, token }: { exportId: string; token: string | n
   const template = findTemplate(templateId) ?? FALLBACK_TEMPLATE
 
   return (
-    <div className={`report-sheet print-page ${template.className}`}>
-      <h1>{doc.metadata.title}</h1>
-      <MetaLine metadata={doc.metadata} />
+    <div className={`report-sheet print-page print-page-v2 ${template.className}`}>
+      <span className="print-page-v2__accent" aria-hidden />
+      <header className="print-page-v2__header">
+        <p>DEVREPORT AI</p>
+        <h1>{doc.metadata.title}</h1>
+        <MetaLine metadata={doc.metadata} />
+      </header>
       {doc.sections.map((section) => (
         <section key={section.id}>
-          <h2>{section.title}</h2>
+          <h2 className="print-page-v2__section-title">
+            <i aria-hidden />
+            {section.title}
+          </h2>
           {section.blocks.map((block) => (
             <BlockView
               key={block.id}
