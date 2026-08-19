@@ -22,6 +22,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # apt 미러가 멈추면 기본 6시간까지 매달린다. 빨리 실패하게 만든다.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -48,5 +50,7 @@ jobs:
           # build.gradle 이 다른 이유로 바뀌어도 이전 브라우저를 재사용한다.
           restore-keys: |
             playwright-${{ runner.os }}-
-      - run: ./gradlew installChromium
+      # 러너 이미지에 Chromium 실행 라이브러리가 이미 포함되어 있다.
+      # --with-deps 의 apt-get 은 미러 장애 시 그대로 멈추므로 CI 에서는 건너뛴다.
+      - run: ./gradlew installChromium -PskipBrowserDeps
       - run: ./gradlew build
