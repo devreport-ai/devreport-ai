@@ -71,7 +71,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
       },
       {
         onSuccess: ({ jobId: id }) => {
-          const next = { jobId: id, templateId: 'default' }
+          const next = { jobId: id, templateId: 'default', confirmed: false }
           saveGenerationRecovery(projectId, next)
           void navigate(`/projects/${projectId}/templates`)
         },

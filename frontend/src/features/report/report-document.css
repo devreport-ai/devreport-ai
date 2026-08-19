@@ -1060,9 +1060,11 @@
 }
 
 @media print {
-  .report-document,
-  .report-document .rpt-document-shell {
+  .report-document {
     width: 210mm;
+    min-height: 297mm;
+  }
+  .report-document .rpt-document-shell {
     min-height: 297mm;
   }
   .report-document .rpt-block,

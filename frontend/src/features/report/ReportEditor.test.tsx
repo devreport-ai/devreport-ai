@@ -142,6 +142,7 @@ describe('ReportEditor', () => {
       )
       expect(put).toBeDefined()
       expect(String((put![1] as RequestInit).body)).toContain('"templateId":"compact"')
+      expect(String((put![1] as RequestInit).body)).toContain('"templateVersion":2')
     } finally {
       vi.useRealTimers()
     }

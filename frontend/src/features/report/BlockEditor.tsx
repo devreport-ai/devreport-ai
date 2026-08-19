@@ -81,7 +81,10 @@ function Fields({
           <Input
             label="대체 텍스트"
             value={draft.alt}
-            onChange={(alt) => onChange({ ...draft, alt })}
+            required
+            onChange={(alt) => {
+              if (alt !== '') onChange({ ...draft, alt })
+            }}
           />
           <label className="block text-sm">
             <span className="text-gray-600">이미지 파일</span>
@@ -213,10 +216,12 @@ function TableFields({
 function Input({
   label,
   value,
+  required,
   onChange,
 }: {
   label: string
   value: string
+  required?: boolean
   onChange: (value: string) => void
 }) {
   return (
@@ -224,6 +229,7 @@ function Input({
       <span className="text-gray-600">{label}</span>
       <input
         value={value}
+        required={required}
         onChange={(e) => onChange(e.target.value)}
         className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
       />

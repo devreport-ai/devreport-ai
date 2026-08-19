@@ -34,6 +34,8 @@ import { BrandMark, Icon } from '../../components/ui'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import './report-document.css'
 
+const EMPTY_PRESENTATION_SETTINGS: Record<string, string | number | boolean | null> = {}
+
 export function ReportEditor({
   report,
   initialTemplateId,
@@ -43,7 +45,7 @@ export function ReportEditor({
   initialTemplateId?: string
 }) {
   const [state, dispatch] = useReducer(editorReducer, report, (r): EditorState => {
-    const chosen = r.templateId === null ? findTemplate(initialTemplateId ?? null) : null
+    const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null)
     return {
       document: r.document,
       templateId: chosen?.id ?? r.templateId,
@@ -78,10 +80,9 @@ export function ReportEditor({
     document: state.document,
     templateId: state.templateId,
     templateVersion: state.templateVersion,
-    presentationSettings: (report.presentationSettings ?? {}) as Record<
-      string,
-      string | number | boolean | null
-    >,
+    presentationSettings:
+      (report.presentationSettings as Record<string, string | number | boolean | null> | null) ??
+      EMPTY_PRESENTATION_SETTINGS,
     server: {
       document: report.document,
       templateId: report.templateId,
@@ -199,7 +200,10 @@ export function ReportEditor({
             {editingMetadata ? (
               <MetadataEditor
                 metadata={state.document.metadata}
-                onChange={(metadata) => dispatch({ type: 'updateMetadata', metadata })}
+                onChange={(metadata) => {
+                  if (metadata.title === '') return
+                  dispatch({ type: 'updateMetadata', metadata })
+                }}
                 onClose={() => setEditingMetadata(false)}
               />
             ) : (
@@ -248,9 +252,10 @@ export function ReportEditor({
                   section={section}
                   editing={editingSectionId === section.id}
                   onEditTitle={() => setEditingSectionId(section.id)}
-                  onTitleChange={(title) =>
+                  onTitleChange={(title) => {
+                    if (title === '') return
                     dispatch({ type: 'updateSectionTitle', sectionId: section.id, title })
-                  }
+                  }}
                   onCloseTitle={() => setEditingSectionId(null)}
                 >
                   <SortableContext
@@ -445,6 +450,7 @@ function MetadataEditor({
         <span className="text-gray-600">제목 *</span>
         <input
           value={metadata.title}
+          required
           onChange={(event) => onChange({ ...metadata, title: event.target.value })}
           className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1"
         />
@@ -514,6 +520,7 @@ function SortableSection({
             <input
               aria-label="섹션 제목"
               value={section.title}
+              required
               onChange={(event) => onTitleChange(event.target.value)}
               className="field-control editor-section-title-input"
             />

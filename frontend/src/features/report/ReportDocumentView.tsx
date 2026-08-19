@@ -54,8 +54,8 @@ export function ReportDocumentView({
               <dd>{report.metadata.date ?? '—'}</dd>
             </div>
             <div>
-              <dt>상태</dt>
-              <dd>완료</dd>
+              <dt>형식</dt>
+              <dd>HTML</dd>
             </div>
           </dl>
           <small>DEVREPORT.AI</small>
@@ -66,7 +66,7 @@ export function ReportDocumentView({
         {['github', 'github-style', 'dark-tech'].includes(template.id) && (
           <div className="rpt-document-chrome" aria-hidden>
             <span>{label}</span>
-            <b>SUCCESS</b>
+            <b>HTML</b>
           </div>
         )}
 
@@ -109,8 +109,8 @@ export function ReportDocumentView({
               BLOCKS
             </span>
             <span>
-              <b>{template.id === 'compact' ? '94' : '100%'}</b>
-              {template.id === 'compact' ? 'SCORE' : 'READY'}
+              <b>HTML</b>
+              FORMAT
             </span>
           </div>
         )}
@@ -151,7 +151,7 @@ export function ReportDocumentView({
         <footer className="rpt-document-footer" aria-hidden>
           <span>DEVREPORT AI</span>
           <span>{template.galleryName}</span>
-          <b>01</b>
+          <b>A4</b>
         </footer>
       </div>
     </div>

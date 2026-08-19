@@ -13,6 +13,7 @@ export function TemplateChoicePanel({
   recovered = false,
   projectName = '프로젝트',
   onTemplateChange,
+  onConfirm,
   onCancel,
   canceling = false,
   cancelError,
@@ -24,6 +25,7 @@ export function TemplateChoicePanel({
   recovered?: boolean
   projectName?: string
   onTemplateChange?: (templateId: string) => void
+  onConfirm?: () => void
   onCancel?: () => void
   canceling?: boolean
   cancelError?: unknown
@@ -37,7 +39,6 @@ export function TemplateChoicePanel({
   )
   const [category, setCategory] = useState<'전체' | ReportTemplate['category']>('전체')
   const [confirmed, setConfirmed] = useState(recovered)
-  const [percent, setPercent] = useState(0)
   const navigatedRef = useRef(false)
 
   const selected = REPORT_TEMPLATES.find((template) => template.id === templateId)
@@ -57,21 +58,14 @@ export function TemplateChoicePanel({
     (job.data?.status === 'COMPLETED' && !job.data.reportId)
 
   useEffect(() => {
-    if (!confirmed || failed) return
-    if (finished) {
-      if (navigatedRef.current) return
-      navigatedRef.current = true
-      onComplete?.()
-      const reportId = job.data?.reportId
-      const timer = window.setTimeout(() => {
-        if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
-      }, 400)
-      return () => window.clearTimeout(timer)
-    }
-    const timer = window.setInterval(() => {
-      setPercent((value) => Math.min(90, value + (90 - value) * 0.08 + 0.5))
-    }, 200)
-    return () => window.clearInterval(timer)
+    if (!confirmed || failed || !finished || navigatedRef.current) return
+    navigatedRef.current = true
+    onComplete?.()
+    const reportId = job.data?.reportId
+    const timer = window.setTimeout(() => {
+      if (reportId) void navigate(`/reports/${reportId}`, { state: { templateId } })
+    }, 400)
+    return () => window.clearTimeout(timer)
   }, [confirmed, failed, finished, job.data?.reportId, navigate, onComplete, templateId])
 
   const chooseTemplate = (next: string) => {
@@ -102,8 +96,11 @@ export function TemplateChoicePanel({
           <button
             type="button"
             className="primary-button"
-            onClick={() => setConfirmed(true)}
-            disabled={confirmed || selected === undefined || canceling}
+            onClick={() => {
+              onConfirm?.()
+              setConfirmed(true)
+            }}
+            disabled={confirmed || failed || selected === undefined || canceling}
           >
             <Icon name="sparkles" size={16} />
             {confirmed ? '생성 중…' : '이 템플릿으로 생성'}
@@ -130,14 +127,13 @@ export function TemplateChoicePanel({
           </div>
         </div>
 
-        <div className="template-gallery-filters" role="tablist" aria-label="템플릿 분류">
+        <div className="template-gallery-filters" role="group" aria-label="템플릿 분류">
           {(['전체', '일반 보고서', '개발 문서', '학술', '에디토리얼', '컴팩트'] as const).map(
             (item) => (
               <button
                 key={item}
                 type="button"
-                role="tab"
-                aria-selected={category === item}
+                aria-pressed={category === item}
                 className={
                   category === item ? 'template-filter template-filter--active' : 'template-filter'
                 }
@@ -164,6 +160,7 @@ export function TemplateChoicePanel({
                 name="report-template"
                 value={template.id}
                 checked={template.id === templateId}
+                disabled={confirmed || failed || canceling}
                 onChange={() => chooseTemplate(template.id)}
                 className="sr-only"
               />
@@ -198,16 +195,16 @@ export function TemplateChoicePanel({
             <div
               className="template-progress"
               role="progressbar"
-              aria-valuenow={Math.round(finished ? 100 : percent)}
+              aria-valuenow={job.data?.progress ?? 0}
               aria-valuemin={0}
               aria-valuemax={100}
             >
-              <span style={{ width: `${finished ? 100 : percent}%` }} />
+              <span style={{ width: `${job.data?.progress ?? 0}%` }} />
             </div>
           </div>
         )}
 
-        {confirmed && failed && (
+        {failed && (
           <div className="template-generation-error" role="alert">
             <div>
               <strong>보고서 생성에 실패했습니다.</strong>
@@ -248,7 +245,10 @@ function FlowStep({
 
 function TemplatePreview({ template }: { template: ReportTemplate }) {
   return (
-    <div className={`template-preview template-preview--${template.preview}`} aria-hidden>
+    <div
+      className={`template-preview template-preview--${template.preview} template-preview--id-${template.id}`}
+      aria-hidden
+    >
       {template.preview === 'modern' && (
         <>
           <span className="preview-modern__accent" />

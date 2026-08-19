@@ -22,7 +22,7 @@ export interface ReportTemplate {
 export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   {
     id: 'default',
-    version: 1,
+    version: 2,
     name: '기본',
     galleryName: '모던 블루',
     description: '깔끔한 SaaS·프로젝트 보고서',
@@ -32,7 +32,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'github',
-    version: 1,
+    version: 2,
     name: 'GitHub 문서',
     galleryName: '개발 문서',
     description: '코드와 기술 설명 중심',
@@ -42,7 +42,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'latex',
-    version: 1,
+    version: 2,
     name: 'LaTeX 학술',
     galleryName: '학술 보고서',
     description: '논문·연구 보고서 중심',
@@ -52,7 +52,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'editorial-sage',
-    version: 1,
+    version: 2,
     name: '에디토리얼',
     galleryName: '에디토리얼',
     description: '차분한 색과 긴 호흡의 스토리텔링',
@@ -62,7 +62,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'side-panel',
-    version: 1,
+    version: 2,
     name: '사이드 패널',
     galleryName: '사이드 패널',
     description: '강한 표지와 구분된 정보 영역',
@@ -72,7 +72,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'minimal-mono',
-    version: 1,
+    version: 2,
     name: '미니멀 모노',
     galleryName: '미니멀 모노',
     description: '여백과 타이포그래피 중심',
@@ -82,7 +82,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'compact',
-    version: 1,
+    version: 2,
     name: '컴팩트',
     galleryName: '컴팩트 데이터',
     description: '정보를 밀도 있게 정리하는 구성',
@@ -92,7 +92,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'research-report',
-    version: 1,
+    version: 2,
     name: '리서치 리포트',
     galleryName: '리서치 리포트',
     description: '근거와 분석을 차분하게 보여주는 구성',
@@ -102,7 +102,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'business-report',
-    version: 1,
+    version: 2,
     name: '비즈니스 리포트',
     galleryName: '비즈니스 리포트',
     description: '핵심 지표와 의사결정 중심',
@@ -112,7 +112,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'github-style',
-    version: 1,
+    version: 2,
     name: 'GitHub 스타일',
     galleryName: 'GitHub 스타일',
     description: 'README와 변경 이력을 닮은 구성',
@@ -122,7 +122,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'dark-tech',
-    version: 1,
+    version: 2,
     name: '다크 테크',
     galleryName: '다크 테크',
     description: '기술 문서와 코드 블록을 강조',
@@ -132,7 +132,7 @@ export const REPORT_TEMPLATES: readonly ReportTemplate[] = [
   },
   {
     id: 'portfolio',
-    version: 1,
+    version: 2,
     name: '포트폴리오 케이스 스터디',
     galleryName: '포트폴리오 케이스 스터디',
     description: '문제·과정·결과를 한 장씩 보여주는 구성',

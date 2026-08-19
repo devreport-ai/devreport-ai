@@ -27,15 +27,11 @@ function TemplateChoiceContent({ projectId }: { projectId: string }) {
   const cancelGeneration = useCancelGeneration()
 
   useEffect(() => {
-    const terminalWithoutReport =
-      job.data?.status === 'FAILED' ||
-      job.data?.status === 'CANCELED' ||
-      (job.data?.status === 'COMPLETED' && !job.data.reportId)
-    if ((job.error instanceof ApiError && job.error.status === 404) || terminalWithoutReport) {
+    if (job.error instanceof ApiError && job.error.status === 404) {
       clearGenerationRecovery(projectId)
       void navigate(`/projects/${projectId}`, { replace: true })
     }
-  }, [job.data?.reportId, job.data?.status, job.error, navigate, projectId])
+  }, [job.error, navigate, projectId])
 
   if (recovery === null) {
     return <Navigate to={`/projects/${projectId}`} replace />
@@ -47,12 +43,23 @@ function TemplateChoiceContent({ projectId }: { projectId: string }) {
       <TemplateChoicePanel
         job={job}
         initialTemplateId={templateId}
-        recovered={false}
+        recovered={recovery.confirmed}
         projectName={project.data?.name ?? '프로젝트'}
         onTemplateChange={(next) => {
           setTemplateId(next)
-          saveGenerationRecovery(projectId, { jobId: recovery.jobId, templateId: next })
+          saveGenerationRecovery(projectId, {
+            jobId: recovery.jobId,
+            templateId: next,
+            confirmed: recovery.confirmed,
+          })
         }}
+        onConfirm={() =>
+          saveGenerationRecovery(projectId, {
+            jobId: recovery.jobId,
+            templateId,
+            confirmed: true,
+          })
+        }
         onRetry={() => {
           clearGenerationRecovery(projectId)
           void navigate(`/projects/${projectId}`, { replace: true })
