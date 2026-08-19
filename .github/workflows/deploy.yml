@@ -111,16 +111,40 @@ jobs:
           docker image prune -f --filter "until=168h"
           SCRIPT
 
-      - name: 헬스 체크
+      # 루트 경로는 Backend가 죽어 있어도 Caddy가 index.html을 200으로 돌려준다.
+      # 따라서 컨테이너 헬스 상태를 직접 확인해야 한다.
+      - name: 컨테이너 상태 확인
         run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'bash -s' <<'SCRIPT'
+          set -uo pipefail
+          cd /opt/devreport
+          compose="docker compose --env-file .env.prod -f compose.prod.yaml"
           for i in $(seq 1 30); do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" https://beta-app.kr/ --max-time 15 || echo 000)
-            if [ "$code" = "200" ]; then
-              echo "배포 확인 완료 (HTTP $code)"
+            # 헬스체크가 있는 서비스는 healthy, 나머지는 running이어야 한다.
+            bad=$($compose ps --format '{{.Service}}|{{.State}}|{{.Health}}' \
+              | awk -F'|' '$2 != "running" || ($3 != "" && $3 != "healthy")')
+            if [ -z "$bad" ]; then
+              echo "모든 컨테이너 정상"
+              $compose ps --format '{{.Service}} {{.State}} {{.Health}}'
               exit 0
             fi
-            echo "[$i] 대기 중 (HTTP $code)"
+            echo "[$i] 대기 중"
+            echo "$bad"
             sleep 10
           done
-          echo "헬스 체크 실패"
+          echo "컨테이너가 정상 상태에 도달하지 못했다"
+          $compose ps
+          $compose logs --tail 60
           exit 1
+          SCRIPT
+
+      - name: 공개 엔드포인트 확인
+        run: |
+          # Caddy가 정적 파일을 서빙하는지
+          page=$(curl -sS -o /dev/null -w "%{http_code}" https://beta-app.kr/ --max-time 20 || echo 000)
+          # 요청이 Backend까지 실제로 닿는지. 토큰이 없으므로 401이 정상 응답이다.
+          api=$(curl -sS -o /dev/null -w "%{http_code}" https://beta-app.kr/api/auth/me --max-time 20 || echo 000)
+          echo "page=$page api=$api"
+          [ "$page" = "200" ] || { echo "정적 파일 응답 실패"; exit 1; }
+          [ "$api" = "401" ] || { echo "Backend 응답 실패"; exit 1; }
+          echo "배포 확인 완료"
