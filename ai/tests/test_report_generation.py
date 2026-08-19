@@ -291,3 +291,38 @@ def test_generate_rejects_invalid_internal_token_without_echoing_secret():
     assert response.status_code == 401
     assert response.json()["code"] == "AI_UNAUTHORIZED"
     assert "wrong-token" not in response.text
+
+
+def test_generate_rejects_duplicated_file_ids():
+    request = valid_request() | {"fileIds": [str(FILE_ID), str(FILE_ID)]}
+
+    response = generate(multipart_data(request=request))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_empty_manifest_that_would_produce_a_report_without_evidence():
+    empty_manifest = json.dumps({"version": 1, "files": []})
+    parts = [
+        ("request", (None, json.dumps(valid_request()), "application/json")),
+        ("manifest", ("manifest.json", empty_manifest, "application/json")),
+    ]
+
+    response = generate(parts)
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
+def test_generate_rejects_non_ascii_internal_token_as_unauthorized():
+    # 헤더는 latin-1로 디코딩되므로 비ASCII 값이 그대로 들어온다.
+    # compare_digest는 이런 문자열에 TypeError를 던져 500이 될 수 있다.
+    response = client.post(
+        "/internal/ai/reports/generate",
+        files=multipart_data(),
+        headers={"X-Internal-Token": "토큰".encode()},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "AI_UNAUTHORIZED"

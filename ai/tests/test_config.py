@@ -50,3 +50,17 @@ def test_uses_free_tier_flash_model_by_default():
 def test_rejects_paid_model_override():
     with pytest.raises(ValidationError):
         Settings(gemini_model="gemini-2.5-pro")
+
+
+def test_rejects_generation_deadline_shorter_than_a_single_call_timeout():
+    with pytest.raises(ValidationError):
+        Settings(gemini_timeout_seconds=120, generation_deadline_seconds=60)
+
+
+def test_keeps_the_generation_deadline_below_the_backend_response_timeout():
+    settings = Settings()
+
+    # Backend AI_SERVICE_RESPONSE_TIMEOUT 기본값 300초보다 짧아야
+    # Backend가 포기한 뒤에도 Gemini 호출이 남아 있는 상황을 막는다.
+    assert settings.generation_deadline_seconds < 300
+    assert settings.gemini_timeout_seconds <= settings.generation_deadline_seconds

@@ -28,8 +28,10 @@ class ReportDocumentValidator:
         try:
             schema = self._load_schema()
             Draft202012Validator.check_schema(schema)
+            # metadata는 요청에서 이미 확정된 값이다. 모델이 한 글자만 바꿔도 생성 전체가
+            # 실패하던 비교 대신 요청 값으로 덮어써 실패 유형 자체를 없앤다.
+            document["metadata"] = metadata.model_dump(mode="json", exclude_none=True)
             Draft202012Validator(schema, format_checker=FormatChecker()).validate(document)
-            self._validate_metadata(document, metadata)
             self._validate_stable_ids(document)
             self._validate_image_references(document, allowed_image_ids)
         except (KeyError, SchemaError, TypeError, ValidationError, ValueError) as exception:
@@ -52,12 +54,6 @@ class ReportDocumentValidator:
         if not isinstance(schema, dict):
             raise ValueError("schema must be an object")
         return schema
-
-    @staticmethod
-    def _validate_metadata(document: dict[str, Any], metadata: ReportMetadata) -> None:
-        expected = metadata.model_dump(mode="json", exclude_none=True)
-        if document["metadata"] != expected:
-            raise ValueError("metadata differs from request")
 
     @staticmethod
     def _validate_stable_ids(document: dict[str, Any]) -> None:

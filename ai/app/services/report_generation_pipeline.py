@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Sequence
+import logging
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
+from time import monotonic
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
 from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS, GeminiClient
+from app.clients.response_schema import response_schema_for
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import (
     image_analysis_prompt,
@@ -28,6 +32,7 @@ from app.schemas.pipeline import (
 )
 from app.services.report_document_validator import ReportDocumentValidator
 
+log = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
@@ -41,38 +46,54 @@ class ReportGenerationPipeline:
     def generate(self, request: GenerationRequest, context: AnalysisContext) -> dict[str, Any]:
         file_ids = {str(item.file_id) for item in (*context.documents, *context.source_files)}
         image_ids = {str(image.file_id) for image in context.images}
+        log.info(
+            "보고서 생성 시작 documents=%d sourceFiles=%d images=%d omitted=%d",
+            len(context.documents),
+            len(context.source_files),
+            len(context.images),
+            len(context.omitted),
+        )
+
         requirements = self._generate_model(
+            "requirements",
             RequirementAnalysis,
-            requirement_analysis_prompt(context.documents),
+            requirement_analysis_prompt(context.documents, context.omitted),
             validate=lambda result: self._validate_requirement_references(result, file_ids),
         )
         source = self._generate_model(
+            "source",
             SourceAnalysis,
-            source_analysis_prompt(context.source_files),
+            source_analysis_prompt(context.source_files, context.omitted),
             validate=lambda result: self._validate_source_references(result, file_ids),
         )
         images = tuple(self._analyze_image(image) for image in context.images)
 
         plan = self._generate_model(
+            "plan",
             ReportPlan,
             report_plan_prompt(request, requirements, source, images, file_ids, image_ids),
             validate=lambda result: self._validate_plan_references(result, file_ids, image_ids),
         )
 
-        return self._generate_document(
-            report_document_prompt(request, requirements, source, images, plan, image_ids),
+        document = self._generate_document(
+            report_document_prompt(
+                request, requirements, source, images, plan, image_ids, context.omitted
+            ),
             request,
             self._image_ids(context),
         )
+        log.info("보고서 생성 완료 sections=%d", len(document.get("sections", ())))
+        return document
 
     def _analyze_image(self, image: ImageEvidence) -> ImageAnalysis:
         observation = self._generate_model(
-            ImageObservation, image_analysis_prompt(image), images=(image,)
+            "image", ImageObservation, image_analysis_prompt(image), images=(image,)
         )
         return ImageAnalysis(file_id=image.file_id, observation=observation)
 
     def _generate_model(
         self,
+        stage: str,
         model: type[ModelT],
         prompt: str,
         images: Sequence[ImageEvidence] = (),
@@ -90,7 +111,13 @@ class ReportGenerationPipeline:
                 validate(result)
             return result
 
-        result = self._gemini.generate_json(prompt, images, response_validator=validate_response)
+        with stage_log(stage):
+            result = self._gemini.generate_json(
+                prompt,
+                images,
+                response_schema=response_schema_for(model),
+                response_validator=validate_response,
+            )
         return cast(ModelT, result)
 
     def _generate_document(
@@ -111,11 +138,13 @@ class ReportGenerationPipeline:
                 )
             return self._document_validator.validate(document, request.metadata, image_ids)
 
-        result = self._gemini.generate_json(
-            prompt,
-            max_output_tokens=REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
-            response_validator=validate_response,
-        )
+        with stage_log("document"):
+            # 계약 스키마는 블록 oneOf를 쓰므로 structured output 대신 프롬프트로 형식을 고정한다.
+            result = self._gemini.generate_json(
+                prompt,
+                max_output_tokens=REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
+                response_validator=validate_response,
+            )
         return cast(dict[str, Any], result)
 
     @staticmethod
@@ -128,10 +157,7 @@ class ReportGenerationPipeline:
             for file_id in requirement.evidence_file_ids
         }
         if not referenced_file_ids <= allowed_file_ids:
-            raise AIServiceError(
-                ErrorCode.AI_INVALID_RESPONSE,
-                "Gemini 분석 근거가 입력 파일과 일치하지 않습니다.",
-            )
+            raise unknown_evidence()
 
     @staticmethod
     def _validate_source_references(source: SourceAnalysis, allowed_file_ids: set[str]) -> None:
@@ -139,10 +165,7 @@ class ReportGenerationPipeline:
             str(file_id) for finding in source.findings for file_id in finding.evidence_file_ids
         }
         if not referenced_file_ids <= allowed_file_ids:
-            raise AIServiceError(
-                ErrorCode.AI_INVALID_RESPONSE,
-                "Gemini 분석 근거가 입력 파일과 일치하지 않습니다.",
-            )
+            raise unknown_evidence()
 
     @staticmethod
     def _validate_plan_references(
@@ -158,11 +181,27 @@ class ReportGenerationPipeline:
             referenced_file_ids <= allowed_file_ids and referenced_image_ids <= allowed_image_ids
         )
         if not valid_references:
-            raise AIServiceError(
-                ErrorCode.AI_INVALID_RESPONSE,
-                "Gemini 분석 근거가 입력 파일과 일치하지 않습니다.",
-            )
+            raise unknown_evidence()
 
     @staticmethod
     def _image_ids(context: AnalysisContext) -> tuple[UUID, ...]:
         return tuple(image.file_id for image in context.images)
+
+
+@contextmanager
+def stage_log(stage: str) -> Iterator[None]:
+    """단계별 소요 시간을 남겨 어느 단계에서 실패했는지 추적할 수 있게 한다."""
+    started_at = monotonic()
+    try:
+        yield
+    except Exception:
+        log.warning("분석 단계 실패 stage=%s elapsed=%.2fs", stage, monotonic() - started_at)
+        raise
+    log.info("분석 단계 완료 stage=%s elapsed=%.2fs", stage, monotonic() - started_at)
+
+
+def unknown_evidence() -> AIServiceError:
+    return AIServiceError(
+        ErrorCode.AI_INVALID_RESPONSE,
+        "Gemini 분석 근거가 입력 파일과 일치하지 않습니다.",
+    )

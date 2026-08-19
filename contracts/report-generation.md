@@ -111,6 +111,13 @@ AI Service는 같은 서버 또는 Docker private network에서만 접근할 수
 AI Service는 HTML이나 단일 Markdown이 아닌 JSON `ReportDocument`를 반환한다. 텍스트 필드는 계약이
 허용하는 Markdown 일부를 사용할 수 있지만 디자인과 레이아웃 정보는 포함하지 않는다.
 
+AI Service는 반환 전에 다음을 방어적으로 처리한다.
+
+- `metadata`는 모델 응답을 신뢰하지 않고 생성 요청의 값으로 덮어쓴다.
+- manifest `files`가 비어 있으면 `400 AI_INVALID_REQUEST`로 거부한다.
+- 정규화 후 분석 근거가 하나도 남지 않으면 `422 AI_FILE_PROCESSING_FAILED`로 거부한다.
+  근거 없이 지시문만으로 보고서를 만들지 않기 위한 규칙이다.
+
 AI Service가 JSON Schema를 검증한 뒤 반환하고 Backend가 다시 다음을 검증한다.
 
 - 허용된 section/block 구조, stable ID, block type, 필수 필드

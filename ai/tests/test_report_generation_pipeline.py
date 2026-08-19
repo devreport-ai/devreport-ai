@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from uuid import UUID
 
@@ -9,7 +10,7 @@ import pytest
 from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import report_document_prompt
-from app.schemas.analysis import AnalysisContext, ImageEvidence, TextEvidence
+from app.schemas.analysis import AnalysisContext, ImageEvidence, OmittedFile, TextEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import ReportPlan, RequirementAnalysis, SourceAnalysis
 from app.services.report_generation_pipeline import ReportGenerationPipeline
@@ -20,6 +21,7 @@ DOCUMENT_ID = UUID("00000000-0000-4000-8000-000000000001")
 SOURCE_ID = UUID("00000000-0000-4000-8000-000000000002")
 IMAGE_ID = UUID("00000000-0000-4000-8000-000000000003")
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000099"
+UNREADABLE_ID = UUID("00000000-0000-4000-8000-000000000004")
 
 
 class FakeGemini:
@@ -27,6 +29,7 @@ class FakeGemini:
         self.responses = responses
         self.calls: list[tuple[str, tuple[ImageEvidence, ...]]] = []
         self.output_token_limits: list[int | None] = []
+        self.response_schemas: list[object] = []
 
     def generate_json(
         self,
@@ -34,10 +37,12 @@ class FakeGemini:
         images: tuple[ImageEvidence, ...] = (),
         *,
         max_output_tokens: int | None = None,
+        response_schema: object = None,
         response_validator: object = None,
     ) -> object:
         self.calls.append((prompt, images))
         self.output_token_limits.append(max_output_tokens)
+        self.response_schemas.append(response_schema)
         response = json.dumps(self.responses.pop(0), ensure_ascii=False)
         if response_validator is None:
             return response
@@ -151,13 +156,38 @@ def test_rejects_plan_that_references_a_file_outside_the_generation_bundle():
     assert len(gemini.calls) == 4
 
 
-def test_rejects_document_that_changes_requested_metadata():
+def test_overwrites_document_metadata_with_the_requested_metadata():
+    # metadata는 요청에서 확정된 값이므로 모델이 바꿔 써도 생성이 실패하지 않는다.
     gemini = FakeGemini(responses(title="다른 제목"))
 
-    with pytest.raises(AIServiceError) as raised:
-        ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+    document = ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
 
-    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+    assert document["metadata"] == {"title": "실습보고서", "author": "김예찬"}
+
+
+def test_uses_structured_output_schema_for_analysis_stages_only():
+    gemini = FakeGemini(responses())
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    analysis_schemas = gemini.response_schemas[:-1]
+    assert all(schema is not None for schema in analysis_schemas)
+    # 계약 스키마는 블록 oneOf를 쓰므로 최종 문서 단계는 프롬프트로만 형식을 고정한다.
+    assert gemini.response_schemas[-1] is None
+    assert "pattern" not in json.dumps(analysis_schemas)
+
+
+def test_tells_the_model_which_files_were_omitted_from_the_bundle():
+    gemini = FakeGemini(responses())
+    omitted = OmittedFile(UNREADABLE_ID, "source/id/legacy.java", "unreadable")
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(
+        request(), replace(context(), omitted=(omitted,))
+    )
+
+    source_prompt = gemini.calls[1][0]
+    assert "source/id/legacy.java" in source_prompt
+    assert "unreadable" in source_prompt
 
 
 def test_uses_larger_output_token_limit_for_final_report_document():

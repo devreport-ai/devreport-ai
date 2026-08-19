@@ -94,6 +94,25 @@ AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 
 `ReportDocument`를 생성·검증한다. 상세 계약은
 [`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
 
+### 입력 정규화 규칙
+
+Backend는 확장자로만 소스를 선별하므로 AI Service가 다음을 방어적으로 처리한다.
+
+| 상황 | 처리 |
+| --- | --- |
+| UTF-8이 아닌 텍스트 | CP949로 재시도하고, 실패하면 대체 문자로 읽어 `lossy`로 표시 |
+| 텍스트로 볼 수 없는 파일 | 해당 파일만 근거에서 제외하고 나머지로 생성 |
+| 파일 합계 100만 자 초과 | 초과분을 제외하고 `omittedFiles`로 모델에 알림 |
+| 이미지 `MAX_ANALYZED_IMAGES` 초과, 7 MiB 초과 | 해당 이미지를 근거에서 제외 |
+| 근거가 하나도 남지 않음 | `422 AI_FILE_PROCESSING_FAILED` (근거 없는 보고서를 만들지 않는다) |
+
+### 생성 시간 제한
+
+Gemini 호출은 요구사항·소스·계획·문서 4단계에 이미지 장수를 더한 만큼 발생한다.
+호출당 `GEMINI_TIMEOUT_SECONDS`와 별개로 요청 전체에 `GENERATION_DEADLINE_SECONDS`
+예산을 적용해, Backend가 이미 포기한 요청을 계속 처리하며 무료 티어 쿼터를 소모하지
+않게 한다. 예산이 만료되면 `504 AI_TIMEOUT`을 반환한다.
+
 생성 API의 multipart 본문은 ASGI 수신 단계에서 최대 100 MiB로 제한한다. `Content-Length`
 요청은 파싱 전에 즉시 거부하며, chunked 요청도 수신 바이트가 한도를 넘는 즉시 거부한다.
 
@@ -116,8 +135,10 @@ uv run ruff format .
 | `AI_INTERNAL_TOKEN` | 없음 | Backend 내부 생성 요청 인증용 공유 Secret (운영 필수) |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | 무료 티어 우선 모델. 다른 모델은 설정 검증에서 거부 |
 | `GEMINI_API_KEY` | 없음 | AI Service가 Gemini 호출에 사용하는 서버 키 (운영 필수) |
-| `GEMINI_TIMEOUT_SECONDS` | `300` | Gemini 호출 타임아웃 |
-| `GEMINI_MAX_RETRIES` | `2` | 스키마 검증 실패 시 재시도 횟수 |
+| `GEMINI_TIMEOUT_SECONDS` | `90` | Gemini 호출 **1건**의 타임아웃 |
+| `GEMINI_MAX_RETRIES` | `2` | 스키마 검증 실패와 일시적 오류의 재시도 횟수 |
+| `GENERATION_DEADLINE_SECONDS` | `240` | 생성 요청 하나가 Gemini 호출에 쓸 수 있는 전체 시간 |
+| `MAX_ANALYZED_IMAGES` | `10` | 분석할 이미지 최대 장수. 초과분은 근거에서 제외 |
 
 ## API Key 취급 원칙
 
@@ -126,7 +147,8 @@ uv run ruff format .
 - 로그와 예외 메시지에 키를 남기지 않는다 (`app/core/logging.py`의 마스킹 필터).
 - 파일이나 DB에 저장하지 않는다.
 - 코드에서는 `gemini-3.5-flash-lite`만 허용한다. 무료 티어는 모델별 요청·토큰 한도를 넘으면
-  `429 RESOURCE_EXHAUSTED`를 반환한다.
+  `429 RESOURCE_EXHAUSTED`를 반환한다. `429`와 `408`, `5xx`는 지수 백오프로 재시도하며,
+  `429`에는 더 긴 대기를 적용한다.
 - 이 서비스는 현재 Gemini **무료 티어만** 사용한다. 무료 티어에서는 전송한 문서·코드·이미지와
   생성 결과가 Gemini 제품 개선에 사용될 수 있으므로, 사용자는 자료 소유자에게 이를 고지하고 동의를
   받아야 한다. 비밀키·인증서·개인정보·기밀 자료는 업로드하지 않는다.

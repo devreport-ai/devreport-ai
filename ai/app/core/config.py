@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ai/app/core/config.py -> parents[3] == 저장소 루트
@@ -39,8 +39,15 @@ class Settings(BaseSettings):
     gemini_model: Literal["gemini-3.5-flash-lite"] = FREE_TIER_GEMINI_MODEL
     # AI Service 서버 키. 사용자별 키 전달은 MVP 범위가 아니다.
     gemini_api_key: str | None = None
-    gemini_timeout_seconds: float = 300.0
-    gemini_max_retries: int = 2
+    # Gemini 호출 1건의 타임아웃. 생성 1회는 (4 + 이미지 수)번 호출하므로
+    # 호출당 값을 크게 잡으면 Backend 응답 타임아웃을 쉽게 넘긴다.
+    gemini_timeout_seconds: float = Field(default=90.0, gt=0)
+    gemini_max_retries: int = Field(default=2, ge=0, le=5)
+    # 생성 요청 하나가 Gemini 호출에 쓸 수 있는 전체 시간.
+    # Backend의 AI_SERVICE_RESPONSE_TIMEOUT보다 짧게 유지한다.
+    generation_deadline_seconds: float = Field(default=240.0, gt=0)
+    # 이미지는 1장당 1회 호출이라 무료 티어 분당 요청 한도를 빠르게 소진한다.
+    max_analyzed_images: int = Field(default=10, ge=1, le=50)
 
     @property
     def report_schema_path(self) -> Path:
@@ -60,6 +67,15 @@ class Settings(BaseSettings):
             raise ValueError("AI_INTERNAL_TOKEN이 운영 환경에 설정되지 않았습니다.")
         if not self.gemini_api_key or not self.gemini_api_key.strip():
             raise ValueError("GEMINI_API_KEY가 운영 환경에 설정되지 않았습니다.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_generation_budget(self) -> "Settings":
+        # 전체 예산이 호출 1건보다 짧으면 첫 호출조차 끝내지 못하고 만료된다.
+        if self.generation_deadline_seconds < self.gemini_timeout_seconds:
+            raise ValueError(
+                "GENERATION_DEADLINE_SECONDS는 GEMINI_TIMEOUT_SECONDS 이상이어야 합니다."
+            )
         return self
 
 

@@ -15,9 +15,16 @@ class GenerationRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    file_ids: list[UUID] = Field(alias="fileIds", min_length=1)
+    file_ids: list[UUID] = Field(alias="fileIds", min_length=1, max_length=MAX_BUNDLE_FILE_COUNT)
     metadata: ReportMetadata
     instructions: str
+
+    @field_validator("file_ids")
+    @classmethod
+    def validate_unique_file_ids(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("fileIds must not contain duplicates")
+        return value
 
     @field_validator("instructions")
     @classmethod
@@ -77,7 +84,8 @@ class GenerationManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: Literal[1]
-    files: list[ManifestFile] = Field(max_length=MAX_BUNDLE_FILE_COUNT)
+    # 빈 bundle을 허용하면 근거 없이 지시문만으로 보고서를 지어내게 된다.
+    files: list[ManifestFile] = Field(min_length=1, max_length=MAX_BUNDLE_FILE_COUNT)
 
     @model_validator(mode="after")
     def validate_total_size(self) -> GenerationManifest:
