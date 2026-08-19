@@ -8,12 +8,12 @@ on:
   # PR 을 올릴 때와 dev 에 직접 반영될 때 모두 돌린다.
   # PR 에서 통과했더라도 병합 결과가 깨질 수 있으므로 push 에서도 확인한다.
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
   push:
-    branches: [dev]
+    branches: [dev, main]
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
