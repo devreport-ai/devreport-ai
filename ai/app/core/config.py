@@ -10,6 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 APP_VERSION = "0.1.0"
 FREE_TIER_GEMINI_MODEL = "gemini-3.5-flash-lite"
+AppEnvironment = Literal["local", "test", "prod", "production"]
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    app_env: str = "local"
+    app_env: AppEnvironment = "local"
     log_level: str = "INFO"
 
     # contracts는 세 파트 공통 계약이라 저장소 루트 기준으로 참조한다.
@@ -51,7 +52,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
-        if self.app_env.strip().lower() not in {"prod", "production"}:
+        if self.app_env not in {"prod", "production"}:
             return self
         if self.mock_report:
             raise ValueError("MOCK_REPORT는 운영 환경에서 false여야 합니다.")

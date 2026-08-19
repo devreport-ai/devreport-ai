@@ -54,6 +54,21 @@ uv run hypercorn app.main:app --bind 127.0.0.1:8000 --reload
 AI Service는 Hypercorn으로 실행한다. Hypercorn은 Backend Java Client의 HTTP/2 h2c 업그레이드를
 처리하며, HTTP/1.1 요청도 함께 지원한다.
 
+Docker private network에서는 AI 컨테이너 내부에서만 모든 인터페이스에 바인딩한다. AI 컨테이너의
+호스트 포트는 publish하지 않고, 같은 Docker network의 Backend만 서비스 이름으로 연결한다.
+
+```bash
+# AI 컨테이너 내부 실행 명령
+uv run hypercorn app.main:app --bind 0.0.0.0:8000
+```
+
+```text
+AI_SERVICE_URL=http://ai-service:8000
+```
+
+여기서 `ai-service`는 Compose service 이름이다. 별도 Backend 컨테이너에서 `127.0.0.1:8000`은
+Backend 자신을 가리키므로 사용하면 안 된다.
+
 | 주소 | 설명 |
 | --- | --- |
 | http://localhost:8000/health | Health Check |
@@ -112,6 +127,12 @@ uv run ruff format .
 - 파일이나 DB에 저장하지 않는다.
 - 코드에서는 `gemini-3.5-flash-lite`만 허용한다. 무료 티어는 모델별 요청·토큰 한도를 넘으면
   `429 RESOURCE_EXHAUSTED`를 반환한다.
+- 이 서비스는 현재 Gemini **무료 티어만** 사용한다. 무료 티어에서는 전송한 문서·코드·이미지와
+  생성 결과가 Gemini 제품 개선에 사용될 수 있으므로, 사용자는 자료 소유자에게 이를 고지하고 동의를
+  받아야 한다. 비밀키·인증서·개인정보·기밀 자료는 업로드하지 않는다.
+- Free Tier 데이터 처리 조건은 지역별로 다를 수 있으므로 배포 전에
+  [Gemini API 약관](https://ai.google.dev/gemini-api/terms)과
+  [가격·데이터 사용 정책](https://ai.google.dev/gemini-api/docs/pricing)을 확인한다.
 - 일반 **alerts-only Google Cloud Budget**은 사용량 또는 과금을 멈추지 않고 알림만 보낸다.
   과금 프로젝트를 운영한다면 Gemini API가 대상인 **Spend cap** 또는 AI Studio의 프로젝트별
   월간 spend cap을 설정한다. spend cap은 처리 지연으로 소폭 초과 과금될 수 있으므로, 애플리케이션의
