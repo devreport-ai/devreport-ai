@@ -349,3 +349,47 @@ def test_uses_the_call_timeout_when_no_deadline_is_set():
     gemini_client.generate_json("prompt")
 
     assert sdk_client.models.calls[0]["config"].http_options.timeout == 90_000
+
+
+def test_raises_timeout_when_the_budget_runs_out_between_retries():
+    # 재시도 대기 중에 예산이 끝나면 AI_UNAVAILABLE이 아니라 AI_TIMEOUT이어야 한다.
+    now = [0.0]
+    deadline = Deadline(10.0, clock=lambda: now[0])
+    sdk_client = FakeClient([HttpError(503), Response("{}")])
+
+    def advance_past_deadline(_seconds: float) -> None:
+        now[0] = 20.0
+
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=5,
+        max_retries=1,
+        client_factory=lambda _key, _timeout: sdk_client,
+        sleeper=advance_past_deadline,
+        deadline=deadline,
+    )
+
+    with pytest.raises(AIServiceError) as raised:
+        gemini_client.generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_TIMEOUT
+    # 예산이 끝난 뒤에는 SDK를 다시 부르지 않는다.
+    assert len(sdk_client.models.calls) == 1
+
+
+def test_never_sends_a_zero_timeout_to_the_sdk():
+    now = [0.0]
+    sdk_client = FakeClient([Response("{}")])
+    gemini_client = GeminiClient(
+        api_key="secret",
+        model="gemini-test",
+        timeout_seconds=90,
+        max_retries=0,
+        client_factory=lambda _key, _timeout: sdk_client,
+        deadline=Deadline(3.0, clock=lambda: now[0]),
+    )
+
+    gemini_client.generate_json("prompt")
+
+    assert sdk_client.models.calls[0]["config"].http_options.timeout == 3_000

@@ -74,11 +74,13 @@ class GeminiClient:
 
         rejection: str | None = None
         for attempt in range(self._max_retries + 1):
-            self._ensure_time_left()
+            # 예산 만료는 호출 전에 판정한다. try 안에서 계산하면 AI_TIMEOUT이
+            # 아래 except에 걸려 AI_UNAVAILABLE로 바뀐다.
+            call_timeout = self._call_timeout()
             contents = content_parts(retry_prompt(prompt, rejection), images)
             try:
                 response = self._generate_once(
-                    client, contents, max_output_tokens, response_schema, self._call_timeout()
+                    client, contents, max_output_tokens, response_schema, call_timeout
                 )
             except Exception as exception:
                 if not is_retryable(exception) or attempt == self._max_retries:
@@ -134,14 +136,12 @@ class GeminiClient:
         )
 
     def _call_timeout(self) -> float:
+        """이번 호출에 허용할 초. 예산이 남지 않았으면 AI_TIMEOUT을 던진다."""
         # 호출당 타임아웃이 남은 예산보다 길면 호출 하나가 전체 예산을 넘길 수 있다.
         if self._deadline is None:
             return self._timeout_seconds
-        return min(self._timeout_seconds, max(self._deadline.remaining(), 0.0))
-
-    def _ensure_time_left(self) -> None:
-        if self._deadline is not None:
-            self._deadline.ensure_active()
+        self._deadline.ensure_active()
+        return min(self._timeout_seconds, self._deadline.remaining())
 
     def _wait(self, seconds: float) -> None:
         # 남은 예산보다 오래 기다리면 어차피 만료되므로 그 전에 멈춘다.
