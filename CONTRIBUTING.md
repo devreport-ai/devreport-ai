@@ -33,6 +33,11 @@ closing keyword를 작성하면 PR이 `dev`에 병합된 후 해당 Issue가 자
 
 PR을 병합하지 않고 닫은 경우 Issue는 종료되지 않는다.
 
+## Issue 관리
+
+새 Issue를 생성한 사람은 즉시 [MVP 개발 현황 Issue #44](https://github.com/devreport-ai/devreport-ai/issues/44)의
+Issue 목록과 진행 순서를 최신 상태로 반영한다.
+
 ## Commit Convention
 
 - `feat(backend): 프로젝트 생성 API 추가`
