@@ -50,6 +50,12 @@ afterEach(() => {
 })
 
 describe('ReportEditor', () => {
+  it('툴바 로고로 홈에 갈 수 있다', () => {
+    renderWithProviders(<ReportEditor report={report()} />)
+
+    expect(screen.getByRole('link', { name: 'DevReport AI 홈' })).toHaveAttribute('href', '/')
+  })
+
   it('문서 제목·메타·블록을 렌더링한다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 
