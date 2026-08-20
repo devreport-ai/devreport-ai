@@ -15,6 +15,7 @@ import {
   useTrashedProjects,
   useUpdateProject,
 } from '../features/projects/api'
+import { nextDefaultProjectName } from '../features/projects/defaultName'
 import { toDisplayMessage } from '../lib/api/errors'
 
 const PAGE_SIZE = 20
@@ -36,10 +37,12 @@ export default function ProjectsPage() {
   const handleCreate = (event: React.FormEvent) => {
     event.preventDefault()
     const trimmed = name.trim()
-    if (!trimmed) return
+    // 이름을 비우면 기본 이름으로 만든다 (#110)
+    // 이름을 비우면 기본 이름으로 만든다 (#110)
+    const finalName = trimmed || nextDefaultProjectName((data?.items ?? []).map((p) => p.name))
 
     createProject.mutate(
-      { name: trimmed },
+      { name: finalName },
       {
         onSuccess: ({ projectId }) => {
           setName('')
@@ -85,11 +88,7 @@ export default function ProjectsPage() {
                 maxLength={100}
                 className="field-control"
               />
-              <button
-                type="submit"
-                disabled={!name.trim() || createProject.isPending}
-                className="primary-button"
-              >
+              <button type="submit" disabled={createProject.isPending} className="primary-button">
                 <Icon name="plus" size={16} />
                 {createProject.isPending ? '만드는 중…' : '프로젝트 만들기'}
               </button>

@@ -4,7 +4,17 @@ import ProjectsPage from './ProjectsPage'
 import { renderWithProviders } from '../test/renderWithProviders'
 import { clearAccessToken, setAccessToken } from '../lib/auth/tokenStore'
 
+// MemoryRouter 에서는 주소가 안 바뀌므로 이동 자체를 확인한다
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+vi.mock('react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router')>()),
+  useNavigate: () => navigateMock,
+}))
+
 let projectName = '프로젝트 A'
+/** 요청 중 상태를 관찰하려고 POST 응답을 잡아두는 스위치 */
+let deferPost = false
+let releasePost: (() => void) | null = null
 let activeProject = true
 let trashedProject = false
 
@@ -26,6 +36,9 @@ function project(id: string, name: string) {
 }
 
 beforeEach(() => {
+  navigateMock.mockClear()
+  deferPost = false
+  releasePost = null
   projectName = '프로젝트 A'
   activeProject = true
   trashedProject = false
@@ -87,6 +100,13 @@ beforeEach(() => {
         )
       }
 
+      if (url.endsWith('/api/projects') && method === 'POST') {
+        if (!deferPost) return Promise.resolve(json({ projectId: 'p-new' }))
+        return new Promise((resolve) => {
+          releasePost = () => resolve(json({ projectId: 'p-new' }))
+        })
+      }
+
       return Promise.resolve(
         json({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
       )
@@ -122,6 +142,39 @@ describe('ProjectsPage project management', () => {
       await screen.findByText('아직 프로젝트가 없습니다. 위에서 만들어 주세요.'),
     ).toBeInTheDocument()
     expect(await screen.findByText('새 프로젝트')).toBeInTheDocument()
+  })
+
+  it('이름을 비우고 만들면 기본 이름으로 생성한다', async () => {
+    renderWithProviders(<ProjectsPage />)
+
+    expect(await screen.findByText('프로젝트 A')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '프로젝트 만들기' }))
+
+    await vi.waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/projects',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: '새 프로젝트' }) }),
+      ),
+    )
+    // 만든 프로젝트로 이동해야 한다 (리뷰 지적)
+    await vi.waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/projects/p-new'))
+  })
+
+  it('요청 중에는 만들기 버튼을 비활성화한다', async () => {
+    deferPost = true
+    renderWithProviders(<ProjectsPage />)
+
+    expect(await screen.findByText('프로젝트 A')).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: '프로젝트 만들기' })
+    expect(button).toBeEnabled()
+
+    fireEvent.click(button)
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: '만드는 중…' })).toBeDisabled(),
+    )
+
+    releasePost?.()
+    await vi.waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/projects/p-new'))
   })
 
   it('휴지통 프로젝트를 복구한다', async () => {
