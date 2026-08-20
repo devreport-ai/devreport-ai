@@ -30,6 +30,7 @@ import { downloadExportPdf, isExportFinished, useExportStatus, useStartExport } 
 import { useAllProjectFiles } from '../files/api'
 import { toDisplayMessage } from '../../lib/api/errors'
 import type { Report, ReportBlock, ReportDocument, ReportSection } from '../../lib/contracts/types'
+import { Link } from 'react-router'
 import { BrandMark, Icon } from '../../components/ui'
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 import './report-document.css'
@@ -375,7 +376,10 @@ function Toolbar({
 }) {
   return (
     <header className="editor-toolbar">
-      <BrandMark compact />
+      {/* 편집 화면에는 사이드바가 없다 — 로고가 홈으로 나가는 유일한 통로다 */}
+      <Link to="/" aria-label="DevReport AI 홈">
+        <BrandMark compact />
+      </Link>
       <span className="editor-toolbar__spacer" />
       <span aria-live="polite" className="editor-save-status">
         <span
