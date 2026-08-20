@@ -77,4 +77,20 @@ describe('ProjectPage report list', () => {
     expect(await screen.findByText('이 페이지에 보고서가 없습니다.')).toBeInTheDocument()
     expect(screen.getByText(/2\s*\/\s*2/)).toBeInTheDocument()
   })
+
+  it('생성 버튼을 누르면 필수 항목 오류를 표시하고 첫 누락 항목으로 이동한다', async () => {
+    renderWithProviders(<App />, { route: '/projects/p-1' })
+
+    await screen.findByRole('heading', { name: '졸업 프로젝트' })
+    const button = screen.getByRole('button', { name: '보고서 생성' })
+
+    expect(button).toBeEnabled()
+    fireEvent.click(button)
+
+    expect(screen.getByText('분석할 파일을 1개 이상 선택해 주세요.')).toBeInTheDocument()
+    expect(screen.getByText('제목을 입력해 주세요.')).toBeInTheDocument()
+    expect(screen.getByText('작성 지시사항을 입력해 주세요.')).toBeInTheDocument()
+    expect(screen.getByText('자료 전달 안내를 확인해 주세요.')).toBeInTheDocument()
+    expect(document.activeElement).toHaveAttribute('id', 'file-selection')
+  })
 })
