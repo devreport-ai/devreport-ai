@@ -4866,7 +4866,7 @@
       "name": "V2 Project Detail / Desktop",
       "clip": true,
       "width": 1440,
-      "height": 1500,
+      "height": 1600,
       "fill": "$v2-bg",
       "layout": "none",
       "children": [
@@ -4878,7 +4878,7 @@
           "x": 0,
           "y": 0,
           "width": 240,
-          "height": 1500,
+          "height": 1600,
           "descendants": {
             "gVYAY": {
               "content": "사용자"
@@ -4892,7 +4892,7 @@
           "y": 0,
           "name": "V2 Project Main",
           "width": 1200,
-          "height": 1500,
+          "height": 1600,
           "layout": "vertical",
           "children": [
             {
@@ -5382,6 +5382,16 @@
                           "content": "PNG 이미지 · 1.8 MB"
                         }
                       }
+                    },
+                    {
+                      "type": "text",
+                      "id": "Q4f03",
+                      "name": "V2 File Selection Validation Error",
+                      "fill": "$v2-danger",
+                      "content": "분석할 파일을 1개 이상 선택해 주세요.",
+                      "fontFamily": "$v2-font",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -5444,19 +5454,42 @@
                           "gap": 16,
                           "children": [
                             {
-                              "id": "zitxH",
-                              "type": "ref",
-                              "ref": "xM4ZP",
-                              "name": "V2 Report Title Input",
+                              "type": "frame",
+                              "id": "dqxfr",
+                              "name": "V2 Report Title Field Invalid",
                               "width": "fill_container",
-                              "descendants": {
-                                "TLbNj": {
-                                  "content": "제목 *"
+                              "layout": "vertical",
+                              "gap": 7,
+                              "children": [
+                                {
+                                  "id": "sgyC5",
+                                  "type": "ref",
+                                  "ref": "xM4ZP",
+                                  "name": "V2 Report Title Input Invalid",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "TLbNj": {
+                                      "content": "제목 *"
+                                    },
+                                    "wrOeL": {
+                                      "stroke": "$v2-danger"
+                                    },
+                                    "n43Pu8": {
+                                      "content": "제목을 입력해 주세요"
+                                    }
+                                  }
                                 },
-                                "n43Pu8": {
-                                  "content": "제목을 입력해 주세요"
+                                {
+                                  "type": "text",
+                                  "id": "oyiNh",
+                                  "name": "V2 Report Title Validation Error",
+                                  "fill": "$v2-danger",
+                                  "content": "제목을 입력해 주세요.",
+                                  "fontFamily": "$v2-font",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
-                              }
+                              ]
                             },
                             {
                               "id": "T6fs3W",
@@ -5543,7 +5576,7 @@
                           "height": 90,
                           "fill": "$v2-surface",
                           "cornerRadius": 8,
-                          "stroke": "$v2-border",
+                          "stroke": "$v2-danger",
                           "strokeWidth": 1,
                           "padding": 13,
                           "children": [
@@ -5558,6 +5591,16 @@
                               "fontWeight": "normal"
                             }
                           ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "PCx9D",
+                          "name": "V2 Instructions Validation Error",
+                          "fill": "$v2-danger",
+                          "content": "작성 지시사항을 입력해 주세요.",
+                          "fontFamily": "$v2-font",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -5577,7 +5620,7 @@
                           "fill": "$v2-surface",
                           "width": 16,
                           "height": 16,
-                          "stroke": "#CBD5E1",
+                          "stroke": "$v2-danger",
                           "strokeWidth": 1
                         },
                         {
@@ -5593,11 +5636,20 @@
                       ]
                     },
                     {
+                      "type": "text",
+                      "id": "Frk24",
+                      "name": "V2 AI Agreement Validation Error",
+                      "fill": "$v2-danger",
+                      "content": "자료 전달 안내를 확인해 주세요.",
+                      "fontFamily": "$v2-font",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
                       "type": "frame",
                       "id": "m8qtqj",
                       "name": "V2 Report Form Actions",
                       "width": "fill_container",
-                      "justifyContent": "end",
                       "children": [
                         {
                           "id": "W7BnoF",
@@ -10003,7 +10055,8 @@
                   "fill": "#64748B",
                   "content": "김예찬 · 소프트웨어공학 · 2026년 8월 19일",
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -10053,7 +10106,8 @@
                   "content": "이 보고서는 프로젝트의 목표, 구현 과정, 핵심 결과를 구조화하여 설명합니다. AI가 작성한 초안을 기반으로 사용자가 각 블록을 직접 편집할 수 있습니다.",
                   "lineHeight": 1.65,
                   "fontFamily": "Geist",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -10090,7 +10144,8 @@
                       "content": "템플릿은 콘텐츠와 분리되어 있으며, 동일한 문서 데이터를 여러 디자인으로 즉시 전환할 수 있습니다.",
                       "lineHeight": 1.5,
                       "fontFamily": "Geist",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -10123,7 +10178,6 @@
                   "stroke": "#E2E8F0",
                   "strokeWidth": 1,
                   "layout": "vertical",
-                  "layoutIncludeStroke": true,
                   "children": [
                     {
                       "type": "frame",
@@ -10135,7 +10189,6 @@
                       "strokeWidth": {
                         "bottom": 1
                       },
-                      "layoutIncludeStroke": true,
                       "children": [
                         {
                           "type": "frame",
@@ -10212,7 +10265,6 @@
                       "width": 668,
                       "fill": "#FFFFFF",
                       "stroke": "#E2E8F0",
-                      "layoutIncludeStroke": true,
                       "children": [
                         {
                           "type": "frame",
@@ -10231,7 +10283,8 @@
                               "fill": "#475569",
                               "content": "분석 자료",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10252,7 +10305,8 @@
                               "fill": "#475569",
                               "content": "선택 파일",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10273,7 +10327,8 @@
                               "fill": "#475569",
                               "content": "12개",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -10286,7 +10341,6 @@
                       "width": 668,
                       "fill": "#FFFFFF",
                       "stroke": "#E2E8F0",
-                      "layoutIncludeStroke": true,
                       "children": [
                         {
                           "type": "frame",
@@ -10305,7 +10359,8 @@
                               "fill": "#475569",
                               "content": "생성 섹션",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10326,7 +10381,8 @@
                               "fill": "#475569",
                               "content": "문서 구조",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10347,7 +10403,8 @@
                               "fill": "#475569",
                               "content": "6개",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -10360,7 +10417,6 @@
                       "width": 668,
                       "fill": "#FFFFFF",
                       "stroke": "#E2E8F0",
-                      "layoutIncludeStroke": true,
                       "children": [
                         {
                           "type": "frame",
@@ -10379,7 +10435,8 @@
                               "fill": "#475569",
                               "content": "편집 블록",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10400,7 +10457,8 @@
                               "fill": "#475569",
                               "content": "콘텐츠 단위",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -10421,7 +10479,8 @@
                               "fill": "#475569",
                               "content": "18개",
                               "fontFamily": "Geist",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -10462,7 +10521,8 @@
                   "fill": "#334155",
                   "content": "reportService.generate(document, template);",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -10588,7 +10648,8 @@
               "fill": "#94A3B8",
               "content": "build 2026.08.19 · author: 김예찬 · status: complete",
               "fontFamily": "Geist Mono",
-              "fontSize": 10
+              "fontSize": 10,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -10786,7 +10847,8 @@
                   "content": "AI가 ReportDocument를 생성하면 선택한 HTML 템플릿 렌더러가 각 블록을 대응하는 컴포넌트로 변환합니다.",
                   "lineHeight": 1.6,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -10904,7 +10966,8 @@
                       "fill": "#E5E7EB",
                       "content": "const Template = registry[templateId]",
                       "fontFamily": "Geist Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -10913,7 +10976,8 @@
                       "fill": "#A78BFA",
                       "content": "return <Template document={document} />",
                       "fontFamily": "Geist Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -10922,7 +10986,8 @@
                       "fill": "#64748B",
                       "content": "// editable block tree",
                       "fontFamily": "Geist Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -11155,7 +11220,8 @@
               "fill": "#57606A",
               "content": "Last updated 2026-08-19 · version 3",
               "fontFamily": "Geist",
-              "fontSize": 10
+              "fontSize": 10,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -11200,7 +11266,8 @@
               "content": "DevReport AI는 업로드한 개발 자료를 분석해 구조화된 보고서 초안을 만들고, HTML 템플릿 기반 편집과 PDF 출력을 제공합니다.",
               "lineHeight": 1.6,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -11239,7 +11306,8 @@
                   "fill": "#1F2328",
                   "content": "콘텐츠와 표현 설정을 분리해 템플릿을 바꿔도 보고서 내용은 유지됩니다.",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11284,7 +11352,8 @@
                   "fill": "#1F2328",
                   "content": "AI 기반 ReportDocument 생성",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11311,7 +11380,8 @@
                   "fill": "#1F2328",
                   "content": "블록 단위 콘텐츠 편집",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11338,7 +11408,8 @@
                   "fill": "#1F2328",
                   "content": "HTML/CSS 템플릿 전환",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11365,7 +11436,8 @@
                   "fill": "#1F2328",
                   "content": "A4 PDF 내보내기",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11387,7 +11459,8 @@
                   "fill": "#1F2328",
                   "content": "npm run generate-report",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -11396,7 +11469,8 @@
                   "fill": "#1F883D",
                   "content": "✓ HTML template applied",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11494,7 +11568,8 @@
                           "fill": "#1F2328",
                           "content": "Paragraph",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -11515,7 +11590,8 @@
                           "fill": "#1F2328",
                           "content": "Yes",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -11549,7 +11625,8 @@
                           "fill": "#1F2328",
                           "content": "Table",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -11570,7 +11647,8 @@
                           "fill": "#1F2328",
                           "content": "Yes",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -11604,7 +11682,8 @@
                           "fill": "#1F2328",
                           "content": "Code",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -11625,7 +11704,8 @@
                           "fill": "#1F2328",
                           "content": "Yes",
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -11708,7 +11788,8 @@
               "content": "김예찬 · DevReport AI 연구팀",
               "textAlign": "center",
               "fontFamily": "Noto Serif KR",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "text",
@@ -11720,7 +11801,8 @@
               "content": "2026년 8월 19일",
               "textAlign": "center",
               "fontFamily": "Noto Serif KR",
-              "fontSize": 10
+              "fontSize": 10,
+              "fontWeight": "normal"
             },
             {
               "type": "rectangle",
@@ -11762,7 +11844,8 @@
                   "lineHeight": 1.75,
                   "textAlign": "justify",
                   "fontFamily": "Noto Serif KR",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -11774,7 +11857,8 @@
                   "content": "주요어: 생성형 AI, 문서 편집, HTML 템플릿, ReportDocument",
                   "textAlign": "center",
                   "fontFamily": "Noto Serif KR",
-                  "fontSize": 9
+                  "fontSize": 9,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11807,7 +11891,8 @@
                   "lineHeight": 1.75,
                   "textAlign": "justify",
                   "fontFamily": "Noto Serif KR",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11840,7 +11925,8 @@
                   "lineHeight": 1.75,
                   "textAlign": "justify",
                   "fontFamily": "Noto Serif KR",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11873,7 +11959,8 @@
                   "lineHeight": 1.75,
                   "textAlign": "justify",
                   "fontFamily": "Noto Serif KR",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -11969,7 +12056,8 @@
                           "fill": "#222222",
                           "content": "템플릿 전환",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -11990,7 +12078,8 @@
                           "fill": "#222222",
                           "content": "콘텐츠 유지",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -12020,7 +12109,8 @@
                           "fill": "#222222",
                           "content": "블록 편집",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -12041,7 +12131,8 @@
                           "fill": "#222222",
                           "content": "정상 반영",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -12071,7 +12162,8 @@
                           "fill": "#222222",
                           "content": "PDF 출력",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -12092,7 +12184,8 @@
                           "fill": "#222222",
                           "content": "A4 일치",
                           "fontFamily": "Noto Serif KR",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -12114,7 +12207,8 @@
               "fill": "#555555",
               "content": "1) 본 문서는 구현 검증을 위한 예시 보고서이다.",
               "fontFamily": "Noto Serif KR",
-              "fontSize": 8
+              "fontSize": 8,
+              "fontWeight": "normal"
             }
           ]
         }
@@ -12205,7 +12299,8 @@
                   "fill": "#426A8D",
                   "content": "템플릿 기반 렌더링의 정확도와 편집성 평가",
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -12400,7 +12495,8 @@
                   "content": "동일한 ReportDocument를 12개 HTML 템플릿에 적용한 결과, 콘텐츠 순서와 블록 의미는 모두 유지되었습니다. 사용자는 AI 초안을 받은 뒤 템플릿을 변경하거나 개별 블록을 수정할 수 있습니다.",
                   "lineHeight": 1.65,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -12688,7 +12784,8 @@
                   "fill": "#36566F",
                   "content": "블록 누락, 페이지 넘침, 인쇄 일치 여부를 Chromium 기반으로 측정했습니다.",
                   "fontFamily": "Geist",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -12836,7 +12933,8 @@
               "content": "프로젝트는 계획된 범위 내에서 핵심 기능을 구현했으며, AI 초안 생성과 HTML 템플릿 편집 흐름을 통해 보고서 작성 시간을 단축했습니다.",
               "lineHeight": 1.6,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -13427,7 +13525,8 @@
                       "fill": "#7C2D12",
                       "content": "템플릿 확장과 사용자 정의 스타일 저장 기능을 다음 단계로 진행합니다.",
                       "fontFamily": "Geist",
-                      "fontSize": 10
+                      "fontSize": 10,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -13643,7 +13742,8 @@
                       "content": "자료를 수집하고 분석한 뒤 AI가 첫 번째 문장을 작성했습니다. 사용자는 템플릿 위에서 내용을 다듬고 자신만의 보고서로 완성합니다.",
                       "lineHeight": 1.7,
                       "fontFamily": "Geist",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -13702,7 +13802,8 @@
                       "content": "프로젝트 자료에서 중요한 맥락을 찾습니다.",
                       "lineHeight": 1.6,
                       "fontFamily": "Geist",
-                      "fontSize": 9
+                      "fontSize": 9,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -13744,7 +13845,8 @@
                       "content": "AI가 내용을 섹션과 블록으로 정리합니다.",
                       "lineHeight": 1.6,
                       "fontFamily": "Geist",
-                      "fontSize": 9
+                      "fontSize": 9,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -13786,7 +13888,8 @@
                       "content": "선택한 디자인으로 이야기를 완성합니다.",
                       "lineHeight": 1.6,
                       "fontFamily": "Geist",
-                      "fontSize": 9
+                      "fontSize": 9,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -14126,7 +14229,8 @@
                   "content": "AI가 초안을 작성하고 사용자가 블록을 편집하는 흐름을 통해 문서 작성의 반복 작업을 줄였습니다.",
                   "lineHeight": 1.6,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -14194,7 +14298,8 @@
                           "content": "업로드 자료에서 보고서에 필요한 핵심 정보를 추출했습니다.",
                           "lineHeight": 1.5,
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -14266,7 +14371,8 @@
                           "content": "ReportDocument 구조로 섹션과 블록을 자동 작성했습니다.",
                           "lineHeight": 1.5,
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -14338,7 +14444,8 @@
                           "content": "HTML/CSS 디자인을 적용하고 A4 미리보기를 생성했습니다.",
                           "lineHeight": 1.5,
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -14410,7 +14517,8 @@
                           "content": "사용자가 내용과 순서를 수정해 최종 결과를 완성했습니다.",
                           "lineHeight": 1.5,
                           "fontFamily": "Geist",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -14683,7 +14791,8 @@
                       "content": "AI가 프로젝트 자료를 분석해 첫 번째 보고서 초안을 작성했습니다. 사용자는 선택한 HTML 템플릿 안에서 문단, 표, 코드, 이미지와 콜아웃을 직접 편집할 수 있습니다.",
                       "lineHeight": 1.65,
                       "fontFamily": "Geist",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -14742,7 +14851,8 @@
                       "content": "자료 분석\nAI 초안 생성\n블록 편집\nPDF 출력",
                       "lineHeight": 1.75,
                       "fontFamily": "Geist",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -14792,7 +14902,8 @@
                       "content": "콘텐츠와 표현 분리\n템플릿별 CSS 격리\nA4 인쇄 최적화\n접근 가능한 구조",
                       "lineHeight": 1.75,
                       "fontFamily": "Geist",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -15233,7 +15344,8 @@
                           "content": "AI 분석 결과를 구조화된 문서 블록으로 변환하고 선택한 템플릿에 자동 배치합니다.",
                           "lineHeight": 1.45,
                           "fontFamily": "Geist",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -15473,7 +15585,8 @@
                               "fill": "#F9FAFB",
                               "content": "const report = await ai.generate()",
                               "fontFamily": "Geist Mono",
-                              "fontSize": 8
+                              "fontSize": 8,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "text",
@@ -15482,7 +15595,8 @@
                               "fill": "#FBBF24",
                               "content": "render(report, template)",
                               "fontFamily": "Geist Mono",
-                              "fontSize": 8
+                              "fontSize": 8,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -15954,7 +16068,8 @@
                           "content": "보고서 초안 생성이 완료되었습니다. 강조할 내용을 확인하고 최종 문구를 수정하세요.",
                           "lineHeight": 1.45,
                           "fontFamily": "Geist",
-                          "fontSize": 9
+                          "fontSize": 9,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -16296,7 +16411,8 @@
                   "content": "AI가 자료를 분석해 ReportDocument를 만들고, 템플릿 엔진이 HTML 블록을 조합합니다. 편집 결과는 실시간 미리보기와 PDF에 동일하게 반영됩니다.",
                   "lineHeight": 1.65,
                   "fontFamily": "Geist",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -16370,7 +16486,8 @@
                   "fill": "#94A3B8",
                   "content": "> analyze files ........ done",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -16379,7 +16496,8 @@
                   "fill": "#94A3B8",
                   "content": "> generate draft ...... done",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -16388,7 +16506,8 @@
                   "fill": "#38BDF8",
                   "content": "> apply dark-tech ..... done",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -16397,7 +16516,8 @@
                   "fill": "#4ADE80",
                   "content": "> ready for editing",
                   "fontFamily": "Geist Mono",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -16860,7 +16980,8 @@
                       "content": "개발 자료는 많지만 보고서로 정리하는 과정은 반복적입니다. AI 초안과 실제 HTML 템플릿을 결합해 사용자가 빠르게 편집 가능한 결과를 만드는 것이 목표였습니다.",
                       "lineHeight": 1.65,
                       "fontFamily": "Geist",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -16914,7 +17035,8 @@
                       "content": "자료에서 핵심 정보를 추출",
                       "lineHeight": 1.45,
                       "fontFamily": "Geist",
-                      "fontSize": 8
+                      "fontSize": 8,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -16959,7 +17081,8 @@
                       "content": "AI가 구조화된 초안 작성",
                       "lineHeight": 1.45,
                       "fontFamily": "Geist",
-                      "fontSize": 8
+                      "fontSize": 8,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -17004,7 +17127,8 @@
                       "content": "HTML 템플릿 자동 적용",
                       "lineHeight": 1.45,
                       "fontFamily": "Geist",
-                      "fontSize": 8
+                      "fontSize": 8,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -17049,7 +17173,8 @@
                       "content": "사용자가 직접 완성",
                       "lineHeight": 1.45,
                       "fontFamily": "Geist",
-                      "fontSize": 8
+                      "fontSize": 8,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -17115,7 +17240,8 @@
                       "fill": "#70483D",
                       "content": "12개 템플릿, 7개 편집 블록, A4 PDF 출력까지 하나의 흐름으로 연결했습니다.",
                       "fontFamily": "Geist",
-                      "fontSize": 10
+                      "fontSize": 10,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
