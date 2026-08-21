@@ -155,6 +155,10 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             id="file-selection"
             className="surface-card detail-card detail-card--files"
             tabIndex={-1}
+            aria-invalid={showValidation && selectedIds.length === 0}
+            aria-describedby={
+              showValidation && selectedIds.length === 0 ? 'file-selection-error' : undefined
+            }
           >
             <div className="detail-card__header">
               <div>
@@ -180,6 +184,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                     key={file.id}
                     file={file}
                     checked={selectedIds.includes(file.id)}
+                    invalid={showValidation && selectedIds.length === 0}
                     onToggle={() => toggle(file.id)}
                     onDelete={() =>
                       deleteFile.mutate(file.id, {
@@ -437,11 +442,13 @@ function Field({
 function FileRow({
   file,
   checked,
+  invalid,
   onToggle,
   onDelete,
 }: {
   file: FileResponse
   checked: boolean
+  invalid: boolean
   onToggle: () => void
   onDelete: () => void
 }) {
@@ -455,6 +462,8 @@ function FileRow({
         checked={checked}
         onChange={onToggle}
         disabled={!usable}
+        aria-invalid={invalid && usable}
+        aria-describedby={invalid && usable ? 'file-selection-error' : undefined}
       />
       <span className="file-row__icon" aria-hidden>
         <Icon name="file-text" size={15} />
