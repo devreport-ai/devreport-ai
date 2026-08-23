@@ -14,7 +14,7 @@ FREE_TIER_GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_MODEL_ALLOWLIST: tuple[str, ...] = (
     FREE_TIER_GEMINI_MODEL,
     "gemini-3.5-flash",
-    "gemini-3.5-pro",
+    "gemini-3.7-flash",
 )
 GEMINI_PROVIDER = "GEMINI"
 ANTHROPIC_PROVIDER = "ANTHROPIC"

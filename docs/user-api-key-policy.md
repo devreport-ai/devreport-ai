@@ -1,7 +1,9 @@
 # 사용자 LLM API Key 처리·보관·삭제 정책
 
-사용자가 본인의 provider API Key(Gemini, Claude)를 등록하면 보고서 생성에 그 키와 선택한
-모델을 사용한다(#116, #117). Claude(`claude-sonnet-5`)는 서버 키가 없어 사용자 키로만 실행된다. 이 문서는 키가 어디를 거치고 어떻게 보관·삭제되는지, 운영자가 지켜야 할
+사용자가 본인의 provider API Key를 등록하면 보고서 생성에 그 키와 선택한 모델을 사용한다(#116, #117).
+지원 provider·모델은 Backend `ai.models.allowlist`가 기준이며, allowlist에 모델이 없는 provider의 키는
+`AI_PROVIDER_UNSUPPORTED`로 거부한다. 현재 allowlist는 Gemini와 Claude(`claude-sonnet-5`, 서버 키 없이
+사용자 키로만 실행)다. 이 문서는 키가 어디를 거치고 어떻게 보관·삭제되는지, 운영자가 지켜야 할
 Secret 절차를 정리한다.
 
 ## 원칙

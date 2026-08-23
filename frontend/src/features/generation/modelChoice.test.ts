@@ -12,7 +12,7 @@ const flashLite: AiModelOption = {
 }
 const pro: AiModelOption = {
   provider: 'GEMINI',
-  model: 'gemini-3.5-pro',
+  model: 'gemini-3.7-flash',
   label: 'Pro',
   serverDefault: false,
   available: false,

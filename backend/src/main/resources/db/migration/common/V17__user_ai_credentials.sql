@@ -8,7 +8,7 @@ CREATE TABLE user_ai_credentials (
     nonce VARCHAR(32) NOT NULL,
     key_version INTEGER NOT NULL,
     key_hint VARCHAR(8) NOT NULL,
-    verified_at TIMESTAMP WITH TIME ZONE,
+    verified_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uq_user_ai_credentials_user_provider UNIQUE (user_id, provider)

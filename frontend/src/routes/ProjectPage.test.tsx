@@ -39,8 +39,8 @@ beforeEach(() => {
               },
               {
                 provider: 'GEMINI',
-                model: 'gemini-3.5-pro',
-                label: 'Gemini 3.5 Pro',
+                model: 'gemini-3.7-flash',
+                label: 'Gemini 3.7 Flash',
                 serverDefault: false,
                 available: false,
                 usesUserKey: false,
@@ -137,7 +137,7 @@ describe('ProjectPage report list', () => {
     const select = (await screen.findByLabelText('AI 모델')) as HTMLSelectElement
     await waitFor(() => expect(select.value).toBe('GEMINI/gemini-3.5-flash-lite'))
     expect(screen.getByText(/서비스 키로 실행됩니다/)).toBeInTheDocument()
-    const locked = screen.getByRole('option', { name: /Gemini 3.5 Pro/ }) as HTMLOptionElement
+    const locked = screen.getByRole('option', { name: /Gemini 3.7 Flash/ }) as HTMLOptionElement
     expect(locked.disabled).toBe(true)
     expect(locked.textContent).toContain('API Key 등록 필요')
     expect(screen.getByRole('link', { name: 'API 키 추가에서 등록' })).toHaveAttribute(

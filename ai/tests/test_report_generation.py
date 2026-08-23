@@ -209,7 +209,7 @@ def test_generate_passes_user_key_and_selected_model_to_the_gemini_client(
     app.dependency_overrides[get_settings] = lambda: Settings(
         mock_report=False, ai_internal_token=INTERNAL_TOKEN, gemini_api_key="server-key"
     )
-    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.5-pro"}
+    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.7-flash"}
     try:
         response = client.post(
             "/internal/ai/reports/generate",
@@ -222,11 +222,11 @@ def test_generate_passes_user_key_and_selected_model_to_the_gemini_client(
     assert response.status_code == 200
     gemini = captured["gemini"]
     assert gemini._api_key == "AIzaUserKey"
-    assert gemini._model == "gemini-3.5-pro"
+    assert gemini._model == "gemini-3.7-flash"
 
 
 def test_generate_rejects_non_default_model_without_user_key():
-    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.5-pro"}
+    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.7-flash"}
     response = client.post(
         "/internal/ai/reports/generate",
         files=multipart_data(request=request),
@@ -240,7 +240,7 @@ def test_generate_rejects_non_default_model_without_user_key():
 def test_generate_rejects_model_without_provider():
     response = client.post(
         "/internal/ai/reports/generate",
-        files=multipart_data(request=valid_request() | {"model": "gemini-3.5-pro"}),
+        files=multipart_data(request=valid_request() | {"model": "gemini-3.7-flash"}),
         headers={"X-Internal-Token": INTERNAL_TOKEN},
     )
 
