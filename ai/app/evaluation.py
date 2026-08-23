@@ -39,7 +39,9 @@ def evaluate_document(
     invalid_code_quotes = (
         unmatched_code_quotes(document, source_snippets) if source_snippets is not None else []
     )
-    requirement_links = evaluate_requirement_links(document, expected.get("requirements", []))
+    requirement_links = evaluate_requirement_links(
+        document, expected.get("requirements", []), source_snippets or []
+    )
 
     block_types = document_block_types(document)
     non_empty_blocks = count_non_empty_blocks(document)
@@ -128,13 +130,16 @@ def normalize_code(value: str) -> str:
 
 
 def evaluate_requirement_links(
-    document: dict[str, Any], requirements: Sequence[dict[str, Any]]
+    document: dict[str, Any],
+    requirements: Sequence[dict[str, Any]],
+    source_snippets: Sequence[str],
 ) -> list[dict[str, Any]]:
     """같은 섹션 안의 요구사항 표현과 구현 근거 또는 미확인 표현을 연결한다."""
     sections = [
         json.dumps(section, ensure_ascii=False).casefold()
         for section in document.get("sections", [])
     ]
+    sources = [source.casefold() for source in source_snippets]
     results: list[dict[str, Any]] = []
     for requirement in requirements:
         requirement_terms = requirement.get("requirementTerms", [])
@@ -159,11 +164,12 @@ def evaluate_requirement_links(
             )
             actual_status = "unverified" if matched is not None else "unsupported"
         else:
+            source_supported = any(contains_all(source, evidence_terms) for source in sources)
             matched = next(
                 (
                     index
                     for index in mentioned
-                    if evidence_terms and contains_all(sections[index], evidence_terms)
+                    if source_supported and contains_all(sections[index], evidence_terms)
                 ),
                 None,
             )
@@ -387,10 +393,18 @@ def evaluate_gate(fixture_dir: Path, schema_path: Path, config_path: Path) -> di
     baseline = evaluation["runs"][config["baseline"]["label"]]
     candidate = evaluation["runs"][config.get("candidate", config["baseline"])["label"]]
     failures: list[str] = []
+    comparison_ready = baseline_spec.partition("=")[2] != candidate_spec.partition("=")[2]
+    if not comparison_ready:
+        failures.append("baseline과 candidate 결과 디렉터리는 달라야 함")
+
+    for run_label, run in (("baseline", baseline), ("candidate", candidate)):
+        for fixture_id, result in run["fixtures"].items():
+            if "error" in result:
+                failures.append(f"{run_label}/{fixture_id}: {result['error']}")
+                comparison_ready = False
 
     for fixture_id, result in candidate["fixtures"].items():
         if "error" in result:
-            failures.append(f"{fixture_id}: {result['error']}")
             continue
         missing_metadata = [
             key
@@ -414,17 +428,16 @@ def evaluate_gate(fixture_dir: Path, schema_path: Path, config_path: Path) -> di
             f"최소 통과율 {minimum_manual_rate} 미달 ({candidate['manualReviewPassRate']})"
         )
 
-    max_regression = config.get("maxScoreRegression", 0.0)
-    for name, baseline_score in baseline["scoreAverages"].items():
-        candidate_score = candidate["scoreAverages"].get(name, 0.0)
-        if baseline_score - candidate_score > max_regression:
-            failures.append(
-                f"{name}: baseline 대비 {round(baseline_score - candidate_score, 3)} 회귀"
-            )
-    if baseline["average"] - candidate["average"] > config.get("maxOverallRegression", 0.0):
-        failures.append(
-            f"overall: baseline 대비 {round(baseline['average'] - candidate['average'], 3)} 회귀"
-        )
+    if comparison_ready:
+        max_regression = config.get("maxScoreRegression", 0.0)
+        for name, baseline_score in baseline["scoreAverages"].items():
+            candidate_score = candidate["scoreAverages"].get(name, 0.0)
+            regression = round(baseline_score - candidate_score, 3)
+            if regression > max_regression:
+                failures.append(f"{name}: baseline 대비 {regression} 회귀")
+        if baseline["average"] - candidate["average"] > config.get("maxOverallRegression", 0.0):
+            regression = round(baseline["average"] - candidate["average"], 3)
+            failures.append(f"overall: baseline 대비 {regression} 회귀")
 
     for detail_name, maximum in config.get("maximumDetailCounts", {}).items():
         actual = sum(

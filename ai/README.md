@@ -148,7 +148,9 @@ uv run python -m app.evaluation \
 ```
 
 실제 모델 결과는 로컬 `GEMINI_API_KEY` 또는 전용 `AI Quality Baseline` 수동 workflow에서만
-생성한다. 일반 CI는 API를 호출하지 않는다.
+생성한다. workflow는 기본 브랜치만 checkout하며 `ai-quality-baseline` Environment의
+`GEMINI_API_KEY`를 사용한다. 해당 Environment는 required reviewer와 `main` 배포 브랜치 제한을
+유지한다. 일반 CI는 API를 호출하지 않는다.
 
 ```bash
 uv run python -m app.evaluation_runner --output evals/results/candidate
@@ -168,8 +170,11 @@ uv run python -m app.evaluation --gate evals/quality-gate.json
 
 baseline을 갱신할 때는 후보 디렉터리를 별도로 생성하고 기존 baseline과 비교한다. 수동 검토를
 완료한 뒤 `quality-gate.json`의 `candidate.directory`만 후보로 바꿔 게이트를 실행한다. 회귀가
-없음을 확인한 경우에만 후보 결과를 새 baseline으로 이동하고, 실제 측정값에 맞춰 최소 점수와
-허용 상세 건수를 갱신한다. 생성 결과와 fixture에는 실제 사용자 파일이나 개인정보를 넣지 않는다.
+없음을 확인한 경우에만 후보 결과를 저장하고 실제 측정값에 맞춰 최소 점수와 허용 상세 건수를
+갱신한다. 승격 후에도 `baseline.directory`는 이전 승인 결과, `candidate.directory`는 새 승인
+결과를 가리키도록 서로 다른 경로를 유지하고 최종 `--gate`를 다시 실행한다. 다음 후보가 생기면
+현재 candidate를 baseline으로 바꾼 뒤 새 후보 경로를 지정한다. 생성 결과와 fixture에는 실제
+사용자 파일이나 개인정보를 넣지 않는다.
 
 ### 5. 테스트 및 린트
 

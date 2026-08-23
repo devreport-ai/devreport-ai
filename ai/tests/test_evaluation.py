@@ -52,16 +52,19 @@ def test_requires_requirement_and_implementation_evidence_in_the_same_section():
         ],
     }
 
-    abstract = evaluate_document(SAMPLE, expected, SCHEMA)
+    sources = ["class ProjectController { @PostMapping void create() {} }"]
+    abstract = evaluate_document(SAMPLE, expected, SCHEMA, sources)
     concrete_document = json.loads(json.dumps(SAMPLE))
     concrete_document["sections"][0]["blocks"][0]["content"] += (
         " Spring Boot 요구사항은 ProjectController의 PostMapping 구현으로 충족했다."
     )
-    concrete = evaluate_document(concrete_document, expected, SCHEMA)
+    concrete = evaluate_document(concrete_document, expected, SCHEMA, sources)
+    unsupported = evaluate_document(concrete_document, expected, SCHEMA, ["class Other {}"])
 
     assert abstract["scores"]["requirementsSatisfaction"] == 1.0
     assert abstract["scores"]["requirementEvidenceLinkage"] == 0.0
     assert concrete["scores"]["requirementEvidenceLinkage"] == 1.0
+    assert unsupported["scores"]["requirementEvidenceLinkage"] == 0.0
 
 
 def test_reports_unverified_requirement_claim_and_invented_code():
@@ -223,3 +226,32 @@ def test_quality_gate_fails_with_a_distinct_semantic_regression_reason(tmp_path:
 
     assert result["gate"]["passed"] is False
     assert any("requirementEvidenceLinkage" in failure for failure in result["gate"]["failures"])
+
+
+def test_quality_gate_rejects_missing_baseline_fixture_and_self_comparison(tmp_path: Path):
+    fixture_dir = tmp_path / "fixtures"
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+    fixture_dir.mkdir()
+    baseline_dir.mkdir()
+    candidate_dir.mkdir()
+    (fixture_dir / "sample.json").write_text(json.dumps({}), encoding="utf-8")
+    (candidate_dir / "sample.json").write_text(json.dumps(SAMPLE), encoding="utf-8")
+    config_path = tmp_path / "quality-gate.json"
+    config = {
+        "baseline": {"label": "baseline", "directory": "baseline"},
+        "candidate": {"label": "candidate", "directory": "candidate"},
+    }
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    missing = evaluate_gate(
+        fixture_dir, REPO_ROOT / "contracts/report-document.schema.json", config_path
+    )
+    config["candidate"]["directory"] = "baseline"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    same = evaluate_gate(
+        fixture_dir, REPO_ROOT / "contracts/report-document.schema.json", config_path
+    )
+
+    assert any("baseline/sample" in failure for failure in missing["gate"]["failures"])
+    assert "baseline과 candidate 결과 디렉터리는 달라야 함" in same["gate"]["failures"]

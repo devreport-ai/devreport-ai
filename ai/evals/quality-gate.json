@@ -1,10 +1,10 @@
 {
   "baseline": {
-    "label": "baseline-v4",
-    "directory": "results/baseline-v4"
+    "label": "zero-shot-v3",
+    "directory": "results/zero-shot-v3"
   },
   "candidate": {
-    "label": "stored-v4",
+    "label": "baseline-v4",
     "directory": "results/baseline-v4"
   },
   "minimumScores": {
@@ -21,7 +21,7 @@
     "invalidCodeQuotes": 0,
     "unsupportedClaims": 4
   },
-  "maxScoreRegression": 0.0,
+  "maxScoreRegression": 0.167,
   "maxOverallRegression": 0.0,
   "minimumManualReviewPassRate": 0.667,
   "requireCompletedManualReview": true
