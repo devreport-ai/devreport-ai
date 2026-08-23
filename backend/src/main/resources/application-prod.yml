@@ -28,6 +28,10 @@ ai:
 
 auth:
   jwt-secret: ${JWT_SECRET}
+  password-reset:
+    public-app-url: ${PUBLIC_APP_URL}
+    from: ${PASSWORD_RESET_FROM}
+    resend-api-key: ${RESEND_API_KEY}
   refresh-token-cookie:
     secure: true
 

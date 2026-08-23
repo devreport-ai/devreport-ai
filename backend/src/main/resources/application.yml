@@ -68,6 +68,14 @@ auth:
   jwt-secret: ${JWT_SECRET:}
   access-token-ttl: 15m
   refresh-token-ttl: 14d
+  password-reset:
+    token-ttl: ${PASSWORD_RESET_TOKEN_TTL:30m}
+    public-app-url: ${PUBLIC_APP_URL:http://localhost:3000}
+    from: ${PASSWORD_RESET_FROM:}
+    resend-api-url: ${RESEND_API_URL:https://api.resend.com}
+    resend-api-key: ${RESEND_API_KEY:}
+    connect-timeout: ${RESEND_CONNECT_TIMEOUT:3s}
+    response-timeout: ${RESEND_RESPONSE_TIMEOUT:10s}
   refresh-token-cookie:
     name: ${AUTH_REFRESH_TOKEN_COOKIE_NAME:refresh_token}
     path: ${AUTH_REFRESH_TOKEN_COOKIE_PATH:/api/auth}
@@ -112,5 +120,6 @@ usage-limits:
     login: ${USAGE_LIMITS_RATE_LOGIN:20}
     refresh: ${USAGE_LIMITS_RATE_REFRESH:30}
     password-change: ${USAGE_LIMITS_RATE_PASSWORD_CHANGE:5}
+    password-reset: ${USAGE_LIMITS_RATE_PASSWORD_RESET:5}
     upload: ${USAGE_LIMITS_RATE_UPLOAD:30}
     generation: ${USAGE_LIMITS_RATE_GENERATION:10}

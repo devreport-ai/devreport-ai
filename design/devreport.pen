@@ -17504,6 +17504,372 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "v2PasswordResetFlow",
+      "x": 15300,
+      "y": 3300,
+      "name": "V2 Password Reset Flow",
+      "width": 3000,
+      "height": 1000,
+      "fill": "$v2-bg",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": 48,
+      "children": [
+        {
+          "type": "text",
+          "id": "v2PasswordResetFlowTitle",
+          "name": "V2 Password Reset Flow Title",
+          "fill": "$v2-text",
+          "content": "이메일 기반 비밀번호 찾기 · 재설정",
+          "fontFamily": "Geist",
+          "fontSize": 30,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "v2PasswordResetFlowScreens",
+          "name": "V2 Password Reset Flow Screens",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "v2ForgotPasswordScreen",
+              "name": "V2 Forgot Password / Desktop",
+              "width": 560,
+              "height": 780,
+              "fill": "$v2-surface",
+              "cornerRadius": 14,
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 36,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2ForgotPasswordEyebrow",
+                  "fill": "$v2-accent",
+                  "content": "DEVREPORT AI",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "v2ForgotPasswordTitle",
+                  "fill": "$v2-text",
+                  "content": "비밀번호 찾기",
+                  "fontFamily": "Geist",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "v2ForgotPasswordSubtitle",
+                  "fill": "$v2-muted",
+                  "content": "가입한 이메일로 일회용 재설정 링크를 보내드립니다.",
+                  "fontFamily": "Geist",
+                  "fontSize": 14
+                },
+                {
+                  "id": "v2ForgotPasswordEmail",
+                  "type": "ref",
+                  "ref": "xM4ZP",
+                  "name": "V2 Forgot Password Email",
+                  "width": "fill_container",
+                  "descendants": {
+                    "TLbNj": { "content": "이메일" },
+                    "n43Pu8": { "content": "name@example.com" }
+                  }
+                },
+                {
+                  "id": "v2ForgotPasswordButton",
+                  "type": "ref",
+                  "ref": "t5ehis",
+                  "name": "V2 Forgot Password Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "descendants": {
+                    "nY0Xb": { "enabled": false },
+                    "Mc90y": { "content": "재설정 링크 받기" }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "v2ForgotPasswordBack",
+                  "fill": "$v2-accent",
+                  "content": "로그인으로 돌아가기",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v2PasswordResetRequestedScreen",
+              "name": "V2 Password Reset Requested / Desktop",
+              "width": 560,
+              "height": 780,
+              "fill": "$v2-surface",
+              "cornerRadius": 14,
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 36,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetRequestedEyebrow",
+                  "fill": "$v2-success",
+                  "content": "REQUEST ACCEPTED",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetRequestedTitle",
+                  "fill": "$v2-text",
+                  "content": "이메일을 확인해 주세요",
+                  "fontFamily": "Geist",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetRequestedSubtitle",
+                  "fill": "$v2-muted",
+                  "content": "가입된 이메일이라면 비밀번호 재설정 링크를 전송했습니다.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Geist",
+                  "fontSize": 14
+                },
+                {
+                  "type": "frame",
+                  "id": "v2PasswordResetRequestedNotice",
+                  "width": "fill_container",
+                  "fill": "$v2-accent-soft",
+                  "cornerRadius": 10,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v2PasswordResetRequestedNoticeText",
+                      "fill": "$v2-muted",
+                      "content": "메일이 보이지 않으면 스팸함을 확인하거나 잠시 후 다시 요청해 주세요.",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Geist",
+                      "fontSize": 14
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetRequestedBack",
+                  "fill": "$v2-accent",
+                  "content": "로그인으로 돌아가기",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v2ResetPasswordScreen",
+              "name": "V2 Reset Password / Desktop",
+              "width": 560,
+              "height": 780,
+              "fill": "$v2-surface",
+              "cornerRadius": 14,
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 36,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2ResetPasswordEyebrow",
+                  "fill": "$v2-accent",
+                  "content": "DEVREPORT AI",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "v2ResetPasswordTitle",
+                  "fill": "$v2-text",
+                  "content": "새 비밀번호 설정",
+                  "fontFamily": "Geist",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "v2ResetPasswordSubtitle",
+                  "fill": "$v2-muted",
+                  "content": "8자 이상, UTF-8 기준 72바이트 이하로 입력해 주세요.",
+                  "fontFamily": "Geist",
+                  "fontSize": 14
+                },
+                {
+                  "id": "v2ResetPasswordValue",
+                  "type": "ref",
+                  "ref": "xM4ZP",
+                  "name": "V2 Reset Password Value",
+                  "width": "fill_container",
+                  "descendants": {
+                    "TLbNj": { "content": "새 비밀번호" },
+                    "n43Pu8": { "content": "비밀번호를 입력해 주세요" }
+                  }
+                },
+                {
+                  "id": "v2ResetPasswordConfirmation",
+                  "type": "ref",
+                  "ref": "xM4ZP",
+                  "name": "V2 Reset Password Confirmation",
+                  "width": "fill_container",
+                  "descendants": {
+                    "TLbNj": { "content": "새 비밀번호 확인" },
+                    "n43Pu8": { "content": "비밀번호를 입력해 주세요" }
+                  }
+                },
+                {
+                  "id": "v2ResetPasswordButton",
+                  "type": "ref",
+                  "ref": "t5ehis",
+                  "name": "V2 Reset Password Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "descendants": {
+                    "nY0Xb": { "enabled": false },
+                    "Mc90y": { "content": "비밀번호 재설정" }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v2PasswordResetSuccessScreen",
+              "name": "V2 Password Reset Success / Desktop",
+              "width": 560,
+              "height": 780,
+              "fill": "$v2-surface",
+              "cornerRadius": 14,
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 36,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetSuccessEyebrow",
+                  "fill": "$v2-success",
+                  "content": "PASSWORD UPDATED",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetSuccessTitle",
+                  "fill": "$v2-text",
+                  "content": "비밀번호가 변경되었습니다",
+                  "fontFamily": "Geist",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetSuccessSubtitle",
+                  "fill": "$v2-muted",
+                  "content": "새 비밀번호로 다시 로그인해 주세요. 기존 로그인 세션은 모두 종료되었습니다.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Geist",
+                  "fontSize": 14
+                },
+                {
+                  "id": "v2PasswordResetSuccessButton",
+                  "type": "ref",
+                  "ref": "t5ehis",
+                  "name": "V2 Password Reset Success Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "descendants": {
+                    "nY0Xb": { "enabled": false },
+                    "Mc90y": { "content": "로그인하기" }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v2PasswordResetInvalidScreen",
+              "name": "V2 Password Reset Invalid / Desktop",
+              "width": 560,
+              "height": 780,
+              "fill": "$v2-surface",
+              "cornerRadius": 14,
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 36,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetInvalidEyebrow",
+                  "fill": "$v2-danger",
+                  "content": "INVALID LINK",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetInvalidTitle",
+                  "fill": "$v2-text",
+                  "content": "유효하지 않은 링크입니다",
+                  "fontFamily": "Geist",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "v2PasswordResetInvalidSubtitle",
+                  "fill": "$v2-muted",
+                  "content": "재설정 링크가 만료되었거나 이미 사용되었습니다.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Geist",
+                  "fontSize": 14
+                },
+                {
+                  "id": "v2PasswordResetInvalidButton",
+                  "type": "ref",
+                  "ref": "t5ehis",
+                  "name": "V2 Password Reset Invalid Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "descendants": {
+                    "nY0Xb": { "enabled": false },
+                    "Mc90y": { "content": "새 링크 요청하기" }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

@@ -7,6 +7,9 @@ import { clearAccessToken, isAuthenticated, setAccessToken } from '../../lib/aut
 import type {
   LoginRequest,
   PasswordChangeRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  PasswordResetRequestedResponse,
   SignupRequest,
   TokenResponse,
   UserResponse,
@@ -67,6 +70,33 @@ export function useChangePassword() {
   return useMutation({
     mutationFn: (body: PasswordChangeRequest) =>
       apiFetchNoContent('/api/auth/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      clearAccessToken()
+      client.clear()
+    },
+  })
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (body: PasswordResetRequest) =>
+      apiFetch<PasswordResetRequestedResponse>('/api/auth/password-reset/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+  })
+}
+
+export function useResetPassword() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PasswordResetConfirmRequest) =>
+      apiFetchNoContent('/api/auth/password-reset/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

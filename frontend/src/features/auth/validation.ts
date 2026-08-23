@@ -15,7 +15,7 @@ export function emailError(email: string): string | null {
 /** 계약: minLength 8, 최대 72바이트(BCrypt 상한). 바이트 기준이라 한글은 24자. */
 export function passwordError(password: string): string | null {
   if (password === '') return '비밀번호를 입력해 주세요.'
-  if (password.length < 8) return '비밀번호는 8자 이상이어야 합니다.'
+  if ([...password].length < 8) return '비밀번호는 8자 이상이어야 합니다.'
   if (new TextEncoder().encode(password).length > 72)
     return '비밀번호가 너무 깁니다. (영문 72자, 한글 24자까지)'
   return null

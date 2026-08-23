@@ -19,6 +19,12 @@ class ProductionEnvironmentValidatorTest {
 			.hasMessageContaining("EXPORT_PRINT_URL");
 		assertThatThrownBy(() -> validate(environment().withProperty("AI_CREDENTIAL_MASTER_KEY", " ")))
 			.hasMessageContaining("AI_CREDENTIAL_MASTER_KEY");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", " ")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PASSWORD_RESET_FROM", " ")))
+			.hasMessageContaining("PASSWORD_RESET_FROM");
+		assertThatThrownBy(() -> validate(environment().withProperty("RESEND_API_KEY", " ")))
+			.hasMessageContaining("RESEND_API_KEY");
 	}
 
 	@Test
@@ -29,6 +35,14 @@ class ProductionEnvironmentValidatorTest {
 
 	@Test
 	void rejectsInsecureProductionOverrides() {
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "http://app.example.com")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://user@app.example.com")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://app.example.com?q=1")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://app.example.com#reset")))
+			.hasMessageContaining("PUBLIC_APP_URL");
 		assertThatThrownBy(() -> validate(environment().withProperty("security.headers.enabled", "false")))
 			.hasMessageContaining("보안 헤더");
 		assertThatThrownBy(() -> validate(environment().withProperty("springdoc.api-docs.enabled", "true")))
@@ -59,6 +73,9 @@ class ProductionEnvironmentValidatorTest {
 			.withProperty("AI_INTERNAL_TOKEN", "internal-secret")
 			.withProperty("EXPORT_PRINT_URL", "https://app.example.com/print/{exportId}")
 			.withProperty("AI_CREDENTIAL_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LXRlc3QtbWFzdGVyLWtleS0xMg==")
+			.withProperty("PUBLIC_APP_URL", "https://app.example.com")
+			.withProperty("PASSWORD_RESET_FROM", "DevReport AI <no-reply@mail.example.com>")
+			.withProperty("RESEND_API_KEY", "resend-secret")
 			.withProperty("ai.service.mock", "false")
 			.withProperty("security.headers.enabled", "true")
 			.withProperty("management.endpoints.web.exposure.include", "health");
