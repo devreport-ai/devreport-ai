@@ -4,2326 +4,2346 @@
  */
 
 export interface paths {
-    "/api/auth/signup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 회원가입 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SignupRequest"];
-                };
-            };
-            responses: {
-                /** @description 회원가입 성공 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description 입력값 오류 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 이메일 중복 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description IP별 회원가입 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 로그인
-         * @description Access Token은 JSON 본문으로, Refresh Token은 HttpOnly 쿠키로 반환한다.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["LoginRequest"];
-                };
-            };
-            responses: {
-                /** @description 로그인 성공 */
-                200: {
-                    headers: {
-                        /** @description HttpOnly Refresh Token 쿠키 (`refresh_token`). */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TokenResponse"];
-                    };
-                };
-                /** @description 인증 실패 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 허용되지 않은 Origin 또는 Referer */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description IP별 로그인 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Access Token 재발급
-         * @description 요청 본문 없이 HttpOnly Refresh Token 쿠키를 읽어 토큰을 회전한다.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 토큰 재발급 성공 */
-                200: {
-                    headers: {
-                        /** @description 회전된 HttpOnly Refresh Token 쿠키 (`refresh_token`). */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TokenResponse"];
-                    };
-                };
-                /** @description Refresh Token 무효 또는 만료 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description IP별 refresh 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 로그아웃
-         * @description HttpOnly Refresh Token 쿠키를 폐기하고 만료된 쿠키를 반환한다.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 로그아웃 성공 */
-                204: {
-                    headers: {
-                        /** @description 삭제된 Refresh Token 쿠키 (`Max-Age=0`). */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 내 정보 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 사용자 정보 조회 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/ai-credentials": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 등록한 provider API Key 목록 조회 (힌트만) */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 등록 목록. 키 원문은 포함하지 않는다. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AiCredentialListResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/ai-credentials/{provider}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                provider: components["schemas"]["AiProvider"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * provider API Key 등록 또는 교체
-         * @description 저장 전 AI Service를 통해 provider API로 키를 검증한다. Backend는 AES-256-GCM으로
-         *     암호화해 보관하고 생성 실행 시에만 복호화한다. 키 원문은 DB·로그·응답·GenerationJob에
-         *     남지 않는다. 교체하면 이전 키는 즉시 사용할 수 없다.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    provider: components["schemas"]["AiProvider"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AiCredentialRequest"];
-                };
-            };
-            responses: {
-                /** @description 등록 완료. 마스킹된 힌트만 반환한다. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AiCredentialResponse"];
-                    };
-                };
-                /** @description 키 형식 오류·provider가 키를 거부·지원하지 않는 provider (VALIDATION_FAILED, AI_CREDENTIAL_INVALID, INVALID_REQUEST) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description provider 검증 호출 실패 (AI_CREDENTIAL_VERIFICATION_FAILED, AI_SERVICE_UNAVAILABLE) */
-                502: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** provider API Key 삭제 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    provider: components["schemas"]["AiProvider"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 삭제 완료. 이후 해당 provider의 비기본 모델은 선택할 수 없다. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 등록된 키 없음 (AI_CREDENTIAL_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ai/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 선택 가능한 provider·model 목록 조회
-         * @description 서버 allowlist와 현재 사용자의 키 등록 여부를 합쳐 각 모델의 `available`을 계산한다.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 모델 목록 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AiModelCatalogResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 내 프로젝트 목록 조회 */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description 0부터 시작하는 페이지 번호 */
-                    page?: number;
-                    /** @description 페이지당 프로젝트 수 */
-                    size?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 프로젝트 목록 조회 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProjectPageResponse"];
-                    };
-                };
-                /** @description 잘못된 페이지 요청 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** 프로젝트 생성 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ProjectRequest"];
-                };
-            };
-            responses: {
-                /** @description 프로젝트 생성 성공 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProjectIdResponse"];
-                    };
-                };
-                /** @description 입력값 오류 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-            };
-            cookie?: never;
-        };
-        /** 프로젝트 상세 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 프로젝트 상세 조회 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProjectResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        /** 프로젝트 수정 */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ProjectRequest"];
-                };
-            };
-            responses: {
-                /** @description 프로젝트 수정 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProjectResponse"];
-                    };
-                };
-                /** @description 입력값 오류 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /**
-         * 프로젝트를 휴지통으로 이동
-         * @description 프로젝트와 파일은 30일간 복구할 수 있으며 이후 자동으로 완전 삭제된다.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 프로젝트 삭제 성공 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/trash": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 휴지통 프로젝트 목록 조회 */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description 0부터 시작하는 페이지 번호 */
-                    page?: number;
-                    /** @description 페이지당 프로젝트 수 */
-                    size?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 삭제 시각과 ID 내림차순 휴지통 목록 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TrashedProjectPageResponse"];
-                    };
-                };
-                /** @description 잘못된 페이지 요청 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 휴지통 프로젝트 복구 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 프로젝트와 파일 복구 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProjectResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 휴지통에 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}/files": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-            };
-            cookie?: never;
-        };
-        /** 프로젝트 파일 목록 조회 */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description 0부터 시작하는 페이지 번호 */
-                    page?: number;
-                    /** @description 페이지당 파일 수 */
-                    size?: number;
-                };
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 생성 시각과 ID 내림차순 파일 목록 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["FilePageResponse"];
-                    };
-                };
-                /** @description 잘못된 페이지 요청 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * 프로젝트 파일 업로드
-         * @description 파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG만 허용하며
-         *     확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다. GIF와 WEBP는 MVP의
-         *     보고서·AI 처리 호환 범위에서 제외되어 FILE_TYPE_NOT_ALLOWED로 거부된다.
-         *     ZIP은 해제 용량 100 MiB와 내부 엔트리 1,000개로 제한하며 ZIP Slip, 환경변수,
-         *     인증서·키, 실행 파일을 차단한다. java, kt, py, js, jsx, ts, tsx, html, css, scss,
-         *     sql, xml, json, yaml, yml, md, txt, gradle, properties, toml, go, rs, c, h, cpp, hpp,
-         *     cs, php, rb, swift, dart, vue, svelte 확장자만 별도 디렉터리에 해제한다.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        file: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 파일 업로드 성공 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["FileIdResponse"];
-                    };
-                };
-                /** @description 빈 파일, 잘못된 파일 이름, 손상된 ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, ZIP_INVALID, ZIP_PATH_INVALID) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED) */
-                413: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 지원하지 않는 형식 또는 형식 불일치 (FILE_TYPE_NOT_ALLOWED) */
-                415: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 사용자별 업로드 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}/reports": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-            };
-            cookie?: never;
-        };
-        /**
-         * 프로젝트 보고서 목록 조회
-         * @description 수정 시각과 ID 내림차순으로 보고서 목록을 조회한다.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description 0부터 시작하는 페이지 번호 */
-                    page?: number;
-                    /** @description 페이지당 보고서 수 */
-                    size?: number;
-                };
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 프로젝트 보고서 목록 조회 성공 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReportPageResponse"];
-                    };
-                };
-                /** @description 잘못된 페이지 요청 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}/files/{fileId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-                fileId: string;
-            };
-            cookie?: never;
-        };
-        /**
-         * 프로젝트 파일 내용 조회
-         * @description 기존 Bearer Token으로 파일을 조회한다. PNG, JPG/JPEG, PDF는 inline으로 응답하고
-         *     나머지 허용 파일은 attachment로 응답한다. Frontend는 인증 요청으로 받은 Blob URL을
-         *     편집기와 출력 페이지에서 사용하며, 파일 URL 자체는 공개하지 않는다.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                    fileId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 파일 내용 조회 성공 */
-                200: {
-                    headers: {
-                        /** @description 미리보기 형식은 inline, 그 외 형식은 attachment와 UTF-8 원본 파일명 */
-                        "Content-Disposition"?: string;
-                        /** @description 인증 파일의 저장을 막는 no-store 정책 */
-                        "Cache-Control"?: string;
-                        /** @description 저장된 파일 크기 */
-                        "Content-Length"?: number;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "*/*": string;
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트 또는 파일이 없거나 프로젝트 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 파일이 누락·변조되었거나 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        /** 프로젝트 파일 삭제 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                    fileId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 파일 메타데이터와 실제 파일 삭제 성공 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트 또는 파일이 없거나 프로젝트 소유자가 아님 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/{projectId}/generations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 보고서 생성 작업 시작 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["GenerationRequest"];
-                };
-            };
-            responses: {
-                /** @description 생성 작업 접수 */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["JobIdResponse"];
-                    };
-                };
-                /** @description 생성 요청 필드 누락·빈 파일 목록·중복 파일·잘못된 metadata·허용되지 않은 provider/model·키 미등록 모델 선택 (VALIDATION_FAILED, GENERATION_REQUEST_INVALID, AI_MODEL_NOT_ALLOWED, AI_CREDENTIAL_REQUIRED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트가 없거나 소유자가 아니거나 선택 파일이 유효하지 않음 (PROJECT_NOT_FOUND, FILE_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 프로젝트에 활성 생성 작업이 있음 (GENERATION_ALREADY_RUNNING) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 사용자별 rate limit·일일·동시 생성 quota 초과 (RATE_LIMIT_EXCEEDED, GENERATION_DAILY_LIMIT_EXCEEDED, GENERATION_CONCURRENCY_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/generations/{jobId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 생성 작업 상태 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    jobId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 생성 작업 상태 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["GenerationJobResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        /** 생성 작업 취소 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    jobId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 생성 작업 취소 완료 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/{reportId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 보고서 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    reportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 보고서 조회 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["report.schema"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        /** 보고서 수정 */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    reportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ReportUpdateRequest"];
-                };
-            };
-            responses: {
-                /** @description 보고서 수정 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["report.schema"];
-                    };
-                };
-                /** @description ReportDocument·템플릿·버전 요청 오류 (REPORT_DOCUMENT_INVALID, REPORT_PRESENTATION_INVALID, REPORT_VERSION_INVALID) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description expectedVersion이 현재 보고서 버전과 다름 (REPORT_VERSION_CONFLICT) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/{reportId}/exports": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 보고서 PDF 생성 요청 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    reportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description PDF 생성 작업 접수 */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExportIdResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 사용자별 PDF 일일·동시 quota 초과 (PDF_DAILY_LIMIT_EXCEEDED, PDF_CONCURRENCY_LIMIT_EXCEEDED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description PDF 출력 URL이 설정되지 않았거나 올바르지 않음 (EXPORT_PRINT_URL_NOT_CONFIGURED) */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/report-exports/{exportId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** PDF 생성 상태 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    exportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description PDF 생성 상태 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReportExportResponse"];
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 작업이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/report-exports/{exportId}/render-data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** PDF 출력용 보고서 스냅샷 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header: {
-                    "X-Render-Token": string;
-                };
-                path: {
-                    exportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description PDF 출력용 요청 시점 스냅샷 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReportRenderDataResponse"];
-                    };
-                };
-                /** @description 유효하지 않거나 만료된 출력 토큰 또는 작업 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/report-exports/{exportId}/files/{fileId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** PDF 출력용 이미지 조회 */
-        get: {
-            parameters: {
-                query?: never;
-                header: {
-                    "X-Render-Token": string;
-                };
-                path: {
-                    exportId: string;
-                    fileId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 보고서 스냅샷에 포함된 이미지 파일 */
-                200: {
-                    headers: {
-                        "Content-Disposition"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "image/png": string;
-                        "image/jpeg": string;
-                    };
-                };
-                /** @description 유효하지 않거나 만료된 출력 토큰·작업·이미지 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/report-exports/{exportId}/download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 생성된 PDF 다운로드 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    exportId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description PDF 파일 */
-                200: {
-                    headers: {
-                        "Content-Disposition"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/pdf": string;
-                    };
-                };
-                /** @description 미인증 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 작업·파일이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND, EXPORT_FILE_NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description PDF가 준비되지 않았거나 생성 실패 (EXPORT_NOT_READY, EXPORT_FAILED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description PDF 다운로드 기간 만료 (EXPORT_EXPIRED) */
-                410: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  '/api/auth/signup': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 회원가입 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['SignupRequest']
+        }
+      }
+      responses: {
+        /** @description 회원가입 성공 */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['UserResponse']
+          }
+        }
+        /** @description 입력값 오류 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 이메일 중복 */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description IP별 회원가입 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/login': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 로그인
+     * @description Access Token은 JSON 본문으로, Refresh Token은 HttpOnly 쿠키로 반환한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['LoginRequest']
+        }
+      }
+      responses: {
+        /** @description 로그인 성공 */
+        200: {
+          headers: {
+            /** @description HttpOnly Refresh Token 쿠키 (`refresh_token`). */
+            'Set-Cookie'?: string
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['TokenResponse']
+          }
+        }
+        /** @description 인증 실패 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description IP별 로그인 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/refresh': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Access Token 재발급
+     * @description 요청 본문 없이 HttpOnly Refresh Token 쿠키를 읽어 토큰을 회전한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 토큰 재발급 성공 */
+        200: {
+          headers: {
+            /** @description 회전된 HttpOnly Refresh Token 쿠키 (`refresh_token`). */
+            'Set-Cookie'?: string
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['TokenResponse']
+          }
+        }
+        /** @description Refresh Token 무효 또는 만료 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description IP별 refresh 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/logout': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 로그아웃
+     * @description HttpOnly Refresh Token 쿠키를 폐기하고 만료된 쿠키를 반환한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 로그아웃 성공 */
+        204: {
+          headers: {
+            /** @description 삭제된 Refresh Token 쿠키 (`Max-Age=0`). */
+            'Set-Cookie'?: string
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/me': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 내 정보 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 사용자 정보 조회 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['UserResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/me/ai-credentials': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 등록한 provider API Key 목록 조회 (힌트만) */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 등록 목록. 키 원문은 포함하지 않는다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiCredentialListResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/me/ai-credentials/{provider}': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        provider: components['schemas']['AiProvider']
+      }
+      cookie?: never
+    }
+    get?: never
+    /**
+     * provider API Key 등록 또는 교체
+     * @description 저장 전 AI Service를 통해 provider API로 키를 검증한다. Backend는 AES-256-GCM으로
+     *     암호화해 보관하고 생성 실행 시에만 복호화한다. 키 원문은 DB·로그·응답·GenerationJob에
+     *     남지 않는다. 교체하면 이전 키는 즉시 사용할 수 없다.
+     */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          provider: components['schemas']['AiProvider']
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['AiCredentialRequest']
+        }
+      }
+      responses: {
+        /** @description 등록 완료. 마스킹된 힌트만 반환한다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiCredentialResponse']
+          }
+        }
+        /** @description 키 형식 오류·provider가 키를 거부·지원하지 않는 provider (VALIDATION_FAILED, AI_CREDENTIAL_INVALID, INVALID_REQUEST) */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description provider 검증 호출 실패 (AI_CREDENTIAL_VERIFICATION_FAILED, AI_SERVICE_UNAVAILABLE) */
+        502: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    post?: never
+    /** provider API Key 삭제 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          provider: components['schemas']['AiProvider']
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 삭제 완료. 이후 해당 provider의 비기본 모델은 선택할 수 없다. */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 등록된 키 없음 (AI_CREDENTIAL_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/ai/models': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 선택 가능한 provider·model 목록 조회
+     * @description 서버 allowlist와 현재 사용자의 키 등록 여부를 합쳐 각 모델의 `available`을 계산한다.
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 모델 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiModelCatalogResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 내 프로젝트 목록 조회 */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 0부터 시작하는 페이지 번호 */
+          page?: number
+          /** @description 페이지당 프로젝트 수 */
+          size?: number
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 프로젝트 목록 조회 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ProjectPageResponse']
+          }
+        }
+        /** @description 잘못된 페이지 요청 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    /** 프로젝트 생성 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ProjectRequest']
+        }
+      }
+      responses: {
+        /** @description 프로젝트 생성 성공 */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ProjectIdResponse']
+          }
+        }
+        /** @description 입력값 오류 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        projectId: string
+      }
+      cookie?: never
+    }
+    /** 프로젝트 상세 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 프로젝트 상세 조회 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ProjectResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    /** 프로젝트 수정 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ProjectRequest']
+        }
+      }
+      responses: {
+        /** @description 프로젝트 수정 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ProjectResponse']
+          }
+        }
+        /** @description 입력값 오류 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    post?: never
+    /**
+     * 프로젝트를 휴지통으로 이동
+     * @description 프로젝트와 파일은 30일간 복구할 수 있으며 이후 자동으로 완전 삭제된다.
+     */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 프로젝트 삭제 성공 */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/trash': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 휴지통 프로젝트 목록 조회 */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 0부터 시작하는 페이지 번호 */
+          page?: number
+          /** @description 페이지당 프로젝트 수 */
+          size?: number
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 삭제 시각과 ID 내림차순 휴지통 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['TrashedProjectPageResponse']
+          }
+        }
+        /** @description 잘못된 페이지 요청 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}/restore': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        projectId: string
+      }
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 휴지통 프로젝트 복구 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 프로젝트와 파일 복구 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ProjectResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 휴지통에 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}/files': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        projectId: string
+      }
+      cookie?: never
+    }
+    /** 프로젝트 파일 목록 조회 */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 0부터 시작하는 페이지 번호 */
+          page?: number
+          /** @description 페이지당 파일 수 */
+          size?: number
+        }
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 생성 시각과 ID 내림차순 파일 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['FilePageResponse']
+          }
+        }
+        /** @description 잘못된 페이지 요청 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    /**
+     * 프로젝트 파일 업로드
+     * @description 파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG만 허용하며
+     *     확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다. GIF와 WEBP는 MVP의
+     *     보고서·AI 처리 호환 범위에서 제외되어 FILE_TYPE_NOT_ALLOWED로 거부된다.
+     *     ZIP은 해제 용량 100 MiB와 내부 엔트리 1,000개로 제한하며 ZIP Slip, 환경변수,
+     *     인증서·키, 실행 파일을 차단한다. java, kt, py, js, jsx, ts, tsx, html, css, scss,
+     *     sql, xml, json, yaml, yml, md, txt, gradle, properties, toml, go, rs, c, h, cpp, hpp,
+     *     cs, php, rb, swift, dart, vue, svelte 확장자만 별도 디렉터리에 해제한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /** Format: binary */
+            file: string
+          }
+        }
+      }
+      responses: {
+        /** @description 파일 업로드 성공 */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['FileIdResponse']
+          }
+        }
+        /** @description 빈 파일, 잘못된 파일 이름, 손상된 ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, ZIP_INVALID, ZIP_PATH_INVALID) */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED) */
+        413: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 지원하지 않는 형식 또는 형식 불일치 (FILE_TYPE_NOT_ALLOWED) */
+        415: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT) */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 업로드 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
+        500: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}/reports': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        projectId: string
+      }
+      cookie?: never
+    }
+    /**
+     * 프로젝트 보고서 목록 조회
+     * @description 수정 시각과 ID 내림차순으로 보고서 목록을 조회한다.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 0부터 시작하는 페이지 번호 */
+          page?: number
+          /** @description 페이지당 보고서 수 */
+          size?: number
+        }
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 프로젝트 보고서 목록 조회 성공 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ReportPageResponse']
+          }
+        }
+        /** @description 잘못된 페이지 요청 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}/files/{fileId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        projectId: string
+        fileId: string
+      }
+      cookie?: never
+    }
+    /**
+     * 프로젝트 파일 내용 조회
+     * @description 기존 Bearer Token으로 파일을 조회한다. PNG, JPG/JPEG, PDF는 inline으로 응답하고
+     *     나머지 허용 파일은 attachment로 응답한다. Frontend는 인증 요청으로 받은 Blob URL을
+     *     편집기와 출력 페이지에서 사용하며, 파일 URL 자체는 공개하지 않는다.
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+          fileId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 파일 내용 조회 성공 */
+        200: {
+          headers: {
+            /** @description 미리보기 형식은 inline, 그 외 형식은 attachment와 UTF-8 원본 파일명 */
+            'Content-Disposition'?: string
+            /** @description 인증 파일의 저장을 막는 no-store 정책 */
+            'Cache-Control'?: string
+            /** @description 저장된 파일 크기 */
+            'Content-Length'?: number
+            [name: string]: unknown
+          }
+          content: {
+            '*/*': string
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트 또는 파일이 없거나 프로젝트 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 저장 파일이 누락·변조되었거나 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
+        500: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    /** 프로젝트 파일 삭제 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+          fileId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 파일 메타데이터와 실제 파일 삭제 성공 */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트 또는 파일이 없거나 프로젝트 소유자가 아님 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 파일 저장소 처리 실패 (FILE_STORAGE_ERROR) */
+        500: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{projectId}/generations': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 보고서 생성 작업 시작 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          projectId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['GenerationRequest']
+        }
+      }
+      responses: {
+        /** @description 생성 작업 접수 */
+        202: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['JobIdResponse']
+          }
+        }
+        /** @description 생성 요청 필드 누락·빈 파일 목록·중복 파일·잘못된 metadata·허용되지 않은 provider/model·키 미등록 모델 선택 (VALIDATION_FAILED, GENERATION_REQUEST_INVALID, AI_MODEL_NOT_ALLOWED, AI_CREDENTIAL_REQUIRED) */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트가 없거나 소유자가 아니거나 선택 파일이 유효하지 않음 (PROJECT_NOT_FOUND, FILE_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 프로젝트에 활성 생성 작업이 있음 (GENERATION_ALREADY_RUNNING) */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 rate limit·일일·동시 생성 quota 초과 (RATE_LIMIT_EXCEEDED, GENERATION_DAILY_LIMIT_EXCEEDED, GENERATION_CONCURRENCY_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/generations/{jobId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 생성 작업 상태 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          jobId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 생성 작업 상태 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['GenerationJobResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    /** 생성 작업 취소 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          jobId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 생성 작업 취소 완료 */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 생성 작업이 없거나 프로젝트 소유자가 아님 (GENERATION_NOT_FOUND, PROJECT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reports/{reportId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 보고서 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          reportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 보고서 조회 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['report.schema']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    /** 보고서 수정 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          reportId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReportUpdateRequest']
+        }
+      }
+      responses: {
+        /** @description 보고서 수정 성공. 응답의 projectId는 보고서 소속 프로젝트 ID이며 이미지 파일 조회에 사용한다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['report.schema']
+          }
+        }
+        /** @description ReportDocument·템플릿·버전 요청 오류 (REPORT_DOCUMENT_INVALID, REPORT_PRESENTATION_INVALID, REPORT_VERSION_INVALID) */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description expectedVersion이 현재 보고서 버전과 다름 (REPORT_VERSION_CONFLICT) */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reports/{reportId}/exports': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 보고서 PDF 생성 요청 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          reportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description PDF 생성 작업 접수 */
+        202: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ExportIdResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 보고서가 없거나 프로젝트 소유자가 아님 (REPORT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 보고서 템플릿이 선택되지 않음 (REPORT_TEMPLATE_NOT_SELECTED) */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 PDF 일일·동시 quota 초과 (PDF_DAILY_LIMIT_EXCEEDED, PDF_CONCURRENCY_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description PDF 출력 URL이 설정되지 않았거나 올바르지 않음 (EXPORT_PRINT_URL_NOT_CONFIGURED) */
+        503: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** PDF 생성 상태 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          exportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description PDF 생성 상태 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ReportExportResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 작업이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}/render-data': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** PDF 출력용 보고서 스냅샷 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header: {
+          'X-Render-Token': string
+        }
+        path: {
+          exportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description PDF 출력용 요청 시점 스냅샷 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ReportRenderDataResponse']
+          }
+        }
+        /** @description 유효하지 않거나 만료된 출력 토큰 또는 작업 없음 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}/files/{fileId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** PDF 출력용 이미지 조회 */
+    get: {
+      parameters: {
+        query?: never
+        header: {
+          'X-Render-Token': string
+        }
+        path: {
+          exportId: string
+          fileId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 보고서 스냅샷에 포함된 이미지 파일 */
+        200: {
+          headers: {
+            'Content-Disposition'?: string
+            [name: string]: unknown
+          }
+          content: {
+            'image/png': string
+            'image/jpeg': string
+          }
+        }
+        /** @description 유효하지 않거나 만료된 출력 토큰·작업·이미지 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/report-exports/{exportId}/download': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 생성된 PDF 다운로드 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          exportId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description PDF 파일 */
+        200: {
+          headers: {
+            'Content-Disposition'?: string
+            [name: string]: unknown
+          }
+          content: {
+            'application/pdf': string
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 작업·파일이 없거나 프로젝트 소유자가 아님 (EXPORT_NOT_FOUND, EXPORT_FILE_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description PDF가 준비되지 않았거나 생성 실패 (EXPORT_NOT_READY, EXPORT_FAILED) */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description PDF 다운로드 기간 만료 (EXPORT_EXPIRED) */
+        410: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
-export type webhooks = Record<string, never>;
+export type webhooks = Record<string, never>
 export interface components {
-    schemas: {
-        SignupRequest: {
-            /** Format: email */
-            email: string;
-            /**
-             * Format: password
-             * @description UTF-8 인코딩 기준 최대 72바이트
-             */
-            password: string;
-            name: string;
-            /**
-             * @description 회원가입 시 확인한 개인정보처리방침 버전
-             * @example 2026-08-14
-             */
-            privacyPolicyVersion: string;
-            /**
-             * @description 회원가입 시 확인한 이용약관 버전
-             * @example 2026-08-14
-             */
-            termsOfServiceVersion: string;
-        };
-        LoginRequest: {
-            /** Format: email */
-            email: string;
-            /** Format: password */
-            password: string;
-        };
-        TokenResponse: {
-            accessToken: string;
-            /** @example Bearer */
-            tokenType: string;
-            /**
-             * Format: int64
-             * @description Access Token 유효 시간(초)
-             */
-            expiresIn: number;
-        };
-        UserResponse: {
-            /** Format: uuid */
-            id: string;
-            /** Format: email */
-            email: string;
-            name: string;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        ProjectRequest: {
-            name: string;
-        };
-        ProjectIdResponse: {
-            /** Format: uuid */
-            projectId: string;
-        };
-        ProjectResponse: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            /** Format: uuid */
-            ownerId: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        ProjectPageResponse: {
-            items: components["schemas"]["ProjectResponse"][];
-            page: number;
-            size: number;
-            /** Format: int64 */
-            totalElements: number;
-            totalPages: number;
-        };
-        TrashedProjectResponse: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            /** Format: date-time */
-            deletedAt: string;
-        };
-        TrashedProjectPageResponse: {
-            items: components["schemas"]["TrashedProjectResponse"][];
-            page: number;
-            size: number;
-            /** Format: int64 */
-            totalElements: number;
-            totalPages: number;
-        };
-        FileIdResponse: {
-            /** Format: uuid */
-            fileId: string;
-        };
-        FileResponse: {
-            /** Format: uuid */
-            id: string;
-            originalName: string;
-            contentType: string;
-            /** Format: int64 */
-            size: number;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        FilePageResponse: {
-            items: components["schemas"]["FileResponse"][];
-            page: number;
-            size: number;
-            /** Format: int64 */
-            totalElements: number;
-            totalPages: number;
-        };
-        ReportSummaryResponse: {
-            /** Format: uuid */
-            id: string;
-            templateId: string | null;
-            templateVersion: number | null;
-            version: number;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        ReportPageResponse: {
-            items: components["schemas"]["ReportSummaryResponse"][];
-            page: number;
-            size: number;
-            /** Format: int64 */
-            totalElements: number;
-            totalPages: number;
-        };
-        ReportPresentationSettings: {
-            [key: string]: string | number | boolean | null;
-        };
-        ReportUpdateRequest: {
-            document: components["schemas"]["report-document.schema"];
-            templateId: string | null;
-            templateVersion: number | null;
-            presentationSettings: components["schemas"]["ReportPresentationSettings"];
-            expectedVersion: number;
-        } & ({
-            templateId?: null;
-            templateVersion?: null;
-        } | {
-            templateId?: string;
-            templateVersion?: number;
-        });
-        GenerationRequest: {
-            fileIds: string[];
-            metadata: {
-                title: string;
-                author?: string;
-                course?: string;
-                /** Format: date */
-                date?: string;
-            };
-            instructions: string;
-            /**
-             * @description 생성에 사용할 LLM provider. model과 함께 지정하거나 둘 다 생략한다.
-             *     생략하면 서버 기본 모델(서버 키)로 실행한다. 선택한 provider의 API Key를
-             *     등록한 사용자는 해당 키로 실행되며, 서버 기본 모델이 아닌 모델은 키가 있어야 선택할 수 있다.
-             */
-            provider?: components["schemas"]["AiProvider"] | null;
-            /** @description `GET /api/ai/models` allowlist의 model 값. provider와 함께 지정한다. */
-            model?: string | null;
-        };
-        /** @enum {string} */
-        AiProvider: "GEMINI" | "ANTHROPIC";
-        AiCredentialRequest: {
-            /**
-             * Format: password
-             * @description provider API Key 원문. 저장 전 provider API로 검증하며 어떤 응답에도 다시 노출되지 않는다.
-             */
-            apiKey: string;
-        };
-        AiCredentialResponse: {
-            provider: components["schemas"]["AiProvider"];
-            /** @description 마스킹된 힌트(`****` + 끝 4자리). */
-            keyHint: string;
-            /** Format: date-time */
-            verifiedAt: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        AiCredentialListResponse: {
-            items: components["schemas"]["AiCredentialResponse"][];
-        };
-        AiModelOption: {
-            provider: components["schemas"]["AiProvider"];
-            model: string;
-            label: string;
-            /** @description 서버 키로 실행되는 기본 모델이면 true. 목록에 정확히 하나 있다. */
-            serverDefault: boolean;
-            /** @description 현재 사용자가 선택할 수 있으면 true (서버 기본 모델이거나 해당 provider 키를 등록함). */
-            available: boolean;
-        };
-        AiModelCatalogResponse: {
-            items: components["schemas"]["AiModelOption"][];
-        };
-        JobIdResponse: {
-            /** Format: uuid */
-            jobId: string;
-        };
-        GenerationJobResponse: {
-            /** Format: uuid */
-            jobId: string;
-            /** @enum {string} */
-            status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELED";
-            /** @enum {integer} */
-            progress: 0 | 10 | 100;
-            /** @enum {string} */
-            currentStage: "QUEUED" | "CALLING_AI" | "COMPLETED" | "FAILED" | "CANCELED";
-            provider: components["schemas"]["AiProvider"];
-            /** @description 접수 시점에 확정된 모델 snapshot. */
-            model: string;
-            /** Format: uuid */
-            reportId?: string | null;
-            failureCode?: string | null;
-            failureMessage?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            startedAt?: string | null;
-            /** Format: date-time */
-            completedAt?: string | null;
-        };
-        ExportIdResponse: {
-            /** Format: uuid */
-            exportId: string;
-        };
-        ReportExportResponse: {
-            /** Format: uuid */
-            exportId: string;
-            /** Format: uuid */
-            reportId: string;
-            /** @enum {string} */
-            status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "EXPIRED";
-            /** Format: int64 */
-            size?: number | null;
-            failureCode?: string | null;
-            failureMessage?: string | null;
-            /** Format: date-time */
-            expiresAt?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            startedAt?: string | null;
-            /** Format: date-time */
-            completedAt?: string | null;
-        };
-        ReportRenderDataResponse: {
-            /** Format: uuid */
-            exportId: string;
-            /** Format: uuid */
-            reportId: string;
-            /** Format: uuid */
-            projectId: string;
-            /** Format: int64 */
-            reportVersion: number;
-            document: components["schemas"]["report-document.schema"];
-            templateId: string;
-            templateVersion: number;
-            presentationSettings: components["schemas"]["ReportPresentationSettings"];
-            imageFileIds: string[];
-        };
-        ErrorResponse: {
-            code: string;
-            message: string;
-            details?: Record<string, never> | null;
-            /** Format: date-time */
-            timestamp: string;
-        };
+  schemas: {
+    SignupRequest: {
+      /** Format: email */
+      email: string
+      /**
+       * Format: password
+       * @description UTF-8 인코딩 기준 최대 72바이트
+       */
+      password: string
+      name: string
+      /**
+       * @description 회원가입 시 확인한 개인정보처리방침 버전
+       * @example 2026-08-14
+       */
+      privacyPolicyVersion: string
+      /**
+       * @description 회원가입 시 확인한 이용약관 버전
+       * @example 2026-08-14
+       */
+      termsOfServiceVersion: string
+    }
+    LoginRequest: {
+      /** Format: email */
+      email: string
+      /** Format: password */
+      password: string
+    }
+    TokenResponse: {
+      accessToken: string
+      /** @example Bearer */
+      tokenType: string
+      /**
+       * Format: int64
+       * @description Access Token 유효 시간(초)
+       */
+      expiresIn: number
+    }
+    UserResponse: {
+      /** Format: uuid */
+      id: string
+      /** Format: email */
+      email: string
+      name: string
+      /** Format: date-time */
+      createdAt: string
+    }
+    ProjectRequest: {
+      name: string
+    }
+    ProjectIdResponse: {
+      /** Format: uuid */
+      projectId: string
+    }
+    ProjectResponse: {
+      /** Format: uuid */
+      id: string
+      name: string
+      /** Format: uuid */
+      ownerId: string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
+    }
+    ProjectPageResponse: {
+      items: components['schemas']['ProjectResponse'][]
+      page: number
+      size: number
+      /** Format: int64 */
+      totalElements: number
+      totalPages: number
+    }
+    TrashedProjectResponse: {
+      /** Format: uuid */
+      id: string
+      name: string
+      /** Format: date-time */
+      deletedAt: string
+    }
+    TrashedProjectPageResponse: {
+      items: components['schemas']['TrashedProjectResponse'][]
+      page: number
+      size: number
+      /** Format: int64 */
+      totalElements: number
+      totalPages: number
+    }
+    FileIdResponse: {
+      /** Format: uuid */
+      fileId: string
+    }
+    FileResponse: {
+      /** Format: uuid */
+      id: string
+      originalName: string
+      contentType: string
+      /** Format: int64 */
+      size: number
+      /** Format: date-time */
+      createdAt: string
+    }
+    FilePageResponse: {
+      items: components['schemas']['FileResponse'][]
+      page: number
+      size: number
+      /** Format: int64 */
+      totalElements: number
+      totalPages: number
+    }
+    ReportSummaryResponse: {
+      /** Format: uuid */
+      id: string
+      templateId: string | null
+      templateVersion: number | null
+      version: number
+      /** Format: date-time */
+      updatedAt: string
+    }
+    ReportPageResponse: {
+      items: components['schemas']['ReportSummaryResponse'][]
+      page: number
+      size: number
+      /** Format: int64 */
+      totalElements: number
+      totalPages: number
+    }
+    ReportPresentationSettings: {
+      [key: string]: string | number | boolean | null
+    }
+    ReportUpdateRequest: {
+      document: components['schemas']['report-document.schema']
+      templateId: string | null
+      templateVersion: number | null
+      presentationSettings: components['schemas']['ReportPresentationSettings']
+      expectedVersion: number
+    } & (
+      | {
+          templateId?: null
+          templateVersion?: null
+        }
+      | {
+          templateId?: string
+          templateVersion?: number
+        }
+    )
+    GenerationRequest: {
+      fileIds: string[]
+      metadata: {
+        title: string
+        author?: string
+        course?: string
+        /** Format: date */
+        date?: string
+      }
+      instructions: string
+      /**
+       * @description 생성에 사용할 LLM provider. model과 함께 지정하거나 둘 다 생략한다.
+       *     생략하면 서버 기본 모델(서버 키)로 실행한다. 선택한 provider의 API Key를
+       *     등록한 사용자는 해당 키로 실행되며, 서버 기본 모델이 아닌 모델은 키가 있어야 선택할 수 있다.
+       */
+      provider?: components['schemas']['AiProvider'] | null
+      /** @description `GET /api/ai/models` allowlist의 model 값. provider와 함께 지정한다. */
+      model?: string | null
+    }
+    /** @enum {string} */
+    AiProvider: 'GEMINI' | 'ANTHROPIC'
+    AiCredentialRequest: {
+      /**
+       * Format: password
+       * @description provider API Key 원문. 저장 전 provider API로 검증하며 어떤 응답에도 다시 노출되지 않는다.
+       */
+      apiKey: string
+    }
+    AiCredentialResponse: {
+      provider: components['schemas']['AiProvider']
+      /** @description 마스킹된 힌트(`****` + 끝 4자리). */
+      keyHint: string
+      /** Format: date-time */
+      verifiedAt: string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
+    }
+    AiCredentialListResponse: {
+      items: components['schemas']['AiCredentialResponse'][]
+    }
+    AiModelOption: {
+      provider: components['schemas']['AiProvider']
+      model: string
+      label: string
+      /** @description 서버 키로 실행되는 기본 모델이면 true. 목록에 정확히 하나 있다. */
+      serverDefault: boolean
+      /** @description 현재 사용자가 선택할 수 있으면 true (서버 기본 모델이거나 해당 provider 키를 등록함). */
+      available: boolean
+    }
+    AiModelCatalogResponse: {
+      items: components['schemas']['AiModelOption'][]
+    }
+    JobIdResponse: {
+      /** Format: uuid */
+      jobId: string
+    }
+    GenerationJobResponse: {
+      /** Format: uuid */
+      jobId: string
+      /** @enum {string} */
+      status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELED'
+      /** @enum {integer} */
+      progress: 0 | 10 | 100
+      /** @enum {string} */
+      currentStage: 'QUEUED' | 'CALLING_AI' | 'COMPLETED' | 'FAILED' | 'CANCELED'
+      provider: components['schemas']['AiProvider']
+      /** @description 접수 시점에 확정된 모델 snapshot. */
+      model: string
+      /** Format: uuid */
+      reportId?: string | null
+      failureCode?: string | null
+      failureMessage?: string | null
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      startedAt?: string | null
+      /** Format: date-time */
+      completedAt?: string | null
+    }
+    ExportIdResponse: {
+      /** Format: uuid */
+      exportId: string
+    }
+    ReportExportResponse: {
+      /** Format: uuid */
+      exportId: string
+      /** Format: uuid */
+      reportId: string
+      /** @enum {string} */
+      status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'EXPIRED'
+      /** Format: int64 */
+      size?: number | null
+      failureCode?: string | null
+      failureMessage?: string | null
+      /** Format: date-time */
+      expiresAt?: string | null
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      startedAt?: string | null
+      /** Format: date-time */
+      completedAt?: string | null
+    }
+    ReportRenderDataResponse: {
+      /** Format: uuid */
+      exportId: string
+      /** Format: uuid */
+      reportId: string
+      /** Format: uuid */
+      projectId: string
+      /** Format: int64 */
+      reportVersion: number
+      document: components['schemas']['report-document.schema']
+      templateId: string
+      templateVersion: number
+      presentationSettings: components['schemas']['ReportPresentationSettings']
+      imageFileIds: string[]
+    }
+    ErrorResponse: {
+      code: string
+      message: string
+      details?: Record<string, never> | null
+      /** Format: date-time */
+      timestamp: string
+    }
+    /** @description Stable within the report. Section IDs and block IDs are each unique. */
+    stableId: string
+    paragraph: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'paragraph'
+      /** @description Allowed inline Markdown content. */
+      content: string
+    }
+    bulletList: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'bulletList'
+      items: string[]
+    }
+    code: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'code'
+      code: string
+      language?: string
+    }
+    table: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'table'
+      columns: string[]
+      rows: string[][]
+    }
+    image: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'image'
+      /** Format: uuid */
+      fileId: string
+      alt: string
+      caption?: string
+    }
+    callout: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'callout'
+      title?: string
+      /** @description Allowed inline Markdown content. */
+      content: string
+    }
+    pageBreak: {
+      id: components['schemas']['stableId']
+      /** @constant */
+      type: 'pageBreak'
+    }
+    block:
+      | components['schemas']['paragraph']
+      | components['schemas']['bulletList']
+      | components['schemas']['code']
+      | components['schemas']['table']
+      | components['schemas']['image']
+      | components['schemas']['callout']
+      | components['schemas']['pageBreak']
+    metadata: {
+      title: string
+      author?: string
+      course?: string
+      /** Format: date */
+      date?: string
+    }
+    section: {
+      id: components['schemas']['stableId']
+      title: string
+      blocks: components['schemas']['block'][]
+    }
+    /**
+     * ReportDocument
+     * @description Design-independent report content edited as stable sections and blocks.
+     */
+    'report-document.schema': {
+      metadata: components['schemas']['metadata']
+      sections: components['schemas']['section'][]
+      $defs: {
         /** @description Stable within the report. Section IDs and block IDs are each unique. */
-        stableId: string;
-        paragraph: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "paragraph";
-            /** @description Allowed inline Markdown content. */
-            content: string;
-        };
-        bulletList: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "bulletList";
-            items: string[];
-        };
-        code: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "code";
-            code: string;
-            language?: string;
-        };
-        table: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "table";
-            columns: string[];
-            rows: string[][];
-        };
-        image: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "image";
-            /** Format: uuid */
-            fileId: string;
-            alt: string;
-            caption?: string;
-        };
-        callout: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "callout";
-            title?: string;
-            /** @description Allowed inline Markdown content. */
-            content: string;
-        };
-        pageBreak: {
-            id: components["schemas"]["stableId"];
-            /** @constant */
-            type: "pageBreak";
-        };
-        block: components["schemas"]["paragraph"] | components["schemas"]["bulletList"] | components["schemas"]["code"] | components["schemas"]["table"] | components["schemas"]["image"] | components["schemas"]["callout"] | components["schemas"]["pageBreak"];
+        stableId: string
         metadata: {
-            title: string;
-            author?: string;
-            course?: string;
-            /** Format: date */
-            date?: string;
-        };
+          title: string
+          author?: string
+          course?: string
+          /** Format: date */
+          date?: string
+        }
         section: {
-            id: components["schemas"]["stableId"];
-            title: string;
-            blocks: components["schemas"]["block"][];
-        };
-        /**
-         * ReportDocument
-         * @description Design-independent report content edited as stable sections and blocks.
-         */
-        "report-document.schema": {
-            metadata: components["schemas"]["metadata"];
-            sections: components["schemas"]["section"][];
-            $defs: {
-                /** @description Stable within the report. Section IDs and block IDs are each unique. */
-                stableId: string;
-                metadata: {
-                    title: string;
-                    author?: string;
-                    course?: string;
-                    /** Format: date */
-                    date?: string;
-                };
-                section: {
-                    id: components["schemas"]["stableId"];
-                    title: string;
-                    blocks: components["schemas"]["block"][];
-                };
-                block: components["schemas"]["paragraph"] | components["schemas"]["bulletList"] | components["schemas"]["code"] | components["schemas"]["table"] | components["schemas"]["image"] | components["schemas"]["callout"] | components["schemas"]["pageBreak"];
-                paragraph: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "paragraph";
-                    /** @description Allowed inline Markdown content. */
-                    content: string;
-                };
-                bulletList: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "bulletList";
-                    items: string[];
-                };
-                code: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "code";
-                    code: string;
-                    language?: string;
-                };
-                table: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "table";
-                    columns: string[];
-                    rows: string[][];
-                };
-                image: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "image";
-                    /** Format: uuid */
-                    fileId: string;
-                    alt: string;
-                    caption?: string;
-                };
-                callout: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "callout";
-                    title?: string;
-                    /** @description Allowed inline Markdown content. */
-                    content: string;
-                };
-                pageBreak: {
-                    id: components["schemas"]["stableId"];
-                    /** @constant */
-                    type: "pageBreak";
-                };
-            };
-        };
+          id: components['schemas']['stableId']
+          title: string
+          blocks: components['schemas']['block'][]
+        }
+        block:
+          | components['schemas']['paragraph']
+          | components['schemas']['bulletList']
+          | components['schemas']['code']
+          | components['schemas']['table']
+          | components['schemas']['image']
+          | components['schemas']['callout']
+          | components['schemas']['pageBreak']
+        paragraph: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'paragraph'
+          /** @description Allowed inline Markdown content. */
+          content: string
+        }
+        bulletList: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'bulletList'
+          items: string[]
+        }
+        code: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'code'
+          code: string
+          language?: string
+        }
+        table: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'table'
+          columns: string[]
+          rows: string[][]
+        }
+        image: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'image'
+          /** Format: uuid */
+          fileId: string
+          alt: string
+          caption?: string
+        }
+        callout: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'callout'
+          title?: string
+          /** @description Allowed inline Markdown content. */
+          content: string
+        }
+        pageBreak: {
+          id: components['schemas']['stableId']
+          /** @constant */
+          type: 'pageBreak'
+        }
+      }
+    }
+    presentationSettings: {
+      [key: string]: string | number | boolean | null
+    }
+    /** Report */
+    'report.schema': {
+      /** Format: uuid */
+      id: string
+      /** Format: uuid */
+      projectId: string
+      document: components['schemas']['report-document.schema']
+      templateId: string | null
+      templateVersion: number | null
+      presentationSettings: components['schemas']['presentationSettings']
+      version: number
+      /** Format: date-time */
+      updatedAt: string
+      $defs: {
         presentationSettings: {
-            [key: string]: string | number | boolean | null;
-        };
-        /** Report */
-        "report.schema": {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            projectId: string;
-            document: components["schemas"]["report-document.schema"];
-            templateId: string | null;
-            templateVersion: number | null;
-            presentationSettings: components["schemas"]["presentationSettings"];
-            version: number;
-            /** Format: date-time */
-            updatedAt: string;
-            $defs: {
-                presentationSettings: {
-                    [key: string]: string | number | boolean | null;
-                };
-            };
-        } & ({
-            templateId?: null;
-            templateVersion?: null;
-        } | {
-            templateId?: string;
-            templateVersion?: number;
-        });
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+          [key: string]: string | number | boolean | null
+        }
+      }
+    } & (
+      | {
+          templateId?: null
+          templateVersion?: null
+        }
+      | {
+          templateId?: string
+          templateVersion?: number
+        }
+    )
+  }
+  responses: never
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
-export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export type $defs = Record<string, never>
+export type operations = Record<string, never>

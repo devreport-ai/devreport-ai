@@ -7,7 +7,7 @@
  * 생성을 요청하면 곧바로 템플릿 선택으로 넘어간다(#36). 생성은 뒤에서 돌지만
  * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AppNav } from '../components/AppNav'
 import { AppTopBar, Icon } from '../components/ui'
@@ -18,6 +18,14 @@ import {
   saveGenerationRecovery,
   useStartGeneration,
 } from '../features/generation/api'
+import {
+  choiceKey,
+  loadModelChoice,
+  resolveChoice,
+  saveModelChoice,
+} from '../features/generation/modelChoice'
+import { ModelSelect } from '../features/generation/ModelSelect'
+import { useAiModels } from '../features/settings/api'
 import { findTemplate } from '../features/report/templates'
 import { useProject, useProjectReports } from '../features/projects/api'
 import { toDisplayMessage } from '../lib/api/errors'
@@ -46,6 +54,19 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const [policyAgreed, setPolicyAgreed] = useState(false)
   const recovery = loadGenerationRecovery(projectId)
 
+  // 모델 목록은 계정의 키 등록 여부에 따라 달라진다. 선택은 키 문자열로만 들고 있고
+  // 실제 옵션은 목록에서 매번 다시 찾는다 — 목록이 바뀌어 못 쓰게 된 선택은 기본 모델로 돌아간다.
+  const models = useAiModels()
+  const modelOptions = useMemo(() => models.data?.items ?? [], [models.data])
+  const [selectedModelKey, setSelectedModelKey] = useState<string | null>(() => {
+    const remembered = loadModelChoice()
+    return remembered ? choiceKey(remembered) : null
+  })
+  const modelChoice = useMemo(
+    () => resolveChoice(modelOptions, selectedModelKey),
+    [modelOptions, selectedModelKey],
+  )
+
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
 
@@ -68,6 +89,8 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
           ...(date && { date }),
         },
         instructions: instructions.trim(),
+        // 서버 기본 모델도 명시해서 보낸다. 나중에 기본값이 바뀌어도 사용자가 본 모델 그대로 실행된다.
+        ...(modelChoice && { provider: modelChoice.provider, model: modelChoice.model }),
       },
       {
         onSuccess: ({ jobId: id }) => {
@@ -197,6 +220,21 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
               <Field id="author" label="작성자" value={author} onChange={setAuthor} />
               <Field id="course" label="과목" value={course} onChange={setCourse} />
               <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
+
+              <ModelSelect
+                options={modelOptions}
+                value={modelChoice}
+                onChange={(option) => {
+                  setSelectedModelKey(choiceKey(option))
+                  saveModelChoice({ provider: option.provider, model: option.model })
+                }}
+                disabled={startGeneration.isPending}
+              />
+              {models.error && (
+                <p role="alert" className="inline-alert">
+                  {toDisplayMessage(models.error)}
+                </p>
+              )}
 
               <div>
                 <label htmlFor="instructions" className="field-label">

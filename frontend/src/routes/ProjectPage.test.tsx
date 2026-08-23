@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import App from '../App'
 import { renderWithProviders } from '../test/renderWithProviders'
 import { clearAccessToken, setAccessToken } from '../lib/auth/tokenStore'
@@ -17,6 +17,28 @@ beforeEach(() => {
     'fetch',
     vi.fn((url: string) => {
       if (url.includes('/api/auth/me')) return Promise.resolve(json({ name: '사용자' }))
+      if (url.endsWith('/api/ai/models')) {
+        return Promise.resolve(
+          json({
+            items: [
+              {
+                provider: 'GEMINI',
+                model: 'gemini-3.5-flash-lite',
+                label: 'Gemini 3.5 Flash-Lite',
+                serverDefault: true,
+                available: true,
+              },
+              {
+                provider: 'GEMINI',
+                model: 'gemini-3.5-pro',
+                label: 'Gemini 3.5 Pro',
+                serverDefault: false,
+                available: false,
+              },
+            ],
+          }),
+        )
+      }
       if (url.endsWith('/api/projects/p-1')) {
         return Promise.resolve(json({ id: 'p-1', name: '졸업 프로젝트', ownerId: 'u-1' }))
       }
@@ -76,5 +98,19 @@ describe('ProjectPage report list', () => {
 
     expect(await screen.findByText('이 페이지에 보고서가 없습니다.')).toBeInTheDocument()
     expect(screen.getByText(/2\s*\/\s*2/)).toBeInTheDocument()
+  })
+
+  it('모델 선택은 서버 기본 모델로 시작하고 키 없는 모델은 고를 수 없다', async () => {
+    renderWithProviders(<App />, { route: '/projects/p-1' })
+
+    const select = (await screen.findByLabelText('AI 모델')) as HTMLSelectElement
+    await waitFor(() => expect(select.value).toBe('GEMINI/gemini-3.5-flash-lite'))
+    const locked = screen.getByRole('option', { name: /Gemini 3.5 Pro/ }) as HTMLOptionElement
+    expect(locked.disabled).toBe(true)
+    expect(locked.textContent).toContain('API Key 등록 필요')
+    expect(screen.getByRole('link', { name: '설정에서 API Key 를 등록' })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
   })
 })

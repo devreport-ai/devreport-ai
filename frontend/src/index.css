@@ -834,6 +834,26 @@ button:disabled {
   accent-color: var(--v2-accent);
 }
 
+/* Settings — AI provider API Key (#116) */
+.settings-notes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--v2-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.settings-notes strong {
+  color: inherit;
+  font-weight: 700;
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* Policies and 404 */
 .plain-page {
   min-height: 100vh;
