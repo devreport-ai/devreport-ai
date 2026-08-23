@@ -33,6 +33,14 @@ class ProductionEnvironmentValidatorTest {
 
 	@Test
 	void rejectsInsecureProductionOverrides() {
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "http://app.example.com")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://user@app.example.com")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://app.example.com?q=1")))
+			.hasMessageContaining("PUBLIC_APP_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", "https://app.example.com#reset")))
+			.hasMessageContaining("PUBLIC_APP_URL");
 		assertThatThrownBy(() -> validate(environment().withProperty("security.headers.enabled", "false")))
 			.hasMessageContaining("보안 헤더");
 		assertThatThrownBy(() -> validate(environment().withProperty("springdoc.api-docs.enabled", "true")))

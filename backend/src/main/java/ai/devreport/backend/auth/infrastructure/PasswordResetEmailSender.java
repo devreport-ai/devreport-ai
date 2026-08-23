@@ -6,7 +6,6 @@ import java.util.Map;
 
 import ai.devreport.backend.auth.application.AuthService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -40,7 +39,6 @@ public class PasswordResetEmailSender {
 		this.publicAppUrl = publicAppUrl.replaceFirst("/+$", "");
 	}
 
-	@Async("passwordResetEmailExecutor")
 	public void send(String to, String token) {
 		if (apiKey.isBlank()) {
 			return;

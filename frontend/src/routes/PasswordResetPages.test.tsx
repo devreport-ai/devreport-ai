@@ -75,4 +75,19 @@ describe('Password reset pages', () => {
       '/forgot-password',
     )
   })
+
+  it('비밀번호 최소 길이를 Unicode 문자 수로 검사한다', () => {
+    window.history.replaceState({}, '', '/reset-password#token=valid-token')
+    renderWithProviders(<ResetPasswordPage />, { route: '/reset-password' })
+
+    fireEvent.change(screen.getByLabelText('새 비밀번호'), {
+      target: { value: '😀'.repeat(4) },
+    })
+    fireEvent.change(screen.getByLabelText('새 비밀번호 확인'), {
+      target: { value: '😀'.repeat(4) },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '비밀번호 재설정' }))
+
+    expect(screen.getByText('비밀번호는 8자 이상이어야 합니다.')).toBeInTheDocument()
+  })
 })

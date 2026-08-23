@@ -100,6 +100,9 @@ export DATABASE_PASSWORD='운영 DB 비밀번호'
 export JWT_SECRET="$(openssl rand -base64 48)"
 export AI_INTERNAL_TOKEN="$(openssl rand -hex 32)"
 export EXPORT_PRINT_URL='https://app.example.com/print/report-exports/{exportId}'
+export PUBLIC_APP_URL='https://app.example.com'
+export PASSWORD_RESET_FROM='DevReport AI <no-reply@mail.example.com>'
+export RESEND_API_KEY='re_운영_API_Key'
 cd backend && ./gradlew bootRun
 ```
 

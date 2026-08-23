@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -512,7 +512,7 @@ class AuthIntegrationTest {
 				.content("{\"email\":\"%s\"}".formatted(email)))
 			.andExpect(status().isAccepted());
 		ArgumentCaptor<String> tokens = ArgumentCaptor.forClass(String.class);
-		verify(passwordResetEmailSender, times(2)).send(eq(email), tokens.capture());
+		verify(passwordResetEmailSender, timeout(2000).times(2)).send(eq(email), tokens.capture());
 		String firstToken = tokens.getAllValues().get(0);
 		String latestToken = tokens.getAllValues().get(1);
 		assertThat(passwordResetTokens.findAll())
@@ -557,6 +557,11 @@ class AuthIntegrationTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
 		}
+		mvc.perform(post("/api/auth/password-reset/confirm")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"token\":\"forged-token\",\"newPassword\":\"%s\"}".formatted("😀".repeat(4))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
 		for (int attempt = 0; attempt < 5; attempt++) {
 			mvc.perform(post("/api/auth/password-reset/request")
@@ -575,6 +580,28 @@ class AuthIntegrationTest {
 				})
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"email\":\"rate-final@example.com\"}"))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+
+		String normalizedEmail = "same-rate@example.com";
+		for (int attempt = 0; attempt < 5; attempt++) {
+			String remoteAddress = "203.0.113." + attempt;
+			mvc.perform(post("/api/auth/password-reset/request")
+					.with(request -> {
+						request.setRemoteAddr(remoteAddress);
+						return request;
+					})
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"Same-Rate@Example.com\"}"))
+				.andExpect(status().isAccepted());
+		}
+		mvc.perform(post("/api/auth/password-reset/request")
+				.with(request -> {
+					request.setRemoteAddr("203.0.113.5");
+					return request;
+				})
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"%s\"}".formatted(normalizedEmail)))
 			.andExpect(status().isTooManyRequests())
 			.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
 	}

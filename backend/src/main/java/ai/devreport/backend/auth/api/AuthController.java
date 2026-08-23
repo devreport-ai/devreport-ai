@@ -11,7 +11,7 @@ import ai.devreport.backend.auth.api.response.UserResponse;
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.auth.application.AuthService;
-import ai.devreport.backend.auth.infrastructure.PasswordResetEmailSender;
+import ai.devreport.backend.auth.application.PasswordResetWorker;
 import ai.devreport.backend.usage.application.RateLimitService;
 
 import java.net.URI;
@@ -52,7 +52,7 @@ class AuthController {
 		new PasswordResetRequestedResponse("가입된 이메일이라면 비밀번호 재설정 링크를 전송했습니다.");
 
 	private final AuthService authService;
-	private final PasswordResetEmailSender passwordResetEmailSender;
+	private final PasswordResetWorker passwordResetWorker;
 	private final RateLimitService rateLimits;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final String refreshTokenCookieName;
@@ -61,7 +61,7 @@ class AuthController {
 	private final String refreshTokenCookieSameSite;
 	private final Duration refreshTokenTtl;
 
-	AuthController(AuthService authService, PasswordResetEmailSender passwordResetEmailSender,
+	AuthController(AuthService authService, PasswordResetWorker passwordResetWorker,
 		RateLimitService rateLimits,
 		CorsConfigurationSource corsConfigurationSource,
 		@Value("${auth.refresh-token-cookie.name}") String refreshTokenCookieName,
@@ -70,7 +70,7 @@ class AuthController {
 		@Value("${auth.refresh-token-cookie.same-site}") String refreshTokenCookieSameSite,
 		@Value("${auth.refresh-token-ttl}") Duration refreshTokenTtl) {
 		this.authService = authService;
-		this.passwordResetEmailSender = passwordResetEmailSender;
+		this.passwordResetWorker = passwordResetWorker;
 		this.rateLimits = rateLimits;
 		this.corsConfigurationSource = corsConfigurationSource;
 		this.refreshTokenCookieName = refreshTokenCookieName;
@@ -132,13 +132,11 @@ class AuthController {
 		@Valid @RequestBody PasswordResetRequest request) {
 		validateOrigin(servletRequest);
 		rateLimits.checkPasswordReset(clientIp(servletRequest), AuthService.hash(AuthService.normalizeEmail(request.email())));
-		authService.createPasswordReset(request.email()).ifPresent(mail -> {
-			try {
-				passwordResetEmailSender.send(mail.email(), mail.token());
-			} catch (RuntimeException exception) {
-				LOGGER.error("Password reset email scheduling failed", exception);
-			}
-		});
+		try {
+			passwordResetWorker.process(request.email());
+		} catch (RuntimeException exception) {
+			LOGGER.error("Password reset processing scheduling failed", exception);
+		}
 		return ResponseEntity.accepted().body(PASSWORD_RESET_REQUESTED);
 	}
 
