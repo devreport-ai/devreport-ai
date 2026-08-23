@@ -1,10 +1,12 @@
 package ai.devreport.backend.auth.api;
 
 import ai.devreport.backend.auth.api.request.LoginRequest;
+import ai.devreport.backend.auth.api.request.PasswordChangeRequest;
 import ai.devreport.backend.auth.api.request.SignupRequest;
 import ai.devreport.backend.auth.api.response.TokenResponse;
 import ai.devreport.backend.auth.api.response.UserResponse;
 import ai.devreport.backend.auth.application.AuthException;
+import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.auth.application.AuthService;
 import ai.devreport.backend.usage.application.RateLimitService;
 
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -99,6 +102,17 @@ class AuthController {
 			servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 		}
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void changePassword(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
+		@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordChangeRequest request) {
+		validateOrigin(servletRequest);
+		UUID userId = AuthenticatedUser.id(jwt);
+		rateLimits.checkPasswordChange(userId);
+		authService.changePassword(userId, request.currentPassword(), request.newPassword());
+		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 	}
 
 	@GetMapping("/me")

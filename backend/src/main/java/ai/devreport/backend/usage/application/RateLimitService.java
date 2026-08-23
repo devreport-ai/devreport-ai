@@ -77,6 +77,11 @@ public class RateLimitService {
 	}
 
 	@Transactional
+	public void checkPasswordChange(UUID userId) {
+		check("password-change", "user:" + userId, properties.getRateLimit().getPasswordChange());
+	}
+
+	@Transactional
 	public void checkUpload(UUID userId) {
 		check("upload", "user:" + userId, properties.getRateLimit().getUpload());
 	}

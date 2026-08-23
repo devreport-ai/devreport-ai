@@ -21,6 +21,7 @@ export type IconName =
   | 'alert'
   | 'edit'
   | 'eye'
+  | 'settings'
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const common = {
@@ -139,6 +140,12 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
         <circle cx="12" cy="12" r="2" />
       </>
     ),
+    settings: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.1h-2.5v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8.1 15a1.7 1.7 0 0 0-1.5-1H6.5v-2.5h.1a1.7 1.7 0 0 0 1.5-1A1.7 1.7 0 0 0 7.8 8l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.1H15V5a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v2.5h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+      </>
+    ),
   }
 
   return <svg {...common}>{paths[name]}</svg>
@@ -208,6 +215,50 @@ export function AuthLayout({
         </div>
       </section>
     </main>
+  )
+}
+
+export function AuthField({
+  id,
+  label,
+  type,
+  value,
+  onChange,
+  error,
+}: {
+  id: string
+  label: string
+  type: 'email' | 'password' | 'text'
+  value: string
+  onChange: (value: string) => void
+  error: string | null
+}) {
+  return (
+    <div className="field-group">
+      <label htmlFor={id} className="field-label">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        placeholder={
+          type === 'email'
+            ? 'name@example.com'
+            : type === 'text'
+              ? '이름을 입력해 주세요'
+              : '비밀번호를 입력해 주세요'
+        }
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={error !== null}
+        className="field-control"
+      />
+      {error && (
+        <p role="alert" className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 

@@ -17250,6 +17250,260 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "v2SettingsDesktop",
+      "x": 13760,
+      "y": 3300,
+      "name": "V2 Account Settings / Desktop",
+      "clip": true,
+      "width": 1440,
+      "height": 1000,
+      "fill": "$v2-bg",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "v2SettingsSidebar",
+          "name": "V2 Account Settings Sidebar",
+          "width": 240,
+          "height": "fill_container",
+          "fill": "#0B1220",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [28, 18, 20, 18],
+          "children": [
+            {
+              "type": "text",
+              "id": "v2SettingsBrand",
+              "name": "V2 Account Settings Brand",
+              "fill": "#FFFFFF",
+              "content": "D  DevReport AI",
+              "fontFamily": "Geist",
+              "fontSize": 16,
+              "fontWeight": "650"
+            },
+            {
+              "type": "frame",
+              "id": "v2SettingsNavigation",
+              "name": "V2 Account Settings Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2SettingsProjectsLink",
+                  "name": "V2 Account Settings Projects Link",
+                  "fill": "#94A3B8",
+                  "content": "▣  프로젝트",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "v2SettingsReportsLink",
+                  "name": "V2 Account Settings Reports Link",
+                  "fill": "#64748B",
+                  "content": "▤  보고서",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "v2SettingsActiveLink",
+                  "name": "V2 Account Settings Active Link",
+                  "fill": "#FFFFFF",
+                  "content": "⚙  계정 설정",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "v2SettingsMain",
+          "name": "V2 Account Settings Main",
+          "x": 240,
+          "width": 1200,
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "v2SettingsTopbar",
+              "name": "V2 Account Settings Topbar",
+              "width": "fill_container",
+              "height": 72,
+              "fill": "$v2-surface",
+              "stroke": "$v2-border",
+              "strokeWidth": 1,
+              "padding": [0, 32, 0, 32],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v2SettingsBreadcrumb",
+                  "name": "V2 Account Settings Breadcrumb",
+                  "fill": "$v2-text",
+                  "content": "워크스페이스  /  계정 설정",
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v2SettingsContent",
+              "name": "V2 Account Settings Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "padding": [38, 56, 72, 56],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "v2SettingsPageHeader",
+                  "name": "V2 Account Settings Page Header",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 7,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v2SettingsEyebrow",
+                      "name": "V2 Account Settings Eyebrow",
+                      "fill": "$v2-accent",
+                      "content": "ACCOUNT",
+                      "fontFamily": "Geist Mono",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.4
+                    },
+                    {
+                      "type": "text",
+                      "id": "v2SettingsTitle",
+                      "name": "V2 Account Settings Title",
+                      "fill": "$v2-text",
+                      "content": "계정 설정",
+                      "fontFamily": "Geist",
+                      "fontSize": 29,
+                      "fontWeight": "720"
+                    },
+                    {
+                      "type": "text",
+                      "id": "v2SettingsDescription",
+                      "name": "V2 Account Settings Description",
+                      "fill": "$v2-muted",
+                      "content": "비밀번호를 변경하고 계정 보안을 관리합니다.",
+                      "fontFamily": "Geist",
+                      "fontSize": 15
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v2PasswordCard",
+                  "name": "V2 Password Change Card",
+                  "width": 560,
+                  "fill": "$v2-surface",
+                  "cornerRadius": 14,
+                  "stroke": "$v2-border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 18,
+                  "padding": 26,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "v2PasswordCardHeader",
+                      "name": "V2 Password Change Header",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "v2PasswordCardTitle",
+                          "name": "V2 Password Change Title",
+                          "fill": "$v2-text",
+                          "content": "비밀번호 변경",
+                          "fontFamily": "Geist",
+                          "fontSize": 17,
+                          "fontWeight": "650"
+                        },
+                        {
+                          "type": "text",
+                          "id": "v2PasswordCardDescription",
+                          "name": "V2 Password Change Description",
+                          "fill": "$v2-muted",
+                          "content": "변경하면 다른 기기의 Refresh Token도 폐기되어 다시 로그인해야 합니다.",
+                          "fontFamily": "Geist",
+                          "fontSize": 13
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "v2PasswordChangeForm",
+                      "name": "V2 Password Change Form",
+                      "width": 420,
+                      "layout": "vertical",
+                      "gap": 16,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "v2CurrentPasswordField",
+                          "name": "V2 Current Password Field",
+                          "fill": "$v2-text",
+                          "content": "현재 비밀번호    비밀번호를 입력해 주세요",
+                          "fontFamily": "Geist",
+                          "fontSize": 13
+                        },
+                        {
+                          "type": "text",
+                          "id": "v2NewPasswordField",
+                          "name": "V2 New Password Field",
+                          "fill": "$v2-text",
+                          "content": "새 비밀번호       비밀번호를 입력해 주세요",
+                          "fontFamily": "Geist",
+                          "fontSize": 13
+                        },
+                        {
+                          "type": "text",
+                          "id": "v2ConfirmPasswordField",
+                          "name": "V2 Confirm Password Field",
+                          "fill": "$v2-text",
+                          "content": "새 비밀번호 확인  비밀번호를 입력해 주세요",
+                          "fontFamily": "Geist",
+                          "fontSize": 13
+                        },
+                        {
+                          "type": "text",
+                          "id": "v2ChangePasswordButton",
+                          "name": "V2 Change Password Button",
+                          "fill": "$v2-accent",
+                          "content": "비밀번호 변경",
+                          "fontFamily": "Geist",
+                          "fontSize": 14,
+                          "fontWeight": "650"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

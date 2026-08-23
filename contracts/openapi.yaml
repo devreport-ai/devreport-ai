@@ -64,6 +64,22 @@ components:
         password:
           type: string
           format: password
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: UTF-8 인코딩 기준 최대 72바이트
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: UTF-8 인코딩 기준 최대 72바이트
     TokenResponse:
       type: object
       required: [accessToken, tokenType, expiresIn]
@@ -596,6 +612,49 @@ paths:
                 type: string
         "403":
           description: 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/password:
+    post:
+      summary: 비밀번호 변경
+      description: 현재 비밀번호를 확인하고 새 비밀번호를 저장한 뒤 모든 Refresh Token을 폐기한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordChangeRequest"
+      responses:
+        "204":
+          description: 비밀번호 변경 성공. 기존 Refresh Token 쿠키도 삭제한다.
+          headers:
+            Set-Cookie:
+              description: 폐기된 Refresh Token 쿠키 (`Max-Age=0`).
+              schema:
+                type: string
+        "400":
+          description: 입력값 오류, 현재 비밀번호 불일치 또는 새 비밀번호가 기존 값과 동일함
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 미인증
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 사용자별 비밀번호 변경 요청 한도 초과 (RATE_LIMIT_EXCEEDED)
           content:
             application/json:
               schema:
