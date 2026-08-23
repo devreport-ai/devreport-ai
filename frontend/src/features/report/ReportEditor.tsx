@@ -45,8 +45,12 @@ export function ReportEditor({
   /** 생성 흐름(#36)에서 고른 템플릿. 저장된 값이 없을 때만 적용한다. */
   initialTemplateId?: string
 }) {
+  // 좁은 화면에서는 편집·미리보기를 탭으로 전환한다 (#130). 넓은 화면에서는 CSS 가 둘 다 보여준다.
+  const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [state, dispatch] = useReducer(editorReducer, report, (r): EditorState => {
-    const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null)
+    // 저장된 값도 생성 흐름 선택도 없으면 기본 템플릿을 쓴다.
+    // null 로 두면 화면엔 기본 템플릿이 보이는데 서버에는 저장되지 않아 PDF 가 409 로 막힌다.
+    const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null) ?? FALLBACK_TEMPLATE
     const hasSavedTemplate = r.templateId !== null
     return {
       document: r.document,
@@ -174,6 +178,8 @@ export function ReportEditor({
           const t = findTemplate(id)
           if (t) dispatch({ type: 'setTemplate', templateId: t.id, templateVersion: t.version })
         }}
+        mobileView={mobileView}
+        onMobileView={setMobileView}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
         onExport={() => {
@@ -189,7 +195,7 @@ export function ReportEditor({
         </p>
       )}
 
-      <div className="editor-workspace">
+      <div className={`editor-workspace editor-workspace--${mobileView}`}>
         <section className="editor-content-panel">
           <header className="editor-panel-header">
             <div>
@@ -361,6 +367,8 @@ function Toolbar({
   state,
   status,
   exportState,
+  mobileView,
+  onMobileView,
   onTemplate,
   onUndo,
   onRedo,
@@ -369,6 +377,8 @@ function Toolbar({
   state: EditorState
   status: SaveStatus
   exportState: { pending: boolean; waitingSave: boolean; error: string | null }
+  mobileView: 'edit' | 'preview'
+  onMobileView: (view: 'edit' | 'preview') => void
   onTemplate: (id: string) => void
   onUndo: () => void
   onRedo: () => void
@@ -380,6 +390,20 @@ function Toolbar({
       <Link to="/" aria-label="DevReport AI 홈">
         <BrandMark compact />
       </Link>
+      <div className="editor-tabs" role="tablist" aria-label="편집 화면 보기">
+        {(['edit', 'preview'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            role="tab"
+            aria-selected={mobileView === view}
+            onClick={() => onMobileView(view)}
+            className={`editor-tab${mobileView === view ? ' editor-tab--active' : ''}`}
+          >
+            {view === 'edit' ? '콘텐츠' : '미리보기'}
+          </button>
+        ))}
+      </div>
       <span className="editor-toolbar__spacer" />
       <span aria-live="polite" className="editor-save-status">
         <span

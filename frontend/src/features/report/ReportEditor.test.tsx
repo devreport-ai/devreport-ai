@@ -50,6 +50,35 @@ afterEach(() => {
 })
 
 describe('ReportEditor', () => {
+  it('저장된 템플릿이 없으면 기본 템플릿을 저장한다', async () => {
+    // 저장 안 하면 화면엔 기본 템플릿이 보이는데 서버는 null 이라 PDF 가 409 로 막힌다 (#130)
+    vi.useFakeTimers()
+    try {
+      renderWithProviders(<ReportEditor report={report()} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      const put = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(put).toBeDefined()
+      expect(String((put![1] as RequestInit).body)).toContain('"templateId":"default"')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('좁은 화면용 편집·미리보기 탭을 제공한다', () => {
+    renderWithProviders(<ReportEditor report={report()} />)
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.map((t) => t.textContent)).toEqual(['콘텐츠', '미리보기'])
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(tabs[1])
+    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('툴바 로고로 홈에 갈 수 있다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 
