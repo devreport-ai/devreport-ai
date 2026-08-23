@@ -17,6 +17,9 @@ GEMINI_MODEL_ALLOWLIST: tuple[str, ...] = (
     "gemini-3.5-pro",
 )
 GEMINI_PROVIDER = "GEMINI"
+ANTHROPIC_PROVIDER = "ANTHROPIC"
+# 사용자 Anthropic API Key로 선택할 수 있는 Claude 모델. 품질·비용 균형으로 Sonnet 하나만 허용한다.
+ANTHROPIC_MODEL_ALLOWLIST: tuple[str, ...] = ("claude-sonnet-5",)
 AppEnvironment = Literal["local", "test", "prod", "production"]
 
 
@@ -50,6 +53,11 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     # API Key 검증 호출(모델 목록 조회)의 타임아웃.
     credential_verify_timeout_seconds: float = Field(default=10.0, gt=0)
+    # Claude는 서버 키 없이 사용자 키로만 실행한다. allowlist 밖 모델은 거부한다.
+    anthropic_allowed_models: tuple[str, ...] = ANTHROPIC_MODEL_ALLOWLIST
+    # Claude 호출 1건의 타임아웃과 재시도. 문서 단계는 스트리밍이라 길게 잡아도 된다.
+    anthropic_timeout_seconds: float = Field(default=120.0, gt=0)
+    anthropic_max_retries: int = Field(default=2, ge=0, le=5)
     # Gemini 호출 1건의 타임아웃. 생성 1회는 (4 + 이미지 수)번 호출하므로
     # 호출당 값을 크게 잡으면 Backend 응답 타임아웃을 쉽게 넘긴다.
     gemini_timeout_seconds: float = Field(default=90.0, gt=0)
@@ -94,6 +102,10 @@ class Settings(BaseSettings):
         if self.generation_deadline_seconds < self.gemini_timeout_seconds:
             raise ValueError(
                 "GENERATION_DEADLINE_SECONDS는 GEMINI_TIMEOUT_SECONDS 이상이어야 합니다."
+            )
+        if self.generation_deadline_seconds < self.anthropic_timeout_seconds:
+            raise ValueError(
+                "GENERATION_DEADLINE_SECONDS는 ANTHROPIC_TIMEOUT_SECONDS 이상이어야 합니다."
             )
         return self
 

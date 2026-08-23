@@ -11,8 +11,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
-from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS, GeminiClient
-from app.clients.response_schema import response_schema_for
+from app.clients.structured_client import (
+    REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
+    StructuredGenerationClient,
+)
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import (
     image_analysis_prompt,
@@ -37,10 +39,10 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class ReportGenerationPipeline:
-    """Gemini 분석 결과를 단계적으로 축적해 검증된 ReportDocument로 조합한다."""
+    """provider 분석 결과를 단계적으로 축적해 검증된 ReportDocument로 조합한다."""
 
-    def __init__(self, gemini: GeminiClient, report_schema_path: Path) -> None:
-        self._gemini = gemini
+    def __init__(self, client: StructuredGenerationClient, report_schema_path: Path) -> None:
+        self._client = client
         self._document_validator = ReportDocumentValidator(report_schema_path)
 
     def generate(self, request: GenerationRequest, context: AnalysisContext) -> dict[str, Any]:
@@ -105,17 +107,17 @@ class ReportGenerationPipeline:
             except (ValidationError, ValueError) as exception:
                 raise AIServiceError(
                     ErrorCode.AI_INVALID_RESPONSE,
-                    "Gemini 분석 응답 형식이 올바르지 않습니다.",
+                    "AI 분석 응답 형식이 올바르지 않습니다.",
                 ) from exception
             if validate:
                 validate(result)
             return result
 
         with stage_log(stage):
-            result = self._gemini.generate_json(
+            result = self._client.generate_json(
                 prompt,
                 images,
-                response_schema=response_schema_for(model),
+                response_model=model,
                 response_validator=validate_response,
             )
         return cast(ModelT, result)
@@ -129,18 +131,18 @@ class ReportGenerationPipeline:
             except json.JSONDecodeError as exception:
                 raise AIServiceError(
                     ErrorCode.AI_INVALID_RESPONSE,
-                    "Gemini 보고서 응답 형식이 올바르지 않습니다.",
+                    "AI 보고서 응답 형식이 올바르지 않습니다.",
                 ) from exception
             if not isinstance(document, dict):
                 raise AIServiceError(
                     ErrorCode.AI_INVALID_RESPONSE,
-                    "Gemini 보고서 응답 형식이 올바르지 않습니다.",
+                    "AI 보고서 응답 형식이 올바르지 않습니다.",
                 )
             return self._document_validator.validate(document, request.metadata, image_ids)
 
         with stage_log("document"):
             # 계약 스키마는 블록 oneOf를 쓰므로 structured output 대신 프롬프트로 형식을 고정한다.
-            result = self._gemini.generate_json(
+            result = self._client.generate_json(
                 prompt,
                 max_output_tokens=REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
                 response_validator=validate_response,

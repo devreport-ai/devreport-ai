@@ -29,7 +29,7 @@ class FakeGemini:
         self.responses = responses
         self.calls: list[tuple[str, tuple[ImageEvidence, ...]]] = []
         self.output_token_limits: list[int | None] = []
-        self.response_schemas: list[object] = []
+        self.response_models: list[object] = []
 
     def generate_json(
         self,
@@ -37,12 +37,12 @@ class FakeGemini:
         images: tuple[ImageEvidence, ...] = (),
         *,
         max_output_tokens: int | None = None,
-        response_schema: object = None,
+        response_model: object = None,
         response_validator: object = None,
     ) -> object:
         self.calls.append((prompt, images))
         self.output_token_limits.append(max_output_tokens)
-        self.response_schemas.append(response_schema)
+        self.response_models.append(response_model)
         response = json.dumps(self.responses.pop(0), ensure_ascii=False)
         if response_validator is None:
             return response
@@ -170,11 +170,10 @@ def test_uses_structured_output_schema_for_analysis_stages_only():
 
     ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
 
-    analysis_schemas = gemini.response_schemas[:-1]
-    assert all(schema is not None for schema in analysis_schemas)
+    analysis_models = gemini.response_models[:-1]
+    assert all(model is not None for model in analysis_models)
     # 계약 스키마는 블록 oneOf를 쓰므로 최종 문서 단계는 프롬프트로만 형식을 고정한다.
-    assert gemini.response_schemas[-1] is None
-    assert "pattern" not in json.dumps(analysis_schemas)
+    assert gemini.response_models[-1] is None
 
 
 def test_tells_the_model_which_files_were_omitted_from_the_bundle():
