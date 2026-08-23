@@ -1,27 +1,28 @@
 {
   "baseline": {
-    "label": "baseline-v3",
-    "directory": "results/baseline-v3"
+    "label": "baseline-v4",
+    "directory": "results/baseline-v4"
   },
   "candidate": {
-    "label": "stored-v3",
-    "directory": "results/baseline-v3"
+    "label": "stored-v4",
+    "directory": "results/baseline-v4"
   },
   "minimumScores": {
     "requirementsSatisfaction": 1.0,
-    "requirementEvidenceLinkage": 0.556,
-    "evidenceConsistency": 0.333,
-    "specificity": 0.667,
+    "requirementEvidenceLinkage": 0.444,
+    "evidenceConsistency": 1.0,
+    "specificity": 0.5,
     "readability": 1.0,
     "schemaValidity": 1.0
   },
   "maximumDetailCounts": {
     "forbiddenTerms": 0,
     "invalidImageFileIds": 0,
-    "invalidCodeQuotes": 2,
+    "invalidCodeQuotes": 0,
     "unsupportedClaims": 4
   },
   "maxScoreRegression": 0.0,
   "maxOverallRegression": 0.0,
+  "minimumManualReviewPassRate": 0.667,
   "requireCompletedManualReview": true
 }

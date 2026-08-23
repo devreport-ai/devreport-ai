@@ -134,8 +134,8 @@ Gemini 호출은 PDF가 있으면 요구사항 단계에 PDF를 한 번 첨부�
 ```bash
 uv run python -m app.evaluation \
   --fixtures evals/fixtures \
-  --run baseline-v3=evals/results/baseline-v3 \
-  --run evidence-v4=evals/results/evidence-v4
+  --run zero-shot-v3=evals/results/zero-shot-v3 \
+  --run baseline-v4=evals/results/baseline-v4
 ```
 
 결과 파일은 ReportDocument 원문 또는 다음 envelope을 사용할 수 있다.
@@ -156,7 +156,8 @@ uv run python -m app.evaluation_runner --output evals/results/candidate
 
 각 결과의 `manualReview.checks`를 사람이 검토해 `reviewedBy`, `reviewedAt`, `passed`, `notes`를
 기록한다. 평가는 요구사항 키워드뿐 아니라 같은 섹션 안의 구현 근거 연결, 미확인 요구사항의
-단정, 원문에 없는 코드 인용, 허용 이미지 참조, 구체성, 가독성과 Schema 유효성을 출력한다.
+단정, 원문에 없는 코드 인용, 허용 이미지 참조, 구체성, 가독성, Schema 유효성과 수동 통과율을
+출력한다.
 
 저장 결과 회귀 게이트는 다음 명령으로 실행한다. 품질 실패는 Ruff·pytest와 분리된 CI 단계에
 표시된다.

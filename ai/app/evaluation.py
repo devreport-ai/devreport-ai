@@ -325,6 +325,8 @@ def evaluate_runs(
             }
         valid_results = [result for result in fixture_results.values() if "scores" in result]
         score_names = {name for result in valid_results for name in result["scores"]}
+        manual_passed = sum(result["manualReview"]["passed"] for result in valid_results)
+        manual_total = sum(result["manualReview"]["total"] for result in valid_results)
         runs[label] = {
             "metadata": next((result["run"] for result in valid_results if result.get("run")), {}),
             "fixtures": fixture_results,
@@ -343,6 +345,7 @@ def evaluate_runs(
             }
             if valid_results
             else {},
+            "manualReviewPassRate": round(fraction(manual_passed, manual_total), 3),
         }
     return {"fixtures": sorted(fixtures), "runs": runs}
 
@@ -403,6 +406,13 @@ def evaluate_gate(fixture_dir: Path, schema_path: Path, config_path: Path) -> di
         actual = candidate["scoreAverages"].get(name, 0.0)
         if actual < minimum:
             failures.append(f"{name}: 최소 점수 {minimum} 미달 ({actual})")
+
+    minimum_manual_rate = config.get("minimumManualReviewPassRate", 0.0)
+    if candidate["manualReviewPassRate"] < minimum_manual_rate:
+        failures.append(
+            "manualReviewPassRate: "
+            f"최소 통과율 {minimum_manual_rate} 미달 ({candidate['manualReviewPassRate']})"
+        )
 
     max_regression = config.get("maxScoreRegression", 0.0)
     for name, baseline_score in baseline["scoreAverages"].items():
