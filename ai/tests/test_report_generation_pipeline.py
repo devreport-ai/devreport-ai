@@ -79,10 +79,18 @@ def responses(
     return [
         {
             "summary": "과제 요구사항을 확인했다.",
+            "documentRoles": [
+                {
+                    "fileId": str(DOCUMENT_ID),
+                    "role": "assignment",
+                    "rationale": "과제 요구사항을 설명하는 문서다.",
+                }
+            ],
             "requirements": [
                 {
                     "id": "req-api",
                     "description": "API를 구현한다.",
+                    "acceptanceCriteria": ["API 요청이 동작한다."],
                     "evidenceFileIds": [str(DOCUMENT_ID)],
                 }
             ],
@@ -93,6 +101,7 @@ def responses(
                 {
                     "title": "애플리케이션",
                     "description": "App 클래스가 존재한다.",
+                    "implementationEvidence": ["App 클래스가 소스에 선언되어 있다."],
                     "evidenceFileIds": [str(SOURCE_ID)],
                 }
             ],
@@ -156,6 +165,18 @@ def test_rejects_plan_that_references_a_file_outside_the_generation_bundle():
     assert len(gemini.calls) == 4
 
 
+def test_rejects_document_role_that_references_a_file_outside_documents():
+    staged_responses = responses()
+    staged_responses[0]["documentRoles"][0]["fileId"] = UNKNOWN_ID
+    gemini = FakeGemini(staged_responses)
+
+    with pytest.raises(AIServiceError) as raised:
+        ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+    assert len(gemini.calls) == 1
+
+
 def test_overwrites_document_metadata_with_the_requested_metadata():
     # metadata는 요청에서 확정된 값이므로 모델이 바꿔 써도 생성이 실패하지 않는다.
     gemini = FakeGemini(responses(title="다른 제목"))
@@ -210,5 +231,7 @@ def test_report_document_prompt_uses_contract_block_field_names():
     )
 
     assert '"type":"paragraph","content":"string"' in prompt
+    assert "프롬프트 버전: report-generation-v3" in prompt
+    assert "implementationEvidence" in prompt
     assert "paragraph와 callout의 본문 필드는 text가 아니라 content다." in prompt
     assert "선택 metadata 필드(author, course, date)는 null로 쓰지 말고 생략한다." in prompt

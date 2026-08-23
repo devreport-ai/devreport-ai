@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+DocumentRole = Literal["assignment", "reference", "project-description", "other"]
+
+
+class DocumentClassification(BaseModel):
+    """문서의 역할을 구분해 요구사항 추출 범위를 고정한다."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    file_id: UUID = Field(alias="fileId")
+    role: DocumentRole
+    rationale: str = Field(min_length=1)
 
 
 class Requirement(BaseModel):
@@ -13,6 +26,7 @@ class Requirement(BaseModel):
     id: str = Field(pattern=r"^req-[A-Za-z0-9_-]{1,60}$")
     description: str = Field(min_length=1)
     evidence_file_ids: list[UUID] = Field(default_factory=list, alias="evidenceFileIds")
+    acceptance_criteria: list[str] = Field(min_length=1, alias="acceptanceCriteria")
 
 
 class RequirementAnalysis(BaseModel):
@@ -21,6 +35,7 @@ class RequirementAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     summary: str = Field(min_length=1)
+    document_roles: list[DocumentClassification] = Field(alias="documentRoles")
     requirements: list[Requirement] = Field(default_factory=list)
 
 
@@ -31,6 +46,7 @@ class SourceFinding(BaseModel):
 
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
+    implementation_evidence: list[str] = Field(min_length=1, alias="implementationEvidence")
     evidence_file_ids: list[UUID] = Field(default_factory=list, alias="evidenceFileIds")
 
 
