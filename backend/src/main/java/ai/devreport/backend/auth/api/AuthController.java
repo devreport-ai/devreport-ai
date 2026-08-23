@@ -1,14 +1,17 @@
 package ai.devreport.backend.auth.api;
 
+import ai.devreport.backend.auth.api.request.LoginRequest;
+import ai.devreport.backend.auth.api.request.PasswordChangeRequest;
+import ai.devreport.backend.auth.api.request.SignupRequest;
+import ai.devreport.backend.auth.api.response.TokenResponse;
+import ai.devreport.backend.auth.api.response.UserResponse;
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.auth.application.AuthService;
-import ai.devreport.backend.auth.domain.User;
 import ai.devreport.backend.usage.application.RateLimitService;
 
 import java.net.URI;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -18,15 +21,12 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,41 +70,38 @@ class AuthController {
 	}
 
 	@PostMapping("/signup")
-	@ResponseStatus(HttpStatus.CREATED)
-	UserResponse signup(HttpServletRequest servletRequest, @Valid @RequestBody SignupRequest request) {
+	ResponseEntity<UserResponse> signup(HttpServletRequest servletRequest, @Valid @RequestBody SignupRequest request) {
 		rateLimits.checkSignup(clientIp(servletRequest));
-		return UserResponse.from(authService.signup(request.email(), request.password(), request.name(),
-			request.privacyPolicyVersion(), request.termsOfServiceVersion()));
+		UserResponse response = UserResponse.from(authService.signup(request.email(), request.password(),
+			request.name(), request.privacyPolicyVersion(), request.termsOfServiceVersion()));
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
 	@PostMapping("/login")
-	TokenResponse login(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
-		@Valid @RequestBody LoginRequest request) {
+	ResponseEntity<TokenResponse> login(HttpServletRequest servletRequest, @Valid @RequestBody LoginRequest request) {
 		validateOrigin(servletRequest);
 		rateLimits.checkLogin(clientIp(servletRequest));
 		AuthService.TokenPair tokenPair = authService.login(request.email(), request.password());
-		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie(tokenPair.refreshToken(), refreshTokenTtl));
-		return TokenResponse.from(tokenPair);
+		return tokenResponse(tokenPair);
 	}
 
 	@PostMapping("/refresh")
-	TokenResponse refresh(HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
+	ResponseEntity<TokenResponse> refresh(HttpServletRequest servletRequest) {
 		validateOrigin(servletRequest);
 		rateLimits.checkRefresh(clientIp(servletRequest));
 		AuthService.TokenPair tokenPair = authService.refresh(refreshToken(servletRequest));
-		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie(tokenPair.refreshToken(), refreshTokenTtl));
-		return TokenResponse.from(tokenPair);
+		return tokenResponse(tokenPair);
 	}
 
 	@PostMapping("/logout")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	void logout(HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
+	ResponseEntity<Void> logout(HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
 		validateOrigin(servletRequest);
 		try {
 			authService.logout(refreshToken(servletRequest));
 		} finally {
 			servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 		}
+		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping("/password")
@@ -119,15 +116,21 @@ class AuthController {
 	}
 
 	@GetMapping("/me")
-	UserResponse me(@AuthenticationPrincipal Jwt jwt) {
+	ResponseEntity<UserResponse> me(@AuthenticationPrincipal Jwt jwt) {
 		if (jwt == null || jwt.getSubject() == null) {
 			throw unauthorized();
 		}
 		try {
-			return UserResponse.from(authService.getUser(UUID.fromString(jwt.getSubject())));
+			return ResponseEntity.ok(UserResponse.from(authService.getUser(UUID.fromString(jwt.getSubject()))));
 		} catch (IllegalArgumentException exception) {
 			throw unauthorized();
 		}
+	}
+
+	private ResponseEntity<TokenResponse> tokenResponse(AuthService.TokenPair tokenPair) {
+		return ResponseEntity.ok()
+			.header(HttpHeaders.SET_COOKIE, refreshTokenCookie(tokenPair.refreshToken(), refreshTokenTtl))
+			.body(TokenResponse.from(tokenPair));
 	}
 
 	private static AuthException unauthorized() {
@@ -232,52 +235,6 @@ class AuthController {
 		}
 		if ("none".equalsIgnoreCase(refreshTokenCookieSameSite) && !refreshTokenCookieSecure) {
 			throw new IllegalStateException("SameSite=None 쿠키는 Secure여야 합니다.");
-		}
-	}
-
-	record SignupRequest(
-		@NotBlank @Email @Size(max = 320) String email,
-		@NotBlank @Size(min = 8, max = 72) String password,
-		@NotBlank @Size(max = 100) String name,
-		@NotBlank @Size(max = 50) String privacyPolicyVersion,
-		@NotBlank @Size(max = 50) String termsOfServiceVersion
-	) {
-		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
-		public boolean isPasswordWithinByteLimit() {
-			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
-		}
-	}
-
-	record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
-		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
-		public boolean isPasswordWithinByteLimit() {
-			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
-		}
-	}
-
-	record PasswordChangeRequest(
-		@NotBlank @Size(min = 8, max = 72) String currentPassword,
-		@NotBlank @Size(min = 8, max = 72) String newPassword
-	) {
-		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
-		public boolean isPasswordWithinByteLimit() {
-			return withinByteLimit(currentPassword) && withinByteLimit(newPassword);
-		}
-
-		private static boolean withinByteLimit(String password) {
-			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
-		}
-	}
-
-	record TokenResponse(String accessToken, String tokenType, long expiresIn) {
-		static TokenResponse from(AuthService.TokenPair pair) {
-			return new TokenResponse(pair.accessToken(), "Bearer", pair.expiresIn());
-		}
-	}
-
-	record UserResponse(UUID id, String email, String name, Instant createdAt) {
-		static UserResponse from(User user) {
-			return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getCreatedAt());
 		}
 	}
 }
