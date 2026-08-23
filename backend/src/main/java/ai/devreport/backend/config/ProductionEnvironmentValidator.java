@@ -17,6 +17,9 @@ public class ProductionEnvironmentValidator implements EnvironmentPostProcessor 
 		requireConfigured(environment, "JWT_SECRET");
 		requireConfigured(environment, "AI_INTERNAL_TOKEN");
 		requireConfigured(environment, "EXPORT_PRINT_URL");
+		requireConfigured(environment, "PUBLIC_APP_URL");
+		requireConfigured(environment, "PASSWORD_RESET_FROM");
+		requireConfigured(environment, "RESEND_API_KEY");
 		if (environment.getProperty("ai.service.mock", Boolean.class, false)) {
 			throw new IllegalStateException("운영 환경에서는 AI_SERVICE_MOCK=true를 사용할 수 없습니다.");
 		}

@@ -82,6 +82,12 @@ public class RateLimitService {
 	}
 
 	@Transactional
+	public void checkPasswordReset(String remoteAddress, String emailHash) {
+		check("password-reset", "ip:" + scope(remoteAddress), properties.getRateLimit().getPasswordReset());
+		check("password-reset", "email:" + emailHash, properties.getRateLimit().getPasswordReset());
+	}
+
+	@Transactional
 	public void checkUpload(UUID userId) {
 		check("upload", "user:" + userId, properties.getRateLimit().getUpload());
 	}

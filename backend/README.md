@@ -63,6 +63,12 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `AUTH_REFRESH_TOKEN_COOKIE_PATH` | `/api/auth` |
 | `AUTH_REFRESH_TOKEN_COOKIE_SECURE` | `false` (prod 프로필에서는 `true`) |
 | `AUTH_REFRESH_TOKEN_COOKIE_SAME_SITE` | `Lax` (`Strict`, `Lax`, `None`) |
+| `PUBLIC_APP_URL` | `http://localhost:3000` (재설정 링크의 공개 Frontend URL) |
+| `PASSWORD_RESET_FROM` | 없음 (Resend에서 인증한 도메인의 발신 주소) |
+| `PASSWORD_RESET_TOKEN_TTL` | `30m` |
+| `RESEND_API_KEY` | 없음 (운영에서 필수) |
+| `RESEND_CONNECT_TIMEOUT` | `3s` |
+| `RESEND_RESPONSE_TIMEOUT` | `10s` |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` (운영 동일 Origin이면 빈 값, cross-origin일 때만 allowlist) |
 | `USAGE_LIMITS_DAY_ZONE` | `Asia/Seoul` |
 | `USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES` | `524288000` (500 MiB) |
@@ -75,6 +81,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `USAGE_LIMITS_RATE_SIGNUP` | `10` / window / IP |
 | `USAGE_LIMITS_RATE_LOGIN` | `20` / window / IP |
 | `USAGE_LIMITS_RATE_REFRESH` | `30` / window / IP |
+| `USAGE_LIMITS_RATE_PASSWORD_RESET` | `5` / window / IP 및 이메일 해시 |
 | `USAGE_LIMITS_RATE_PASSWORD_CHANGE` | `5` / window / user |
 | `USAGE_LIMITS_RATE_UPLOAD` | `30` / window / user |
 | `USAGE_LIMITS_RATE_GENERATION` | `10` / window / user |

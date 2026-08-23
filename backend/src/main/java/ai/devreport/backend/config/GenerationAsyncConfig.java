@@ -30,4 +30,15 @@ class GenerationAsyncConfig {
 		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
 		return executor;
 	}
+
+	@Bean("passwordResetEmailExecutor")
+	ThreadPoolTaskExecutor passwordResetEmailExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(1);
+		executor.setMaxPoolSize(2);
+		executor.setQueueCapacity(100);
+		executor.setThreadNamePrefix("password-reset-email-");
+		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+		return executor;
+	}
 }

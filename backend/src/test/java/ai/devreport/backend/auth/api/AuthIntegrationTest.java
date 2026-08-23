@@ -4,14 +4,21 @@ import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthService;
 import ai.devreport.backend.auth.domain.PolicyConsent;
 import ai.devreport.backend.auth.domain.PolicyVersions;
+import ai.devreport.backend.auth.domain.PasswordResetToken;
 import ai.devreport.backend.auth.domain.RefreshToken;
 import ai.devreport.backend.auth.domain.User;
 import ai.devreport.backend.auth.infrastructure.PolicyConsentRepository;
+import ai.devreport.backend.auth.infrastructure.PasswordResetEmailSender;
+import ai.devreport.backend.auth.infrastructure.PasswordResetTokenRepository;
 import ai.devreport.backend.auth.infrastructure.RefreshTokenRepository;
 import ai.devreport.backend.auth.infrastructure.UserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -47,6 +54,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.mockito.ArgumentCaptor;
 
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:h2:mem:auth;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
@@ -69,6 +78,12 @@ class AuthIntegrationTest {
 
 	@Autowired
 	RefreshTokenRepository refreshTokens;
+
+	@Autowired
+	PasswordResetTokenRepository passwordResetTokens;
+
+	@MockitoBean
+	PasswordResetEmailSender passwordResetEmailSender;
 
 	@Autowired
 	PolicyConsentRepository policyConsents;
@@ -462,6 +477,104 @@ class AuthIntegrationTest {
 				.content("""
 					{"currentPassword":"wrong-password","newPassword":"new-password123"}
 					"""))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+	}
+
+	@Test
+	void passwordResetUsesLatestTokenOnceAndRevokesRefreshTokens() throws Exception {
+		reset(passwordResetEmailSender);
+		String email = "password-reset@example.com";
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"%s","password":"password123","name":"재설정 사용자",
+					"privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
+			.andExpect(status().isCreated());
+		MvcResult login = login(email, "password123");
+		Cookie refreshCookie = login.getResponse().getCookie(REFRESH_TOKEN_COOKIE);
+
+		String acceptedMessage = mvc.perform(post("/api/auth/password-reset/request")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"%s\"}".formatted(email)))
+			.andExpect(status().isAccepted())
+			.andReturn().getResponse().getContentAsString();
+		String missingMessage = mvc.perform(post("/api/auth/password-reset/request")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"missing-reset@example.com\"}"))
+			.andExpect(status().isAccepted())
+			.andReturn().getResponse().getContentAsString();
+		assertThat(missingMessage).isEqualTo(acceptedMessage);
+
+		mvc.perform(post("/api/auth/password-reset/request")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"%s\"}".formatted(email)))
+			.andExpect(status().isAccepted());
+		ArgumentCaptor<String> tokens = ArgumentCaptor.forClass(String.class);
+		verify(passwordResetEmailSender, times(2)).send(eq(email), tokens.capture());
+		String firstToken = tokens.getAllValues().get(0);
+		String latestToken = tokens.getAllValues().get(1);
+		assertThat(passwordResetTokens.findAll())
+			.extracting(PasswordResetToken::getTokenHash)
+			.contains(AuthService.hash(firstToken), AuthService.hash(latestToken))
+			.doesNotContain(firstToken, latestToken);
+
+		mvc.perform(post("/api/auth/password-reset/confirm")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"token\":\"%s\",\"newPassword\":\"new-password123\"}".formatted(firstToken)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+		mvc.perform(post("/api/auth/password-reset/confirm")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"token\":\"%s\",\"newPassword\":\"new-password123\"}".formatted(latestToken)))
+			.andExpect(status().isNoContent())
+			.andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Max-Age=0")));
+
+		login(email, "password123", status().isUnauthorized());
+		login(email, "new-password123");
+		mvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
+			.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/auth/password-reset/confirm")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"token\":\"%s\",\"newPassword\":\"another-password123\"}".formatted(latestToken)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+	}
+
+	@Test
+	void rejectsExpiredForgedAndRateLimitedPasswordResetRequests() throws Exception {
+		String email = "expired-reset@example.com";
+		User user = authService.signup(email, "password123", "만료 사용자",
+			PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE);
+		passwordResetTokens.save(new PasswordResetToken(user, AuthService.hash("expired-token"),
+			Instant.now().minusSeconds(1)));
+
+		for (String token : new String[] {"expired-token", "forged-token"}) {
+			mvc.perform(post("/api/auth/password-reset/confirm")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"token\":\"%s\",\"newPassword\":\"new-password123\"}".formatted(token)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+		}
+
+		for (int attempt = 0; attempt < 5; attempt++) {
+			mvc.perform(post("/api/auth/password-reset/request")
+					.with(request -> {
+						request.setRemoteAddr("198.51.100.119");
+						return request;
+					})
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"rate-%d@example.com\"}".formatted(attempt)))
+				.andExpect(status().isAccepted());
+		}
+		mvc.perform(post("/api/auth/password-reset/request")
+				.with(request -> {
+					request.setRemoteAddr("198.51.100.119");
+					return request;
+				})
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"rate-final@example.com\"}"))
 			.andExpect(status().isTooManyRequests())
 			.andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
 	}

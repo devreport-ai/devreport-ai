@@ -2,12 +2,16 @@ package ai.devreport.backend.auth.api;
 
 import ai.devreport.backend.auth.api.request.LoginRequest;
 import ai.devreport.backend.auth.api.request.PasswordChangeRequest;
+import ai.devreport.backend.auth.api.request.PasswordResetConfirmRequest;
+import ai.devreport.backend.auth.api.request.PasswordResetRequest;
 import ai.devreport.backend.auth.api.request.SignupRequest;
+import ai.devreport.backend.auth.api.response.PasswordResetRequestedResponse;
 import ai.devreport.backend.auth.api.response.TokenResponse;
 import ai.devreport.backend.auth.api.response.UserResponse;
 import ai.devreport.backend.auth.application.AuthException;
 import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.auth.application.AuthService;
+import ai.devreport.backend.auth.infrastructure.PasswordResetEmailSender;
 import ai.devreport.backend.usage.application.RateLimitService;
 
 import java.net.URI;
@@ -33,15 +37,22 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController {
+	private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+	private static final PasswordResetRequestedResponse PASSWORD_RESET_REQUESTED =
+		new PasswordResetRequestedResponse("가입된 이메일이라면 비밀번호 재설정 링크를 전송했습니다.");
 
 	private final AuthService authService;
+	private final PasswordResetEmailSender passwordResetEmailSender;
 	private final RateLimitService rateLimits;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final String refreshTokenCookieName;
@@ -50,7 +61,8 @@ class AuthController {
 	private final String refreshTokenCookieSameSite;
 	private final Duration refreshTokenTtl;
 
-	AuthController(AuthService authService, RateLimitService rateLimits,
+	AuthController(AuthService authService, PasswordResetEmailSender passwordResetEmailSender,
+		RateLimitService rateLimits,
 		CorsConfigurationSource corsConfigurationSource,
 		@Value("${auth.refresh-token-cookie.name}") String refreshTokenCookieName,
 		@Value("${auth.refresh-token-cookie.path}") String refreshTokenCookiePath,
@@ -58,6 +70,7 @@ class AuthController {
 		@Value("${auth.refresh-token-cookie.same-site}") String refreshTokenCookieSameSite,
 		@Value("${auth.refresh-token-ttl}") Duration refreshTokenTtl) {
 		this.authService = authService;
+		this.passwordResetEmailSender = passwordResetEmailSender;
 		this.rateLimits = rateLimits;
 		this.corsConfigurationSource = corsConfigurationSource;
 		this.refreshTokenCookieName = refreshTokenCookieName;
@@ -104,12 +117,36 @@ class AuthController {
 	}
 
 	@PostMapping("/password")
-	ResponseEntity<Void> changePassword(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void changePassword(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
 		@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordChangeRequest request) {
 		validateOrigin(servletRequest);
 		UUID userId = AuthenticatedUser.id(jwt);
 		rateLimits.checkPasswordChange(userId);
 		authService.changePassword(userId, request.currentPassword(), request.newPassword());
+		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
+	}
+
+	@PostMapping("/password-reset/request")
+	ResponseEntity<PasswordResetRequestedResponse> requestPasswordReset(HttpServletRequest servletRequest,
+		@Valid @RequestBody PasswordResetRequest request) {
+		validateOrigin(servletRequest);
+		rateLimits.checkPasswordReset(clientIp(servletRequest), AuthService.hash(AuthService.normalizeEmail(request.email())));
+		authService.createPasswordReset(request.email()).ifPresent(mail -> {
+			try {
+				passwordResetEmailSender.send(mail.email(), mail.token());
+			} catch (RuntimeException exception) {
+				LOGGER.error("Password reset email scheduling failed", exception);
+			}
+		});
+		return ResponseEntity.accepted().body(PASSWORD_RESET_REQUESTED);
+	}
+
+	@PostMapping("/password-reset/confirm")
+	ResponseEntity<Void> resetPassword(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
+		@Valid @RequestBody PasswordResetConfirmRequest request) {
+		validateOrigin(servletRequest);
+		authService.resetPassword(request.token(), request.newPassword());
 		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 		return ResponseEntity.noContent().build();
 	}
