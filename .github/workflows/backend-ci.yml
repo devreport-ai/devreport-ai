@@ -2,12 +2,12 @@ name: Backend CI
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
   push:
-    branches: [dev]
+    branches: [dev, main]
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
@@ -22,6 +22,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # apt 미러가 멈추면 기본 6시간까지 매달린다. 빨리 실패하게 만든다.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -34,5 +36,21 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4.4.2
-      - run: ./gradlew installChromium
+        with:
+          # 기본값은 기본 브랜치에서만 캐시를 저장한다. 통합 브랜치인 dev 에서도
+          # 저장해야 dev 에서 갈라진 PR 들이 Gradle 캐시를 읽을 수 있다.
+          cache-read-only: ${{ github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/main' }}
+      # PDF 출력 테스트가 실제 Chromium 을 띄우므로 브라우저가 필요하다.
+      # 캐시가 없으면 150MB 가 넘는 브라우저를 매 실행마다 새로 받는다.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          # Playwright 버전은 build.gradle 에 고정되어 있다.
+          key: playwright-${{ runner.os }}-${{ hashFiles('backend/build.gradle') }}
+          # build.gradle 이 다른 이유로 바뀌어도 이전 브라우저를 재사용한다.
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      # 러너 이미지에 Chromium 실행 라이브러리가 이미 포함되어 있다.
+      # --with-deps 의 apt-get 은 미러 장애 시 그대로 멈추므로 CI 에서는 건너뛴다.
+      - run: ./gradlew installChromium -PskipBrowserDeps
       - run: ./gradlew build

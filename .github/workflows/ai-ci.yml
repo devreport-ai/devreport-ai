@@ -1,0 +1,47 @@
+# AI Service 자동 검사 워크플로.
+#
+# backend-ci.yml, frontend-ci.yml 의 구조를 그대로 따랐다. 세 서비스의 검사 방식이
+# 달라지면 문제가 생겼을 때 비교가 어려워지기 때문이다.
+name: AI CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "ai/**"
+      - "contracts/**"
+      - ".github/workflows/ai-ci.yml"
+  push:
+    branches: [dev, main]
+    paths:
+      - "ai/**"
+      - "contracts/**"
+      - ".github/workflows/ai-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.7"
+          enable-cache: true
+      # uv.lock 에 고정된 버전으로만 설치해 CI 와 운영 환경을 일치시킨다.
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      # contracts 를 참조하므로 저장소 루트 기준으로 실행해야 한다.
+      - run: uv run pytest -q
