@@ -50,6 +50,61 @@ afterEach(() => {
 })
 
 describe('ReportEditor', () => {
+  it('저장된 템플릿이 없으면 기본 템플릿을 저장한다', async () => {
+    // 저장 안 하면 화면엔 기본 템플릿이 보이는데 서버는 null 이라 PDF 가 409 로 막힌다 (#130)
+    vi.useFakeTimers()
+    try {
+      renderWithProviders(<ReportEditor report={report()} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      const put = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(put).toBeDefined()
+      expect(String((put![1] as RequestInit).body)).toContain('"templateId":"default"')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('등록되지 않은 템플릿 id 는 기본값으로 덮어쓰지 않는다', async () => {
+    // 목록에서 빠진 템플릿이라도 사용자가 고른 값이므로 자동 저장이 바꾸면 안 된다
+    vi.useFakeTimers()
+    try {
+      const saved = { ...report(), templateId: 'unknown-template', templateVersion: 9 }
+      renderWithProviders(<ReportEditor report={saved} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      const put = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(put).toBeUndefined()
+      // 선택 상자가 빈 칸이 되지 않아야 한다 (리뷰 지적)
+      const select = screen.getByLabelText('템플릿') as HTMLSelectElement
+      expect(select.value).toBe('unknown-template')
+      expect(screen.getByRole('option', { name: '알 수 없는 템플릿' })).toBeDisabled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('좁은 화면용 편집·미리보기 탭을 제공한다', () => {
+    const { container } = renderWithProviders(<ReportEditor report={report()} />)
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.map((t) => t.textContent)).toEqual(['콘텐츠', '미리보기'])
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(tabs[1])
+    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true')
+    // 좁은 화면에서 어느 패널을 보여줄지는 이 클래스가 정한다 (CSS 미디어쿼리와 짝)
+    expect(container.querySelector('.editor-workspace--preview')).not.toBeNull()
+    expect(container.querySelector('.editor-workspace--edit')).toBeNull()
+  })
+
   it('툴바 로고로 홈에 갈 수 있다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 

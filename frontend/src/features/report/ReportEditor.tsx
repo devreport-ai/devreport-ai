@@ -45,9 +45,16 @@ export function ReportEditor({
   /** 생성 흐름(#36)에서 고른 템플릿. 저장된 값이 없을 때만 적용한다. */
   initialTemplateId?: string
 }) {
+  // 좁은 화면에서는 편집·미리보기를 탭으로 전환한다 (#130). 넓은 화면에서는 CSS 가 둘 다 보여준다.
+  const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [state, dispatch] = useReducer(editorReducer, report, (r): EditorState => {
-    const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null)
     const hasSavedTemplate = r.templateId !== null
+    // 저장된 값도 생성 흐름 선택도 없으면 기본 템플릿을 쓴다.
+    // null 로 두면 화면엔 기본 템플릿이 보이는데 서버에는 저장되지 않아 PDF 가 409 로 막힌다.
+    // 저장된 id 가 목록에 없을 때는 건드리지 않는다 — 임의로 덮어쓰면 사용자 선택이 사라진다.
+    const chosen =
+      findTemplate(r.templateId ?? initialTemplateId ?? null) ??
+      (hasSavedTemplate ? null : FALLBACK_TEMPLATE)
     return {
       document: r.document,
       templateId: chosen?.id ?? r.templateId,
@@ -174,6 +181,8 @@ export function ReportEditor({
           const t = findTemplate(id)
           if (t) dispatch({ type: 'setTemplate', templateId: t.id, templateVersion: t.version })
         }}
+        mobileView={mobileView}
+        onMobileView={setMobileView}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
         onExport={() => {
@@ -189,8 +198,13 @@ export function ReportEditor({
         </p>
       )}
 
-      <div className="editor-workspace">
-        <section className="editor-content-panel">
+      <div className={`editor-workspace editor-workspace--${mobileView}`}>
+        <section
+          className="editor-content-panel"
+          id="editor-panel-edit"
+          role="tabpanel"
+          aria-labelledby="editor-tab-edit"
+        >
           <header className="editor-panel-header">
             <div>
               <h1>보고서 콘텐츠</h1>
@@ -324,7 +338,12 @@ export function ReportEditor({
           </DndContext>
         </section>
 
-        <section className="editor-preview-panel">
+        <section
+          className="editor-preview-panel"
+          id="editor-panel-preview"
+          role="tabpanel"
+          aria-labelledby="editor-tab-preview"
+        >
           <header className="editor-preview-header">
             <h2>실시간 미리보기</h2>
           </header>
@@ -361,6 +380,8 @@ function Toolbar({
   state,
   status,
   exportState,
+  mobileView,
+  onMobileView,
   onTemplate,
   onUndo,
   onRedo,
@@ -369,6 +390,8 @@ function Toolbar({
   state: EditorState
   status: SaveStatus
   exportState: { pending: boolean; waitingSave: boolean; error: string | null }
+  mobileView: 'edit' | 'preview'
+  onMobileView: (view: 'edit' | 'preview') => void
   onTemplate: (id: string) => void
   onUndo: () => void
   onRedo: () => void
@@ -380,6 +403,22 @@ function Toolbar({
       <Link to="/" aria-label="DevReport AI 홈">
         <BrandMark compact />
       </Link>
+      <div className="editor-tabs" role="tablist" aria-label="편집 화면 보기">
+        {(['edit', 'preview'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            role="tab"
+            id={`editor-tab-${view}`}
+            aria-selected={mobileView === view}
+            aria-controls={`editor-panel-${view}`}
+            onClick={() => onMobileView(view)}
+            className={`editor-tab${mobileView === view ? ' editor-tab--active' : ''}`}
+          >
+            {view === 'edit' ? '콘텐츠' : '미리보기'}
+          </button>
+        ))}
+      </div>
       <span className="editor-toolbar__spacer" />
       <span aria-live="polite" className="editor-save-status">
         <span
@@ -402,6 +441,12 @@ function Toolbar({
           onChange={(e) => onTemplate(e.target.value)}
           aria-label="템플릿"
         >
+          {/* 목록에 없는 저장값이면 빈 칸으로 보이므로 자리 옵션을 둔다 (리뷰 지적) */}
+          {state.templateId !== null && findTemplate(state.templateId) === null && (
+            <option value={state.templateId} disabled>
+              알 수 없는 템플릿
+            </option>
+          )}
           {REPORT_TEMPLATES.map((t) => (
             <option key={t.id} value={t.id}>
               {t.galleryName} · HTML
