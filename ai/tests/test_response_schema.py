@@ -45,6 +45,24 @@ def test_keeps_field_names_and_nested_models():
     ]
     assert requirement["properties"]["evidenceFileIds"]["type"] == "array"
 
+    source_finding = response_schema_for(SourceAnalysis)["properties"]["findings"]["items"]
+    assert list(source_finding["properties"]) == [
+        "id",
+        "title",
+        "description",
+        "implementationEvidence",
+        "evidenceFileIds",
+        "snippets",
+    ]
+    assert list(source_finding["properties"]["snippets"]["items"]["properties"]) == [
+        "fileId",
+        "path",
+        "startLine",
+        "endLine",
+        "sourceTruncated",
+        "content",
+    ]
+
 
 def test_orders_properties_for_deterministic_output():
     schema = response_schema_for(ImageObservation)

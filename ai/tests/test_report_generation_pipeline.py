@@ -114,10 +114,21 @@ def responses(
             "summary": "애플리케이션 진입점을 확인했다.",
             "findings": [
                 {
+                    "id": "finding-app",
                     "title": "애플리케이션",
                     "description": "App 클래스가 존재한다.",
                     "implementationEvidence": ["App 클래스가 소스에 선언되어 있다."],
                     "evidenceFileIds": [str(SOURCE_ID)],
+                    "snippets": [
+                        {
+                            "fileId": str(SOURCE_ID),
+                            "path": "source/id/App.java",
+                            "startLine": 1,
+                            "endLine": 1,
+                            "sourceTruncated": False,
+                            "content": "class App {}",
+                        }
+                    ],
                 }
             ],
         },
@@ -129,6 +140,7 @@ def responses(
                     "title": "프로젝트 개요",
                     "purpose": "구현 내용을 설명한다.",
                     "evidenceFileIds": [plan_evidence_id],
+                    "sourceFindingIds": ["finding-app"],
                     "imageFileIds": [str(IMAGE_ID)],
                 }
             ]
@@ -144,6 +156,12 @@ def responses(
                             "id": "overview-summary",
                             "type": "paragraph",
                             "content": "API를 구현했다.",
+                        },
+                        {
+                            "id": "overview-code",
+                            "type": "code",
+                            "code": "class App {}",
+                            "language": "java",
                         },
                         {
                             "id": "overview-image",
@@ -188,6 +206,29 @@ def test_rejects_plan_that_references_a_file_outside_the_generation_bundle():
 
     assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
     assert len(gemini.calls) == 4
+
+
+def test_rejects_source_snippet_that_does_not_match_the_input_lines():
+    staged_responses = responses()
+    staged_responses[1]["findings"][0]["snippets"][0]["content"] = "class Invented {}"
+    gemini = FakeGemini(staged_responses)
+
+    with pytest.raises(AIServiceError) as raised:
+        ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+    assert len(gemini.calls) == 2
+
+
+def test_rejects_source_snippet_with_a_false_truncation_marker():
+    staged_responses = responses()
+    staged_responses[1]["findings"][0]["snippets"][0]["sourceTruncated"] = True
+    gemini = FakeGemini(staged_responses)
+
+    with pytest.raises(AIServiceError) as raised:
+        ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
 
 
 def test_rejects_document_role_that_references_a_file_outside_documents():
@@ -245,18 +286,85 @@ def test_uses_larger_output_token_limit_for_final_report_document():
     assert gemini.output_token_limits[-1] == REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 
 
+def test_final_prompt_contains_only_plan_selected_source_snippets():
+    staged_responses = responses()
+    unused_finding = json.loads(json.dumps(staged_responses[1]["findings"][0]))
+    unused_finding.update(
+        {
+            "id": "finding-unused",
+            "title": "선택되지 않은 근거",
+            "description": "최종 프롬프트에서 제외되어야 한다.",
+            "implementationEvidence": ["선택되지 않은 구현 근거"],
+        }
+    )
+    staged_responses[1]["findings"].append(unused_finding)
+    gemini = FakeGemini(staged_responses)
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    final_prompt = gemini.calls[-1][0]
+    assert "class App {}" in final_prompt
+    assert '"sourceFindingIds":["finding-app"]' in final_prompt
+    assert "선택되지 않은 구현 근거" not in final_prompt
+
+
+def test_rejects_plan_when_selected_snippets_exceed_the_final_input_budget():
+    base_finding = responses()[1]["findings"][0]
+    findings = []
+    for index in range(11):
+        finding = json.loads(json.dumps(base_finding))
+        finding["id"] = f"finding-{index}"
+        finding["snippets"][0]["content"] = "x" * 4_000
+        findings.append(finding)
+    source = SourceAnalysis.model_validate({"summary": "요약", "findings": findings})
+    plan = ReportPlan.model_validate(
+        {
+            "sections": [
+                {
+                    "id": "overview",
+                    "title": "개요",
+                    "purpose": "근거 설명",
+                    "evidenceFileIds": [str(SOURCE_ID)],
+                    "sourceFindingIds": [finding.id for finding in source.findings],
+                    "imageFileIds": [],
+                }
+            ]
+        }
+    )
+
+    with pytest.raises(AIServiceError) as raised:
+        ReportGenerationPipeline._validate_plan_references(
+            plan, {str(SOURCE_ID)}, set(), {str(SOURCE_ID)}, source
+        )
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+
+
+def test_rejects_final_code_block_that_is_not_in_a_selected_source_snippet():
+    staged_responses = responses()
+    staged_responses[-1]["sections"][0]["blocks"][1]["code"] = "class Invented {}"
+    gemini = FakeGemini(staged_responses)
+
+    with pytest.raises(AIServiceError) as raised:
+        ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), context())
+
+    assert raised.value.code == ErrorCode.AI_INVALID_RESPONSE
+    assert "코드 인용" in raised.value.message
+
+
 def test_report_document_prompt_uses_contract_block_field_names():
     prompt = report_document_prompt(
         request(),
         RequirementAnalysis.model_validate(responses()[0]),
-        SourceAnalysis.model_validate(responses()[1]),
+        SourceAnalysis.model_validate(responses()[1]).findings,
         (),
         ReportPlan.model_validate(responses()[3]),
         set(),
     )
 
     assert '"type":"paragraph","content":"string"' in prompt
-    assert "프롬프트 버전: report-generation-v3" in prompt
+    assert "프롬프트 버전: report-generation-v4" in prompt
     assert "implementationEvidence" in prompt
+    assert "sourceTruncated" in prompt
     assert "paragraph와 callout의 본문 필드는 text가 아니라 content다." in prompt
     assert "선택 metadata 필드(author, course, date)는 null로 쓰지 말고 생략한다." in prompt

@@ -39,15 +39,30 @@ class RequirementAnalysis(BaseModel):
     requirements: list[Requirement] = Field(default_factory=list)
 
 
+class SourceSnippet(BaseModel):
+    """최종 보고서까지 전달할 검증 가능한 최소 원문 코드 조각."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    file_id: UUID = Field(alias="fileId")
+    path: str = Field(min_length=1)
+    start_line: int = Field(ge=1, alias="startLine")
+    end_line: int = Field(ge=1, alias="endLine")
+    source_truncated: bool = Field(alias="sourceTruncated")
+    content: str = Field(min_length=1, max_length=4_000)
+
+
 class SourceFinding(BaseModel):
     """소스 코드·설정 파일에서 확인한 구현 근거."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
+    id: str = Field(pattern=r"^finding-[A-Za-z0-9_-]{1,56}$")
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
     implementation_evidence: list[str] = Field(min_length=1, alias="implementationEvidence")
-    evidence_file_ids: list[UUID] = Field(default_factory=list, alias="evidenceFileIds")
+    evidence_file_ids: list[UUID] = Field(min_length=1, alias="evidenceFileIds")
+    snippets: list[SourceSnippet] = Field(min_length=1)
 
 
 class SourceAnalysis(BaseModel):
@@ -87,6 +102,7 @@ class ReportPlanSection(BaseModel):
     title: str = Field(min_length=1)
     purpose: str = Field(min_length=1)
     evidence_file_ids: list[UUID] = Field(default_factory=list, alias="evidenceFileIds")
+    source_finding_ids: list[str] = Field(default_factory=list, alias="sourceFindingIds")
     image_file_ids: list[UUID] = Field(default_factory=list, alias="imageFileIds")
 
 

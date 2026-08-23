@@ -6,9 +6,16 @@ from typing import Any
 
 from app.schemas.analysis import ImageEvidence, OmittedFile, PdfEvidence, TextEvidence
 from app.schemas.generation import GenerationRequest
-from app.schemas.pipeline import ImageAnalysis, ReportPlan, RequirementAnalysis, SourceAnalysis
+from app.schemas.pipeline import (
+    ImageAnalysis,
+    ReportPlan,
+    RequirementAnalysis,
+    SourceAnalysis,
+    SourceFinding,
+)
 
-PROMPT_VERSION = "report-generation-v3"
+PROMPT_VERSION = "report-generation-v4"
+MAX_REPORT_SOURCE_SNIPPET_CHARS = 40_000
 STABLE_ID_RULE = (
     "각 section·block id는 정규식 ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$을 지키는 영문 ID로 "
     "만들고, block id는 문서 전체에서 유일해야 한다."
@@ -67,10 +74,21 @@ def source_analysis_prompt(
             "summary": "string",
             "findings": [
                 {
+                    "id": "finding-unique-id",
                     "title": "string",
                     "description": "string",
                     "implementationEvidence": ["string"],
                     "evidenceFileIds": ["uuid"],
+                    "snippets": [
+                        {
+                            "fileId": "uuid",
+                            "path": "string",
+                            "startLine": 1,
+                            "endLine": 3,
+                            "sourceTruncated": False,
+                            "content": "원문과 정확히 일치하는 4,000자 이하 코드 조각",
+                        }
+                    ],
                 }
             ],
         },
@@ -83,7 +101,10 @@ def source_analysis_prompt(
             "파일 목록이므로 근거로 쓰지 않고, 분석 범위가 제한된 사실만 summary에 남긴다. "
             "각 finding에는 실제 파일에서 확인한 클래스·함수·라우트·설정·동작 등 구체적 "
             "implementationEvidence를 하나 이상 남기고, 그 근거의 파일 ID만 evidenceFileIds에 "
-            "넣는다."
+            "넣는다. 각 finding에는 고유한 finding-* ID와 evidenceFileIds의 모든 파일을 직접 "
+            "증명하는 최소 snippets를 남긴다. snippet의 path·줄 위치·sourceTruncated는 입력과 "
+            "같아야 하고 content는 해당 줄의 원문을 줄바꿈까지 그대로 복사하며 4,000자 이하로 "
+            "제한한다. 경로나 fileId만 있는 항목은 근거가 아니다."
         ),
     )
 
@@ -121,6 +142,7 @@ def report_plan_prompt(
                     "title": "string",
                     "purpose": "string",
                     "evidenceFileIds": ["uuid"],
+                    "sourceFindingIds": ["finding-id"],
                     "imageFileIds": ["uuid"],
                 }
             ]
@@ -132,9 +154,13 @@ def report_plan_prompt(
             "images": [image.model_dump(mode="json", by_alias=True) for image in images],
             "availableFileIds": sorted(available_file_ids),
             "availableImageIds": sorted(available_image_ids),
+            "finalSourceSnippetCharLimit": MAX_REPORT_SOURCE_SNIPPET_CHARS,
         },
         extra_rule=(
             "evidenceFileIds와 imageFileIds에는 제공된 available 목록의 ID만 사용한다. "
+            "소스 파일을 evidenceFileIds에 넣을 때는 해당 파일의 근거를 가진 sourceFindingIds도 "
+            "반드시 선택한다. 최종 단계에 전달할 snippet content 합계는 "
+            f"{MAX_REPORT_SOURCE_SNIPPET_CHARS}자를 넘기지 않는다. "
             f"{STABLE_ID_RULE} 각 섹션은 고유한 목적과 필요한 근거를 가져야 하며, "
             "일반적인 칭찬이나 근거 없는 기능 소개로 섹션을 채우지 않는다."
         ),
@@ -144,7 +170,7 @@ def report_plan_prompt(
 def report_document_prompt(
     request: GenerationRequest,
     requirements: RequirementAnalysis,
-    source: SourceAnalysis,
+    source_findings: Sequence[SourceFinding],
     images: Sequence[ImageAnalysis],
     plan: ReportPlan,
     available_image_ids: set[str],
@@ -203,7 +229,9 @@ def report_document_prompt(
             "requiredMetadata": request.metadata.model_dump(mode="json", exclude_none=True),
             "instructions": request.instructions,
             "requirements": requirements.model_dump(mode="json", by_alias=True),
-            "source": source.model_dump(mode="json", by_alias=True),
+            "sourceEvidence": [
+                finding.model_dump(mode="json", by_alias=True) for finding in source_findings
+            ],
             "images": [image.model_dump(mode="json", by_alias=True) for image in images],
             "plan": plan.model_dump(mode="json", by_alias=True),
             "availableImageIds": sorted(available_image_ids),
@@ -216,9 +244,12 @@ def report_document_prompt(
             "content다. requiredMetadata에 없는 선택 metadata 필드(author, course, date)는 "
             "null로 쓰지 말고 생략한다. 각 블록에는 위 반환 형식에 정의된 필드만 사용하고, "
             "근거에 없는 사실은 작성하지 않는다. 요구사항별로 충족한 내용 또는 확인하지 못한 "
-            "내용을 구분하고, source의 implementationEvidence에 있는 구체적인 구현 근거를 "
-            "최종 문서에서 잃지 않는다. 한두 문장의 추상적인 요약만 반복하지 말고 필요한 경우 "
-            "코드·표·목록·이미지 블록으로 내용을 구체화한다."
+            "내용을 구분하고, sourceEvidence의 implementationEvidence와 snippet에 있는 구체적인 "
+            "구현 근거를 최종 문서에서 잃지 않는다. 구현 설명은 제공된 snippet으로 확인되는 "
+            "사실로 제한하고, code block은 snippet content의 연속된 원문만 그대로 인용한다. "
+            "sourceTruncated가 true인 snippet 바깥 내용과 omittedFiles의 내용은 추측하지 않는다. "
+            "한두 문장의 추상적인 요약만 반복하지 말고 필요한 경우 코드·표·목록·이미지 블록으로 "
+            "내용을 구체화한다."
         ),
     )
 
