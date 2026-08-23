@@ -44,7 +44,8 @@ Backend는 요청 본문과 위 세 필드를 필수로 검증하고 프로젝�
 
 ## Backend → AI Service
 
-AI 생성 입력은 `ZIP`, `PDF`, `MD`, `TXT`, `PNG`, `JPG/JPEG`다. `DOCX`는 MVP에서 제외한다.
+AI 생성 입력은 `ZIP`, `PDF`, `DOCX`, `MD`, `TXT`, 직접 업로드한 소스 코드,
+`PNG`, `JPG/JPEG`다.
 
 Backend는 업로드 소유권과 상태를 확인하고 `SafeZipExtractor`가 선별한 소스만 사용해 다음 임시
 bundle을 만든다.
@@ -58,7 +59,8 @@ temporary bundle
 ```
 
 - ZIP 원본과 ZIP 내부 이미지는 전달하지 않는다.
-- `source/`에는 검증·선별된 ZIP 소스, `documents/`에는 PDF/MD/TXT를 둔다.
+- `source/`에는 검증된 직접 업로드 소스와 ZIP 소스를 둔다.
+- `documents/`에는 직접 업로드하거나 ZIP에 포함된 DOCX·MD·TXT와 직접 업로드한 PDF를 둔다.
 - PDF는 텍스트로 추출하지 않고 원본 바이트를 native PDF 입력으로 전달한다.
 - `images/`에는 별도 업로드한 PNG/JPG를 둔다.
 - manifest는 각 전달 파일을 원본 `fileId`, 분류, 상대 경로와 연결해야 한다.
@@ -123,6 +125,12 @@ provider가 거부하면 `401 AI_CREDENTIAL_INVALID`를 반환한다.
 - PDF는 파일당 20 MiB, 최대 200페이지까지 허용하며 암호화·손상 PDF는 거부한다.
 - AI Service는 PDF를 요구사항 분석 단계에 한 번만 첨부하고 이후 단계에는 분석 결과만 사용한다.
 - 제한 초과나 bundle 파일 처리 실패는 생성 작업 실패로 기록한다.
+
+DOCX는 AI Service가 외부 변환기 없이 OOXML을 직접 읽는다. 본문과 표는 구조화 텍스트로 만들고,
+`word/media/`의 PNG/JPEG는 같은 문서의 일시적 Vision 근거로 요구사항 분석 단계에만 전달한다.
+내장 이미지는 별도 업로드 파일 ID가 없으므로 ReportDocument의 `image` block에는 사용하지 않는다.
+DOCX는 최대 1,000개 entry와 압축 해제 합계 100 MiB로 제한하고 암호화 문서, DTD·ENTITY가 있는
+XML, PNG/JPEG가 아닌 내장 이미지를 실행하거나 해석하지 않는다.
 
 AI Service는 같은 서버 또는 Docker private network에서만 접근할 수 있다. MVP 내부 인증은 환경변수
 `AI_INTERNAL_TOKEN`의 공유 Secret을 `X-Internal-Token` 헤더로 전달하는 방식을 우선한다.

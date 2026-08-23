@@ -61,7 +61,13 @@ class ReportGenerationPipeline:
         requirements = self._generate_model(
             "requirements",
             RequirementAnalysis,
-            requirement_analysis_prompt(context.documents, context.omitted, context.pdfs),
+            requirement_analysis_prompt(
+                context.documents,
+                context.omitted,
+                pdfs=context.pdfs,
+                embedded_images=context.document_images,
+            ),
+            images=context.document_images,
             validate=lambda result: self._validate_requirement_references(result, document_ids),
             pdfs=context.pdfs,
         )

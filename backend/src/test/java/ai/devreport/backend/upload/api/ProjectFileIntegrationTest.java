@@ -81,6 +81,8 @@ class ProjectFileIntegrationTest {
 				"application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx()),
 			new TestFile("notes.txt", "text/plain", "메모".getBytes(StandardCharsets.UTF_8)),
 			new TestFile("readme.md", "text/markdown", "# 제목".getBytes(StandardCharsets.UTF_8)),
+			new TestFile("Main.java", "text/x-java-source", "class Main {}".getBytes(StandardCharsets.UTF_8)),
+			new TestFile("app.py", "application/octet-stream", "print('ok')".getBytes(StandardCharsets.UTF_8)),
 			new TestFile("source.zip", "application/zip", zip("Main.java", "class Main {}")),
 			new TestFile("screen.jpg", "image/jpeg",
 				new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xe0}),

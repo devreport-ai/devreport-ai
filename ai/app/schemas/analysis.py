@@ -10,6 +10,7 @@ OmissionReason = Literal[
     "text-budget-exhausted",
     "image-limit-exceeded",
     "image-too-large",
+    "unsupported-embedded-image",
 ]
 
 
@@ -64,7 +65,10 @@ class AnalysisContext:
     images: tuple[ImageEvidence, ...]
     omitted: tuple[OmittedFile, ...] = ()
     pdfs: tuple[PdfEvidence, ...] = ()
+    document_images: tuple[ImageEvidence, ...] = ()
 
     @property
     def has_evidence(self) -> bool:
-        return bool(self.documents or self.source_files or self.images or self.pdfs)
+        return bool(
+            self.documents or self.source_files or self.images or self.pdfs or self.document_images
+        )

@@ -115,6 +115,22 @@ async function selectFile() {
 }
 
 describe('ProjectPage report list', () => {
+  it('PDF를 분석 대상으로 선택할 수 있다', async () => {
+    filesResponse = {
+      items: [
+        { id: 'pdf-1', originalName: 'assignment.pdf', contentType: 'application/pdf', size: 10 },
+      ],
+      page: 0,
+      size: 100,
+      totalElements: 1,
+      totalPages: 1,
+    }
+    renderWithProviders(<App />, { route: '/projects/p-1' })
+
+    expect(await screen.findByText('AI 분석 대상')).toBeInTheDocument()
+    expect(document.getElementById('file-pdf-1')).toBeEnabled()
+  })
+
   it('프로젝트명과 기존 보고서를 보여주고 페이지를 이동한다', async () => {
     renderWithProviders(<App />, { route: '/projects/p-1' })
 

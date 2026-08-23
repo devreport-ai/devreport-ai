@@ -29,7 +29,7 @@ import { useAiModels } from '../features/settings/api'
 import { findTemplate } from '../features/report/templates'
 import { useProject, useProjectReports } from '../features/projects/api'
 import { toDisplayMessage } from '../lib/api/errors'
-import { isAiInputFile, type FileResponse } from '../lib/contracts/types'
+import { aiInputExclusionReason, isAiInputFile, type FileResponse } from '../lib/contracts/types'
 
 export default function ProjectPage() {
   const { projectId = '' } = useParams()
@@ -246,8 +246,8 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
             {items.length > 0 && selectable.length === 0 && (
               <p className="inline-hint">
-                AI 가 분석할 수 있는 파일이 없습니다. ZIP · PDF · MD · TXT · PNG · JPG 를 올려
-                주세요.
+                AI가 분석할 수 있는 파일이 없습니다. ZIP · PDF/DOCX · MD/TXT · 소스 코드 · PNG/JPG를
+                올려 주세요.
               </p>
             )}
 
@@ -514,6 +514,7 @@ function FileRow({
   onDelete: () => void
 }) {
   const usable = isAiInputFile(file)
+  const exclusionReason = aiInputExclusionReason(file)
 
   return (
     <li className="file-row">
@@ -533,7 +534,7 @@ function FileRow({
         <span className="file-row__name">{file.originalName}</span>
         <span className="file-row__meta">
           {file.contentType}
-          <span>{usable ? 'AI 분석 대상' : 'AI 분석 대상 아님'}</span>
+          <span>{exclusionReason ?? 'AI 분석 대상'}</span>
         </span>
       </label>
       <button

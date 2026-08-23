@@ -180,6 +180,24 @@ def test_passes_pdf_bytes_only_to_the_requirement_analysis_stage():
     assert "assignment.pdf" in gemini.calls[0][0]
 
 
+def test_passes_docx_embedded_images_only_to_requirement_analysis():
+    gemini = FakeGemini(responses())
+    embedded = ImageEvidence(
+        DOCUMENT_ID,
+        "documents/id/assignment.docx#word/media/image1.png",
+        "image/png",
+        b"docx-image",
+    )
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(
+        request(), replace(context(), document_images=(embedded,))
+    )
+
+    assert gemini.calls[0][1] == (embedded,)
+    assert gemini.calls[1][1] == ()
+    assert "embeddedDocumentImages" in gemini.calls[0][0]
+
+
 def test_rejects_plan_that_references_a_file_outside_the_generation_bundle():
     gemini = FakeGemini(responses(plan_evidence_id=UNKNOWN_ID))
 

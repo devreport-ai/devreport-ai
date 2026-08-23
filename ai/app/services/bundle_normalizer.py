@@ -15,6 +15,7 @@ from app.schemas.analysis import (
     TextEvidence,
 )
 from app.schemas.generation import GenerationManifest, ManifestFile
+from app.services.docx_extractor import extract_docx
 
 MAX_TEXT_CHARS_PER_FILE = 200_000
 MAX_TOTAL_TEXT_CHARS = 1_000_000
@@ -24,6 +25,7 @@ MAX_IMAGE_BYTES = 7 * 1024 * 1024
 MAX_PDF_BYTES = 20 * 1024 * 1024
 MAX_PDF_PAGES = 200
 IMAGE_MIME_TYPES = {"image/jpeg", "image/png"}
+DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 # Backend는 확장자로만 소스를 선별하므로 CP949/EUC-KR 소스가 그대로 들어온다.
 # UTF-8 → CP949 순으로 시도하고, 그래도 안 되면 복원 불가 문자를 대체해 읽는다.
@@ -46,13 +48,14 @@ class BundleNormalizer:
         pdfs: list[PdfEvidence] = []
         source_files: list[TextEvidence] = []
         images: list[ImageEvidence] = []
+        document_images: list[ImageEvidence] = []
         omitted: list[OmittedFile] = []
         remaining_text_chars = MAX_TOTAL_TEXT_CHARS
 
         for manifest_file, uploaded_file in zip(manifest.files, files, strict=True):
             content = await uploaded_file.read()
             if manifest_file.category == "images":
-                if len(images) >= self._max_analyzed_images:
+                if len(images) + len(document_images) >= self._max_analyzed_images:
                     omitted.append(omit(manifest_file, "image-limit-exceeded"))
                     continue
                 if len(content) > MAX_IMAGE_BYTES:
@@ -66,6 +69,22 @@ class BundleNormalizer:
                 and normalize_content_type(manifest_file.mime_type) == "application/pdf"
             ):
                 pdfs.append(self._pdf_evidence(manifest_file, content))
+                continue
+
+            if (
+                manifest_file.category == "documents"
+                and normalize_content_type(manifest_file.mime_type) == DOCX_MIME_TYPE
+            ):
+                used_chars = self._add_docx(
+                    manifest_file,
+                    content,
+                    documents,
+                    document_images,
+                    omitted,
+                    remaining_text_chars,
+                    len(images),
+                )
+                remaining_text_chars -= used_chars
                 continue
 
             if remaining_text_chars <= 0:
@@ -89,12 +108,76 @@ class BundleNormalizer:
                 source_files.append(evidence)
 
         context = AnalysisContext(
-            tuple(documents), tuple(source_files), tuple(images), tuple(omitted), tuple(pdfs)
+            tuple(documents),
+            tuple(source_files),
+            tuple(images),
+            tuple(omitted),
+            tuple(pdfs),
+            tuple(document_images),
         )
         if not context.has_evidence:
             # 근거가 하나도 없으면 지시문만으로 사실을 지어내게 되므로 생성하지 않는다.
             raise file_processing_failed()
         return context
+
+    def _add_docx(
+        self,
+        manifest_file: ManifestFile,
+        content: bytes,
+        documents: list[TextEvidence],
+        document_images: list[ImageEvidence],
+        omitted: list[OmittedFile],
+        remaining_text_chars: int,
+        standalone_image_count: int,
+    ) -> int:
+        try:
+            extracted = extract_docx(content)
+        except ValueError:
+            omitted.append(omit(manifest_file, "unreadable"))
+            return 0
+
+        text = extracted.text
+        if not text and extracted.images:
+            text = "[텍스트 없이 포함 이미지가 있는 DOCX]"
+        if text and remaining_text_chars > 0:
+            limit = min(MAX_TEXT_CHARS_PER_FILE, remaining_text_chars)
+            documents.append(
+                TextEvidence(
+                    file_id=manifest_file.file_id,
+                    path=manifest_file.path,
+                    mime_type=manifest_file.mime_type,
+                    content=text[:limit],
+                    truncated=len(text) > limit,
+                )
+            )
+            used_chars = min(len(text), limit)
+        elif text:
+            omitted.append(omit(manifest_file, "text-budget-exhausted"))
+            used_chars = 0
+        else:
+            used_chars = 0
+
+        for path in extracted.unsupported_image_paths:
+            omitted.append(
+                OmittedFile(
+                    manifest_file.file_id,
+                    f"{manifest_file.path}#{path}",
+                    "unsupported-embedded-image",
+                )
+            )
+        for image in extracted.images:
+            image_path = f"{manifest_file.path}#{image.path}"
+            if standalone_image_count + len(document_images) >= self._max_analyzed_images:
+                omitted.append(
+                    OmittedFile(manifest_file.file_id, image_path, "image-limit-exceeded")
+                )
+            elif len(image.content) > MAX_IMAGE_BYTES:
+                omitted.append(OmittedFile(manifest_file.file_id, image_path, "image-too-large"))
+            else:
+                document_images.append(
+                    ImageEvidence(manifest_file.file_id, image_path, image.mime_type, image.content)
+                )
+        return used_chars
 
     @staticmethod
     def _text_evidence(

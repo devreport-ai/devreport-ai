@@ -33,6 +33,9 @@ class GenerationBundleFactoryTest {
 		UUID projectId = UUID.randomUUID();
 		UploadedFile zip = file(projectId, "project.zip", "application/zip", 1);
 		UploadedFile document = file(projectId, "notes.md", "text/markdown", 4);
+		UploadedFile docx = file(projectId, "assignment.docx",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document", 4);
+		UploadedFile source = file(projectId, "service.py", "text/x-python", 11);
 		UploadedFile image = file(projectId, "screen.png", "image/png", 3);
 		UploadedFile pdf = file(projectId, "assignment.pdf", "application/pdf", 4);
 		Path projectRoot = Files.createDirectories(uploadRoot.resolve(projectId.toString()));
@@ -41,29 +44,35 @@ class GenerationBundleFactoryTest {
 		writeZip(zipPath);
 		new SafeZipExtractor().extract(zipPath, projectRoot.resolve(zip.getStoredName() + ".extracted"));
 		Files.writeString(projectRoot.resolve(document.getStoredName()), "문서", StandardCharsets.UTF_8);
+		Files.write(projectRoot.resolve(docx.getStoredName()), new byte[]{1, 2, 3, 4});
+		Files.writeString(projectRoot.resolve(source.getStoredName()), "print('ok')", StandardCharsets.UTF_8);
 		Files.write(projectRoot.resolve(image.getStoredName()), new byte[]{1, 2, 3});
 		Files.writeString(projectRoot.resolve(pdf.getStoredName()), "%PDF-1.4\n%%EOF");
 
 		UploadedFileRepository repository = mock(UploadedFileRepository.class);
-		for (UploadedFile file : List.of(zip, document, image, pdf)) {
+		for (UploadedFile file : List.of(zip, document, docx, source, image, pdf)) {
 			when(repository.findById(file.getId())).thenReturn(Optional.of(file));
 		}
 		var objectMapper = JsonMapper.builder().build();
 		var factory = new GenerationBundleFactory(repository, objectMapper, uploadRoot.toString());
 		GenerationBundle bundle = factory.create(new GenerationRequest(
-			List.of(zip.getId(), document.getId(), image.getId(), pdf.getId()), Map.of(), "요약", null, null));
+			List.of(zip.getId(), document.getId(), docx.getId(), source.getId(), image.getId(), pdf.getId()),
+			Map.of(), "요약", null, null));
 		Path bundleRoot = bundle.root();
 
 		assertThat(bundle.files()).extracting(GenerationBundle.FilePart::relativePath).containsExactly(
-			"source/" + zip.getId() + "/README.md",
+			"documents/" + zip.getId() + "/README.md",
 			"source/" + zip.getId() + "/src/App.java",
 			"documents/" + document.getId() + "/notes.md",
+			"documents/" + docx.getId() + "/assignment.docx",
+			"source/" + source.getId() + "/service.py",
 			"images/" + image.getId() + "/screen.png",
 			"documents/" + pdf.getId() + "/assignment.pdf"
 		).noneMatch(path -> path.endsWith("inside.png"));
 		String manifest = Files.readString(bundle.manifest());
-		assertThat(manifest).contains(zip.getId().toString(), document.getId().toString(), image.getId().toString(),
-			pdf.getId().toString()).contains("\"mimeType\"", "\"size\"");
+		assertThat(manifest).contains(zip.getId().toString(), document.getId().toString(),
+			docx.getId().toString(), source.getId().toString(), image.getId().toString(), pdf.getId().toString())
+			.contains("\"mimeType\"", "\"size\"");
 		var manifestFiles = objectMapper.readTree(manifest).get("files");
 		assertThat(manifestFiles.size()).isEqualTo(bundle.files().size());
 		for (int index = 0; index < bundle.files().size(); index++) {

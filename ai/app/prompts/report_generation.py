@@ -19,6 +19,7 @@ def requirement_analysis_prompt(
     documents: Sequence[TextEvidence],
     omitted: Sequence[OmittedFile] = (),
     pdfs: Sequence[PdfEvidence] = (),
+    embedded_images: Sequence[ImageEvidence] = (),
 ) -> str:
     return _prompt(
         task="과제 요구사항을 추출한다.",
@@ -43,6 +44,10 @@ def requirement_analysis_prompt(
         evidence={
             "documents": _text_evidence(documents),
             "pdfs": _pdf_evidence(pdfs),
+            "embeddedDocumentImages": [
+                {"fileId": str(image.file_id), "path": image.path, "mimeType": image.mime_type}
+                for image in embedded_images
+            ],
             "omittedFiles": _omitted_files(omitted),
         },
         extra_rule=(
@@ -51,8 +56,9 @@ def requirement_analysis_prompt(
             "requirements는 assignment 또는 문서에 명시된 요구만 추출하고, reference와 "
             "project-description은 요구사항으로 둔갑시키지 않는다. "
             "첨부된 PDF는 native PDF 입력으로 확인하고 PDF 안의 텍스트·표·이미지·스캔 내용을 "
-            "근거로 사용할 수 있다. 각 요구사항에는 확인 가능한 "
-            "acceptanceCriteria와 실제 근거 문서의 evidenceFileIds를 남긴다. 문서와 PDF가 없으면 "
+            "근거로 사용할 수 있다. DOCX 포함 이미지는 같은 fileId의 문서 근거이며, 이미지에서 "
+            "확인한 내용만 사용한다. 각 요구사항에는 확인 가능한 "
+            "acceptanceCriteria와 실제 근거 문서의 evidenceFileIds를 남긴다. 문서가 없으면 "
             "빈 requirements와 그 사실을 설명하는 summary를 반환한다."
         ),
     )

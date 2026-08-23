@@ -5,7 +5,7 @@
  * 잘못 동작한다. PDF도 분석 대상으로 고를 수 있어야 업로드한 자료가 생성에 반영된다.
  */
 import { describe, expect, it } from 'vitest'
-import { isAiInputFile, isTerminalStatus } from './types'
+import { AI_INPUT_ACCEPT, aiInputExclusionReason, isAiInputFile, isTerminalStatus } from './types'
 
 function file(originalName: string, contentType: string) {
   return { originalName, contentType }
@@ -13,24 +13,30 @@ function file(originalName: string, contentType: string) {
 
 describe('isAiInputFile', () => {
   it('AI 가 읽는 형식을 고를 수 있게 한다', () => {
-    // contracts/report-generation.md: AI 입력은 ZIP·PDF·MD·TXT·PNG·JPG 다.
+    // contracts/report-generation.md: AI 입력은 문서·소스·이미지를 직접 받는다.
     expect(isAiInputFile(file('src.zip', 'application/zip'))).toBe(true)
+    expect(
+      isAiInputFile(
+        file(
+          '과제.docx',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ),
+      ),
+    ).toBe(true)
     expect(isAiInputFile(file('README.md', 'text/markdown'))).toBe(true)
+    expect(isAiInputFile(file('App.java', 'text/x-java-source'))).toBe(true)
+    expect(isAiInputFile(file('main.py', 'application/octet-stream'))).toBe(true)
     expect(isAiInputFile(file('notes.txt', 'text/plain'))).toBe(true)
     expect(isAiInputFile(file('shot.png', 'image/png'))).toBe(true)
     expect(isAiInputFile(file('shot.jpeg', 'image/jpeg'))).toBe(true)
     expect(isAiInputFile(file('과제.pdf', 'application/pdf'))).toBe(true)
   })
 
-  it('DOCX 는 업로드는 되지만 분석 대상이 아니다', () => {
-    expect(
-      isAiInputFile(
-        file(
-          '보고서.docx',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ),
-      ),
-    ).toBe(false)
+  it('지원하지 않는 형식은 선택할 수 없고 이유를 알려 준다', () => {
+    expect(isAiInputFile(file('animation.gif', 'image/gif'))).toBe(false)
+    expect(aiInputExclusionReason(file('animation.gif', 'image/gif'))).toBe(
+      'AI 분석을 지원하지 않는 파일 형식입니다.',
+    )
   })
 
   it('대문자 확장자도 인식한다', () => {
@@ -45,6 +51,12 @@ describe('isAiInputFile', () => {
 
   it('Content-Type 에 파라미터가 붙어도 인식한다', () => {
     expect(isAiInputFile(file('notes', 'text/plain; charset=utf-8'))).toBe(true)
+  })
+
+  it('업로드 선택창이 직접 소스 확장자를 포함한다', () => {
+    expect(AI_INPUT_ACCEPT).toContain('.docx')
+    expect(AI_INPUT_ACCEPT).toContain('.java')
+    expect(AI_INPUT_ACCEPT).toContain('.pdf')
   })
 })
 

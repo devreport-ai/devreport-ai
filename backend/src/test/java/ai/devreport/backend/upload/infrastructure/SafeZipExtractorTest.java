@@ -32,6 +32,7 @@ class SafeZipExtractorTest {
 		Path zip = zip("allowed.zip", Map.of(
 			"src/Main.java", "class Main {}".getBytes(StandardCharsets.UTF_8),
 			"README.md", "# Project".getBytes(StandardCharsets.UTF_8),
+			"assignment.docx", new byte[] {1, 2, 3},
 			".git/config", "ignored".getBytes(StandardCharsets.UTF_8),
 			"node_modules/lib.js", "ignored".getBytes(StandardCharsets.UTF_8),
 			"build/Generated.java", "ignored".getBytes(StandardCharsets.UTF_8),
@@ -44,6 +45,7 @@ class SafeZipExtractorTest {
 
 		assertThat(target.resolve("src/Main.java")).hasContent("class Main {}");
 		assertThat(target.resolve("README.md")).hasContent("# Project");
+		assertThat(target.resolve("assignment.docx")).exists();
 		assertThat(target.resolve(".git/config")).doesNotExist();
 		assertThat(target.resolve("node_modules/lib.js")).doesNotExist();
 		assertThat(target.resolve("build/Generated.java")).doesNotExist();
