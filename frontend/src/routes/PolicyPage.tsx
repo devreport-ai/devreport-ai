@@ -1,17 +1,34 @@
 /** 베타 공개 전 검토할 정책 초안과 데이터 처리 고지. */
 import { POLICY_VERSIONS } from '../features/auth/policyVersions'
-import { Link } from 'react-router'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router'
 import { BrandMark, Icon } from '../components/ui'
+import { isAuthenticated } from '../lib/auth/tokenStore'
 
 export default function PolicyPage() {
+  const location = useLocation()
+  // 로그인 상태면 로그인 화면이 아니라 홈으로 돌아가야 한다 (#130)
+  const backTo = isAuthenticated() ? '/' : '/login'
+
+  // 브라우저는 SPA 라우팅에서 주소의 #앵커로 스크롤해 주지 않는다 (#130)
+  useEffect(() => {
+    const id = location.hash.slice(1)
+    if (!id) return
+    // 첫 페인트 뒤에 옮겨야 한다. 폰트·이미지로 높이가 밀리면 위치가 어긋난다.
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [location.hash])
+
   return (
     <main className="plain-page">
       <header className="plain-page__header">
-        <Link to="/login" aria-label="DevReport AI">
+        <Link to={backTo} aria-label="DevReport AI">
           <BrandMark compact />
         </Link>
-        <Link to="/login" className="plain-page__back-link">
-          로그인으로 돌아가기
+        <Link to={backTo} className="plain-page__back-link">
+          {backTo === '/' ? '프로젝트로 돌아가기' : '로그인으로 돌아가기'}
         </Link>
       </header>
 
