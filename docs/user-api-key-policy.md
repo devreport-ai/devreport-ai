@@ -1,8 +1,9 @@
 # 사용자 LLM API Key 처리·보관·삭제 정책
 
-사용자가 본인의 provider API Key를 등록하면 보고서 생성에 그 키와 선택한 모델을 사용한다(#116).
+사용자가 본인의 provider API Key를 등록하면 보고서 생성에 그 키와 선택한 모델을 사용한다(#116, #117).
 지원 provider·모델은 Backend `ai.models.allowlist`가 기준이며, allowlist에 모델이 없는 provider의 키는
-`AI_PROVIDER_UNSUPPORTED`로 거부한다. 현재 allowlist는 Gemini이고, Claude(Anthropic)는 #117에서 추가한다. 이 문서는 키가 어디를 거치고 어떻게 보관·삭제되는지, 운영자가 지켜야 할
+`AI_PROVIDER_UNSUPPORTED`로 거부한다. 현재 allowlist는 Gemini와 Claude(`claude-sonnet-5`, 서버 키 없이
+사용자 키로만 실행)다. 이 문서는 키가 어디를 거치고 어떻게 보관·삭제되는지, 운영자가 지켜야 할
 Secret 절차를 정리한다.
 
 ## 원칙
@@ -69,7 +70,7 @@ openssl rand -base64 32
 ## 모델 allowlist 관리
 
 allowlist와 서버 기본 모델은 Backend(`application.yml` `ai.models.allowlist`)와 AI Service
-(`GEMINI_ALLOWED_MODELS`, `GEMINI_MODEL`) 두 곳에 있으며 **같은 값으로 함께 바꿔야 한다**. Backend는
+(`GEMINI_ALLOWED_MODELS`, `GEMINI_MODEL`, `ANTHROPIC_ALLOWED_MODELS`) 두 곳에 있으며 **같은 값으로 함께 바꿔야 한다**. Backend는
 사용자에게 보여주고 접수 시 검증하며, AI Service는 실행 시 최종 검증한다. 한쪽만 바꾸면 접수는
 되지만 실행에서 `GENERATION_REQUEST_INVALID`로 실패한다.
 

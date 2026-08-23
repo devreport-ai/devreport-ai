@@ -109,10 +109,12 @@ AI 호출을 수행하지 않고, AI Service는 헤더가 없거나 값이 다�
 사용자가 등록한 provider API Key는 `X-Provider-Api-Key` 헤더로만 전달한다. Backend는 생성 실행
 직전에 암호문을 복호화해 헤더에 싣고, 요청 본문·`generation_jobs`·로그·오류 응답에 남기지 않는다.
 AI Service는 헤더가 있으면 그 키로 요청의 `provider`·`model`을 실행하고, 없으면 서버 키로 서버 기본
-모델만 실행한다(다른 모델은 `400 AI_MODEL_NOT_ALLOWED`).
+모델만 실행한다(다른 모델은 `400 AI_MODEL_NOT_ALLOWED`). `ANTHROPIC`(Claude)은 서버 키가 없으므로
+항상 사용자 키가 필요하며, 분석 단계는 Claude 구조화 출력으로 스키마를 강제하고 최종 ReportDocument는
+Gemini와 같은 공통 검증을 거친다.
 
 `POST /internal/ai/credentials/verify`는 Backend가 키를 저장하기 전에 호출한다. 본문은
-`{"provider": "GEMINI"}`, 키는 같은 헤더로 전달하며 유효하면 `{"valid": true, "provider": "GEMINI"}`,
+`{"provider": "GEMINI" | "ANTHROPIC"}`, 키는 같은 헤더로 전달하며 유효하면 `{"valid": true, "provider": "GEMINI"}`,
 provider가 거부하면 `401 AI_CREDENTIAL_INVALID`를 반환한다.
 
 ### 전송 제한

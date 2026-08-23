@@ -7,14 +7,23 @@ from time import sleep
 from typing import Any, Protocol, TypeVar
 
 import httpx
+from pydantic import BaseModel
 
+from app.clients.response_schema import response_schema_for
+from app.clients.structured_client import (
+    ANALYSIS_MAX_OUTPUT_TOKENS,
+    REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
+)
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.analysis import ImageEvidence, PdfEvidence
 
-ANALYSIS_MAX_OUTPUT_TOKENS = 8192
-# thinking 토큰도 출력 한도에 포함되므로 최종 문서에는 넉넉한 한도가 필요하다.
-REPORT_DOCUMENT_MAX_OUTPUT_TOKENS = 32_768
+__all__ = [
+    "ANALYSIS_MAX_OUTPUT_TOKENS",
+    "REPORT_DOCUMENT_MAX_OUTPUT_TOKENS",
+    "GeminiClient",
+    "verify_gemini_api_key",
+]
 RATE_LIMIT_STATUS = 429
 # 408 Request Timeout과 429 RESOURCE_EXHAUSTED는 무료 티어에서 가장 흔한 일시 오류다.
 RETRYABLE_STATUS_CODES = frozenset({408, RATE_LIMIT_STATUS})
@@ -65,10 +74,13 @@ class GeminiClient:
         pdfs: Sequence[PdfEvidence] = (),
         max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
         response_schema: Any | None = None,
+        response_model: type[BaseModel] | None = None,
         response_validator: Callable[[str], ValidatedT] | None = None,
     ) -> str | ValidatedT:
         if not self._api_key:
             raise AIServiceError(ErrorCode.AI_UNAVAILABLE, "Gemini API Key가 설정되지 않았습니다.")
+        if response_schema is None and response_model is not None:
+            response_schema = response_schema_for(response_model)
 
         try:
             client = self._client_factory(self._api_key, self._timeout_seconds)

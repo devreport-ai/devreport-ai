@@ -6,8 +6,9 @@ from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from app.api.reports import INTERNAL_TOKEN_HEADER, PROVIDER_API_KEY_HEADER, is_authorized
+from app.clients.claude_client import verify_anthropic_api_key
 from app.clients.gemini_client import verify_gemini_api_key
-from app.core.config import GEMINI_PROVIDER, Settings, get_settings
+from app.core.config import ANTHROPIC_PROVIDER, GEMINI_PROVIDER, Settings, get_settings
 from app.core.errors import AIServiceError, ErrorCode
 from app.services.model_selection import normalize_api_key
 
@@ -39,7 +40,7 @@ async def verify_credential(
     api_key = normalize_api_key(provider_api_key)
     if api_key is None:
         raise AIServiceError(ErrorCode.AI_CREDENTIAL_INVALID, "API Key가 비어 있습니다.")
-    if body.provider != GEMINI_PROVIDER:
+    if body.provider not in (GEMINI_PROVIDER, ANTHROPIC_PROVIDER):
         raise AIServiceError(ErrorCode.AI_MODEL_NOT_ALLOWED, "지원하지 않는 provider입니다.")
 
     if settings.mock_report:
@@ -47,10 +48,11 @@ async def verify_credential(
         if api_key.startswith("invalid"):
             raise AIServiceError(ErrorCode.AI_CREDENTIAL_INVALID, "API Key가 올바르지 않습니다.")
     else:
-        await run_in_threadpool(
-            verify_gemini_api_key,
-            api_key,
-            settings.credential_verify_timeout_seconds,
+        verifier = (
+            verify_anthropic_api_key
+            if body.provider == ANTHROPIC_PROVIDER
+            else verify_gemini_api_key
         )
+        await run_in_threadpool(verifier, api_key, settings.credential_verify_timeout_seconds)
     log.info("API Key 검증 완료 provider=%s", body.provider)
     return {"valid": True, "provider": body.provider}

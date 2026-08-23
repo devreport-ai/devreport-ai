@@ -51,6 +51,10 @@ ai:
       - provider: GEMINI
         model: gemini-3.7-flash
         label: Gemini 3.7 Flash
+      # Claude는 서버 키 없이 사용자 Anthropic API Key로만 실행된다.
+      - provider: ANTHROPIC
+        model: claude-sonnet-5
+        label: Claude Sonnet 5
 
 # 사용자 provider API Key 암호화(AES-256-GCM) 마스터 키. Base64로 인코딩한 32바이트 값이다.
 # 운영에서는 필수이며, 비우면 로컬에서만 임시 키를 생성한다(재시작 시 저장된 키 복호화 불가).

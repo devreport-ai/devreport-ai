@@ -131,13 +131,6 @@ class AiCredentialIntegrationTest {
 				.content("{\"apiKey\":\"" + SECRET_KEY + "\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-		// enum에는 있지만 allowlist에 모델이 없는 provider는 키를 저장하지 않는다.
-		mvc.perform(put("/api/me/ai-credentials/ANTHROPIC")
-				.header("Authorization", bearer(token))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"apiKey\":\"sk-ant-" + SECRET_KEY + "\"}"))
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("AI_PROVIDER_UNSUPPORTED"));
 		// 공백을 빼면 8자 미만인 키는 힌트를 만들 수 없으므로 400으로 거부한다.
 		mvc.perform(put("/api/me/ai-credentials/GEMINI")
 				.header("Authorization", bearer(token))
@@ -174,6 +167,30 @@ class AiCredentialIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false))
 			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.7-flash')].available").value(false));
+	}
+
+	@Test
+	void registersAnthropicKeyAndUnlocksClaudeOnly() throws Exception {
+		String token = signupAndLogin("credential-anthropic@example.com");
+		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.provider == 'ANTHROPIC')].available").value(false));
+
+		mvc.perform(put("/api/me/ai-credentials/ANTHROPIC")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"sk-ant-api03-userkey-abcdefghijklmnop9999\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.provider").value("ANTHROPIC"))
+			.andExpect(jsonPath("$.keyHint").value("****9999"));
+
+		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.model == 'claude-sonnet-5')].available").value(true))
+			.andExpect(jsonPath("$.items[?(@.model == 'claude-sonnet-5')].usesUserKey").value(true))
+			// Anthropic 키는 Gemini 모델을 열지 않는다.
+			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.7-flash')].available").value(false))
+			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false));
 	}
 
 	@Test

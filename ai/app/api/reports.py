@@ -7,14 +7,16 @@ from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from app.clients.claude_client import ClaudeClient
 from app.clients.gemini_client import GeminiClient
-from app.core.config import Settings, get_settings
+from app.clients.structured_client import StructuredGenerationClient
+from app.core.config import ANTHROPIC_PROVIDER, Settings, get_settings
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.generation import GenerationManifest, GenerationRequest
 from app.services.bundle_normalizer import BundleNormalizer
 from app.services.mock_report_generator import MockReportGenerator
-from app.services.model_selection import resolve_model_selection
+from app.services.model_selection import ModelSelection, resolve_model_selection
 from app.services.multipart_bundle_validator import MultipartBundleValidator
 from app.services.report_generation_pipeline import ReportGenerationPipeline
 
@@ -65,16 +67,28 @@ async def generate_report(
         generation_manifest, files or []
     )
     pipeline = ReportGenerationPipeline(
-        GeminiClient(
-            api_key=selection.api_key,
-            model=selection.model,
-            timeout_seconds=settings.gemini_timeout_seconds,
-            max_retries=settings.gemini_max_retries,
-            deadline=Deadline(settings.generation_deadline_seconds),
-        ),
-        settings.report_schema_path,
+        build_client(selection, settings), settings.report_schema_path
     )
     return await run_in_threadpool(pipeline.generate, generation_request, context)
+
+
+def build_client(selection: ModelSelection, settings: Settings) -> StructuredGenerationClient:
+    deadline = Deadline(settings.generation_deadline_seconds)
+    if selection.provider == ANTHROPIC_PROVIDER:
+        return ClaudeClient(
+            api_key=selection.api_key,
+            model=selection.model,
+            timeout_seconds=settings.anthropic_timeout_seconds,
+            max_retries=settings.anthropic_max_retries,
+            deadline=deadline,
+        )
+    return GeminiClient(
+        api_key=selection.api_key,
+        model=selection.model,
+        timeout_seconds=settings.gemini_timeout_seconds,
+        max_retries=settings.gemini_max_retries,
+        deadline=deadline,
+    )
 
 
 def is_authorized(internal_token: str | None, expected_token: str | None) -> bool:

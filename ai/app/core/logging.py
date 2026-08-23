@@ -7,11 +7,15 @@ import re
 # Google API Key는 두 형식이 쓰인다. 예전 형식은 AIza로 시작하고,
 # 최근 발급 키는 AQ.으로 시작한다. 둘 다 가려야 한다.
 _GEMINI_KEY = re.compile(r"(?:AIza|AQ\.)[0-9A-Za-z_\-]{16,}")
+# Anthropic API Key는 sk-ant- 접두사를 쓴다.
+_ANTHROPIC_KEY = re.compile(r"sk-ant-[0-9A-Za-z_\-]{16,}")
 _KEY_VALUE = re.compile(r"(?i)(api[_-]?key\"?\s*[:=]\s*\"?)([^\s\",}]+)")
 
 
 def mask_secrets(text: str) -> str:
-    return _KEY_VALUE.sub(r"\1***REDACTED***", _GEMINI_KEY.sub("***REDACTED***", text))
+    masked = _GEMINI_KEY.sub("***REDACTED***", text)
+    masked = _ANTHROPIC_KEY.sub("***REDACTED***", masked)
+    return _KEY_VALUE.sub(r"\1***REDACTED***", masked)
 
 
 LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"

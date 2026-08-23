@@ -49,15 +49,36 @@ def test_rejects_blank_key():
     assert response.json()["code"] == ErrorCode.AI_CREDENTIAL_INVALID
 
 
-def test_rejects_unsupported_provider():
+def test_rejects_unknown_provider_value():
+    response = client.post(
+        VERIFY_URL,
+        json={"provider": "OPENAI"},
+        headers={"X-Internal-Token": INTERNAL_TOKEN, "X-Provider-Api-Key": "sk-key"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == ErrorCode.AI_INVALID_REQUEST
+
+
+def test_calls_anthropic_verifier_for_claude_keys(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, object] = {}
+
+    def fake_verify(api_key: str, timeout_seconds: float) -> None:
+        captured["api_key"] = api_key
+
+    monkeypatch.setattr(credentials, "verify_anthropic_api_key", fake_verify)
+    use_settings(mock_report=False, gemini_api_key="server-key")
+
     response = client.post(
         VERIFY_URL,
         json={"provider": "ANTHROPIC"},
-        headers={"X-Internal-Token": INTERNAL_TOKEN, "X-Provider-Api-Key": "sk-ant-key"},
+        headers={"X-Internal-Token": INTERNAL_TOKEN, "X-Provider-Api-Key": "sk-ant-user-key"},
     )
 
-    assert response.status_code == 400
-    assert response.json()["code"] == ErrorCode.AI_MODEL_NOT_ALLOWED
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "provider": "ANTHROPIC"}
+    assert captured == {"api_key": "sk-ant-user-key"}
+    assert "sk-ant-user-key" not in response.text
 
 
 def test_mock_mode_accepts_keys_without_calling_the_provider():
