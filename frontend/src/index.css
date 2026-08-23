@@ -1771,6 +1771,15 @@ button:disabled {
   align-self: stretch;
   gap: 4px;
 }
+.editor-tabs {
+  display: none;
+}
+@media (max-width: 900px) {
+  .editor-tabs {
+    display: inline-flex;
+    gap: 4px;
+  }
+}
 .editor-tab {
   display: inline-flex;
   align-items: center;
@@ -2161,13 +2170,17 @@ button:disabled {
     gap: 8px;
     padding: 0 16px;
   }
-  .editor-toolbar .brand-mark__name,
-  .editor-tab:not(.editor-tab--active) {
+  .editor-toolbar .brand-mark__name {
     display: none;
   }
 }
 
 @media (max-width: 900px) {
+  /* 좁은 화면: 탭으로 고른 한쪽만 보여준다 (#130). 언마운트하지 않고 숨겨서 편집 상태를 지킨다. */
+  .editor-workspace--edit .editor-preview-panel,
+  .editor-workspace--preview .editor-content-panel {
+    display: none;
+  }
   .app-topbar {
     min-height: 58px;
     padding: 0 20px;
