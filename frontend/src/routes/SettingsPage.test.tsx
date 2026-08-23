@@ -10,9 +10,9 @@ vi.mock('react-router', async (importOriginal) => ({
   useNavigate: () => navigateMock,
 }))
 
-function json(body: unknown) {
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status: 200,
+    status,
     headers: { 'Content-Type': 'application/json' },
   })
 }
@@ -72,5 +72,62 @@ describe('SettingsPage', () => {
       ),
     )
     expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true })
+  })
+
+  it('rejects a new password that matches the current password before submitting', async () => {
+    renderWithProviders(<SettingsPage />)
+
+    fireEvent.change(await screen.findByLabelText('현재 비밀번호'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByLabelText('새 비밀번호'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByLabelText('새 비밀번호 확인'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '비밀번호 변경' }))
+
+    expect(screen.getByText('현재 비밀번호와 다른 비밀번호를 입력해 주세요.')).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalledWith('/api/auth/password', expect.anything())
+  })
+
+  it('shows the server error when the password change is rejected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((rawUrl: string) => {
+        const url = String(rawUrl)
+        if (url.endsWith('/api/auth/password')) {
+          return Promise.resolve(
+            json(
+              {
+                code: 'INVALID_CURRENT_PASSWORD',
+                message: '현재 비밀번호가 올바르지 않습니다.',
+                details: null,
+                timestamp: new Date().toISOString(),
+              },
+              401,
+            ),
+          )
+        }
+        if (url.endsWith('/api/auth/refresh'))
+          return Promise.resolve(new Response(null, { status: 401 }))
+        return Promise.resolve(json({ items: [], totalElements: 0, totalPages: 0 }))
+      }),
+    )
+    renderWithProviders(<SettingsPage />)
+
+    fireEvent.change(await screen.findByLabelText('현재 비밀번호'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByLabelText('새 비밀번호'), {
+      target: { value: 'new-password123' },
+    })
+    fireEvent.change(screen.getByLabelText('새 비밀번호 확인'), {
+      target: { value: 'new-password123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '비밀번호 변경' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('현재 비밀번호가 올바르지 않습니다.')
   })
 })

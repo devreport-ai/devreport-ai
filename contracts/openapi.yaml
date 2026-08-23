@@ -71,6 +71,9 @@ components:
         currentPassword:
           type: string
           format: password
+          minLength: 8
+          maxLength: 72
+          description: UTF-8 인코딩 기준 최대 72바이트
         newPassword:
           type: string
           format: password

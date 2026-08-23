@@ -21,6 +21,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +43,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -62,6 +72,12 @@ class AuthIntegrationTest {
 
 	@Autowired
 	PolicyConsentRepository policyConsents;
+
+	@Autowired
+	AuthService authService;
+
+	@Autowired
+	PlatformTransactionManager transactionManager;
 
 	@Autowired
 	AuthController controller;
@@ -365,6 +381,50 @@ class AuthIntegrationTest {
 	}
 
 	@Test
+	void blocksRefreshWhilePasswordChangeHoldsUserLock() throws Exception {
+		String email = "password-refresh-race@example.com";
+		mvc.perform(post("/api/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"%s","password":"password123","name":"동시성 테스트",
+					"privacyPolicyVersion":"%s","termsOfServiceVersion":"%s"}
+					""".formatted(email, PolicyVersions.PRIVACY_POLICY, PolicyVersions.TERMS_OF_SERVICE)))
+			.andExpect(status().isCreated());
+		AuthService.TokenPair tokenPair = authService.login(email, "password123");
+		UUID userId = users.findByEmail(email).orElseThrow().getId();
+		CountDownLatch userLockAcquired = new CountDownLatch(1);
+		CountDownLatch releasePasswordChange = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<?> passwordChange = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
+				users.findForUpdate(userId).orElseThrow();
+				userLockAcquired.countDown();
+				awaitLatch(releasePasswordChange);
+				authService.changePassword(userId, "password123", "new-password123");
+				return null;
+			}));
+			assertThat(userLockAcquired.await(2, TimeUnit.SECONDS)).isTrue();
+
+			Future<AuthService.TokenPair> refresh = executor.submit(() -> authService.refresh(tokenPair.refreshToken()));
+			assertThrows(TimeoutException.class, () -> refresh.get(1, TimeUnit.SECONDS));
+
+			releasePasswordChange.countDown();
+			passwordChange.get(2, TimeUnit.SECONDS);
+			ExecutionException refreshFailure = assertThrows(ExecutionException.class,
+				() -> refresh.get(2, TimeUnit.SECONDS));
+			assertThat(refreshFailure.getCause()).isInstanceOf(AuthException.class);
+			Instant now = Instant.now();
+			assertThat(refreshTokens.findAll().stream()
+				.filter(token -> token.getUser().getId().equals(userId))
+				.noneMatch(token -> token.isUsable(now))).isTrue();
+		} finally {
+			releasePasswordChange.countDown();
+			executor.shutdownNow();
+			assertThat(executor.awaitTermination(2, TimeUnit.SECONDS)).isTrue();
+		}
+	}
+
+	@Test
 	void rejectsUnchangedPasswordAndRateLimitsRepeatedPasswordChanges() throws Exception {
 		String email = "password-rate-limit@example.com";
 		mvc.perform(post("/api/auth/signup")
@@ -417,5 +477,16 @@ class AuthIntegrationTest {
 				.content("{\"email\":\"%s\",\"password\":\"%s\"}".formatted(email, password)))
 			.andExpect(expected)
 			.andReturn();
+	}
+
+	private static void awaitLatch(CountDownLatch latch) {
+		try {
+			if (!latch.await(2, TimeUnit.SECONDS)) {
+				throw new IllegalStateException("동시성 테스트 해제 신호가 만료되었습니다.");
+			}
+		} catch (InterruptedException exception) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("동시성 테스트가 중단되었습니다.", exception);
+		}
 	}
 }

@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AppNav } from '../components/AppNav'
-import { AppTopBar, PageHeader, SurfaceCard } from '../components/ui'
+import { AppTopBar, AuthField, PageHeader, SurfaceCard } from '../components/ui'
 import { useChangePassword } from '../features/auth/api'
 import { passwordError } from '../features/auth/validation'
 import { toDisplayMessage } from '../lib/api/errors'
-import { AuthField } from './LoginPage'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -17,7 +16,11 @@ export default function SettingsPage() {
 
   const errors = {
     current: passwordError(currentPassword),
-    next: passwordError(newPassword),
+    next:
+      passwordError(newPassword) ??
+      (newPassword !== '' && newPassword === currentPassword
+        ? '현재 비밀번호와 다른 비밀번호를 입력해 주세요.'
+        : null),
     confirmation:
       confirmation === ''
         ? '새 비밀번호를 한 번 더 입력해 주세요.'

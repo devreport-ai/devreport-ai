@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useLogin } from '../features/auth/api'
 import { emailError, passwordError } from '../features/auth/validation'
 import { toDisplayMessage } from '../lib/api/errors'
-import { AuthLayout } from '../components/ui'
+import { AuthField, AuthLayout } from '../components/ui'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -82,50 +82,5 @@ export function LoginPage() {
         )}
       </form>
     </AuthLayout>
-  )
-}
-
-/** 로그인·회원가입 공용 입력칸. */
-export function AuthField({
-  id,
-  label,
-  type,
-  value,
-  onChange,
-  error,
-}: {
-  id: string
-  label: string
-  type: 'email' | 'password' | 'text'
-  value: string
-  onChange: (value: string) => void
-  error: string | null
-}) {
-  return (
-    <div className="field-group">
-      <label htmlFor={id} className="field-label">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        placeholder={
-          type === 'email'
-            ? 'name@example.com'
-            : type === 'text'
-              ? '이름을 입력해 주세요'
-              : '비밀번호를 입력해 주세요'
-        }
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error !== null}
-        className="field-control"
-      />
-      {error && (
-        <p role="alert" className="field-error">
-          {error}
-        </p>
-      )}
-    </div>
   )
 }

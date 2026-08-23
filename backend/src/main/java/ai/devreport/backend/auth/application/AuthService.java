@@ -127,12 +127,17 @@ public class AuthService {
 		if (rawToken == null || rawToken.isBlank()) {
 			throw invalidRefreshToken();
 		}
+		String tokenHash = hash(rawToken);
+		UUID userId = refreshTokens.findUserIdByTokenHash(tokenHash)
+			.orElseThrow(AuthService::invalidRefreshToken);
+		User user = users.findForUpdate(userId)
+			.orElseThrow(AuthService::invalidRefreshToken);
 		Instant now = Instant.now();
-		RefreshToken refreshToken = refreshTokens.findByTokenHash(hash(rawToken))
+		RefreshToken refreshToken = refreshTokens.findByTokenHash(tokenHash)
 			.filter(token -> token.isUsable(now))
 			.orElseThrow(AuthService::invalidRefreshToken);
 		refreshToken.revoke(now);
-		return issueTokens(refreshToken.getUser());
+		return issueTokens(user);
 	}
 
 	public void logout(String rawToken) {

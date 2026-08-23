@@ -218,6 +218,50 @@ export function AuthLayout({
   )
 }
 
+export function AuthField({
+  id,
+  label,
+  type,
+  value,
+  onChange,
+  error,
+}: {
+  id: string
+  label: string
+  type: 'email' | 'password' | 'text'
+  value: string
+  onChange: (value: string) => void
+  error: string | null
+}) {
+  return (
+    <div className="field-group">
+      <label htmlFor={id} className="field-label">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        placeholder={
+          type === 'email'
+            ? 'name@example.com'
+            : type === 'text'
+              ? '이름을 입력해 주세요'
+              : '비밀번호를 입력해 주세요'
+        }
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={error !== null}
+        className="field-control"
+      />
+      {error && (
+        <p role="alert" className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function PageHeader({
   eyebrow,
   title,
