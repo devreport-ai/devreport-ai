@@ -47,9 +47,9 @@ export function ModelSelect({
         ))}
       </select>
       <p className="inline-hint">
-        {value && !value.serverDefault
+        {value?.usesUserKey
           ? '등록한 API Key 로 실행되며 비용은 해당 provider 계정에 청구됩니다.'
-          : '기본 모델은 서비스 키로 실행됩니다.'}
+          : '서비스 키로 실행됩니다.'}
         {lockedCount > 0 && (
           <>
             {' '}

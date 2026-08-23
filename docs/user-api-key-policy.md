@@ -30,8 +30,10 @@ Secret 절차를 정리한다.
 - 사용자 키(BYOK) 생성은 일일 생성 한도를 적용하지 않는다. 비용이 사용자 계정에 청구되기 때문이다.
 - 동시 생성 작업 수 제한(`USAGE_LIMITS_GENERATION_CONCURRENT_LIMIT`)은 키 종류와 무관하게 적용한다.
   Backend·AI Service 자원을 보호하기 위한 것이다.
-- provider가 키를 거부하면 생성 작업은 `AI_CREDENTIAL_INVALID`, provider 사용량 초과는
-  `PROVIDER_QUOTA_EXCEEDED`로 실패하며 사용자가 키를 교체하거나 잠시 후 재시도해야 한다.
+- 사용자 키로 실행한 작업에서 provider가 키를 거부하면 `AI_CREDENTIAL_INVALID`, provider 사용량
+  초과는 `PROVIDER_QUOTA_EXCEEDED`로 실패하며 사용자가 키를 교체하거나 잠시 후 재시도해야 한다.
+  서버 키로 실행한 작업의 같은 실패는 사용자 잘못이 아니므로 `AI_SERVICE_UNAVAILABLE` /
+  `GENERATION_CAPACITY_EXCEEDED`로 기록한다.
 
 ## 운영 Secret
 
@@ -47,7 +49,9 @@ openssl rand -base64 32
 ```
 
 로컬에서 비워 두면 Backend가 기동 시 임시 키를 만들고 경고를 남긴다. 재시작하면 저장된 키를
-복호화할 수 없으므로 해당 사용자는 키를 다시 등록해야 한다(`AI_CREDENTIAL_REQUIRED`).
+복호화할 수 없다. 복호화할 수 없는 키는 **등록되지 않은 것으로 취급**한다 — 기본 모델은 서버 키로
+계속 동작하고, 다른 모델은 `available=false`가 되며 선택하면 `AI_CREDENTIAL_REQUIRED`로 거부된다.
+사용자는 키를 다시 등록하면 된다.
 
 ### Rotation 절차
 
@@ -56,10 +60,17 @@ openssl rand -base64 32
    `AI_CREDENTIAL_KEY_VERSION=2`로 올린다.
 2. 배포 후 새로 등록·교체되는 키는 버전 2로 암호화되고, 기존 행은 버전 1 키로 계속 복호화된다.
 3. 기존 사용자에게 키 교체를 안내하거나 일괄 재암호화 작업을 수행한 뒤, 버전 1 행이 남지 않으면
-   버전 1 키를 설정에서 제거한다. 버전 1 행이 남은 상태에서 키를 제거하면 해당 사용자는
-   `AI_CREDENTIAL_REQUIRED`로 실패하고 키를 다시 등록해야 한다.
+   버전 1 키를 설정에서 제거한다. 버전 1 행이 남은 상태에서 키를 제거하면 해당 사용자의 키는
+   미등록으로 취급되어 기본 모델만 서버 키로 동작하며, 다시 등록해야 다른 모델을 쓸 수 있다.
 4. 마스터 키 유출이 의심되면 즉시 새 버전으로 전환하고, 영향받은 사용자에게 provider 콘솔에서
    키 자체를 재발급하도록 안내한다.
+
+## 모델 allowlist 관리
+
+allowlist와 서버 기본 모델은 Backend(`application.yml` `ai.models.allowlist`)와 AI Service
+(`GEMINI_ALLOWED_MODELS`, `GEMINI_MODEL`) 두 곳에 있으며 **같은 값으로 함께 바꿔야 한다**. Backend는
+사용자에게 보여주고 접수 시 검증하며, AI Service는 실행 시 최종 검증한다. 한쪽만 바꾸면 접수는
+되지만 실행에서 `GENERATION_REQUEST_INVALID`로 실패한다.
 
 ## 관련 계약
 

@@ -389,7 +389,7 @@ export interface paths {
             'application/json': components['schemas']['AiCredentialResponse']
           }
         }
-        /** @description 키 형식 오류·provider가 키를 거부·지원하지 않는 provider (VALIDATION_FAILED, AI_CREDENTIAL_INVALID, INVALID_REQUEST) */
+        /** @description 키 형식 오류·provider가 키를 거부·아직 지원하지 않는 provider (VALIDATION_FAILED, AI_CREDENTIAL_INVALID, AI_PROVIDER_UNSUPPORTED, INVALID_REQUEST) */
         400: {
           headers: {
             [name: string]: unknown
@@ -2078,6 +2078,11 @@ export interface components {
       serverDefault: boolean
       /** @description 현재 사용자가 선택할 수 있으면 true (서버 기본 모델이거나 해당 provider 키를 등록함). */
       available: boolean
+      /**
+       * @description 이 모델을 선택하면 사용자가 등록한 키로 실행되어 비용이 사용자 provider 계정에 청구되면 true.
+       *     해당 provider 키가 등록되어 있으면 서버 기본 모델도 사용자 키로 실행된다.
+       */
+      usesUserKey: boolean
     }
     AiModelCatalogResponse: {
       items: components['schemas']['AiModelOption'][]

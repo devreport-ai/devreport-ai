@@ -294,6 +294,40 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void doesNotBlameUserKeyWhenServerKeyIsRejected() throws Exception {
+		String token = signupAndLogin("generation-server-key-rejected@example.com");
+		String projectId = createProject(token, "서버 키 거부");
+		String fileId = upload(token, projectId, "rejected.txt", "자료");
+
+		aiService.prepare(new AiServiceException(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_INVALID",
+			"등록된 API Key를 provider가 거부했습니다. 키를 확인해 주세요.", null));
+		String serverJobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"서버 키"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, serverJobId, "FAILED");
+		mvc.perform(get("/api/generations/{jobId}", serverJobId).header("Authorization", bearer(token)))
+			.andExpect(jsonPath("$.failureCode").value("AI_SERVICE_UNAVAILABLE"));
+
+		mvc.perform(put("/api/me/ai-credentials/GEMINI")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"AIzaSyRejectedLater-0123456789abcdef\"}"))
+			.andExpect(status().isOk());
+		aiService.prepare(new AiServiceException(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_INVALID",
+			"등록된 API Key를 provider가 거부했습니다. 키를 확인해 주세요.", null));
+		String userJobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"사용자 키"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, userJobId, "FAILED");
+		mvc.perform(get("/api/generations/{jobId}", userJobId).header("Authorization", bearer(token)))
+			.andExpect(jsonPath("$.failureCode").value("AI_CREDENTIAL_INVALID"));
+	}
+
+	@Test
 	void skipsDailyLimitForUserKeyGenerations() throws Exception {
 		long originalLimit = usageLimits.getGeneration().getDailyLimit();
 		usageLimits.getGeneration().setDailyLimit(1);
@@ -607,6 +641,7 @@ class GenerationIntegrationTest {
 		private volatile CountDownLatch started = new CountDownLatch(1);
 		private volatile CountDownLatch released = new CountDownLatch(1);
 		private volatile boolean fail;
+		private volatile AiServiceException failure;
 		private volatile ReportDocument generatedResult;
 		private volatile Path bundleRoot;
 		private volatile String lastProviderApiKey;
@@ -618,9 +653,18 @@ class GenerationIntegrationTest {
 		}
 
 		void prepare(boolean shouldFail, ReportDocument result) {
+			prepare(shouldFail, result, null);
+		}
+
+		void prepare(AiServiceException shouldFailWith) {
+			prepare(false, null, shouldFailWith);
+		}
+
+		void prepare(boolean shouldFail, ReportDocument result, AiServiceException shouldFailWith) {
 			started = new CountDownLatch(1);
 			released = new CountDownLatch(1);
 			fail = shouldFail;
+			failure = shouldFailWith;
 			generatedResult = result;
 			bundleRoot = null;
 			generationCalls.set(0);
@@ -680,6 +724,9 @@ class GenerationIntegrationTest {
 			}
 			if (fail) {
 				throw new IllegalStateException("AI failed");
+			}
+			if (failure != null) {
+				throw failure;
 			}
 			return generatedResult == null
 				? new MockAiServiceClient().generate(request, bundle, providerApiKey) : generatedResult;

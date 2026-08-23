@@ -24,6 +24,7 @@ const models = {
       label: 'Gemini 3.5 Flash-Lite',
       serverDefault: true,
       available: true,
+      usesUserKey: false,
     },
     {
       provider: 'GEMINI',
@@ -31,6 +32,7 @@ const models = {
       label: 'Gemini 3.5 Pro',
       serverDefault: false,
       available: false,
+      usesUserKey: false,
     },
   ],
 }

@@ -8,6 +8,7 @@ const flashLite: AiModelOption = {
   label: 'Flash-Lite',
   serverDefault: true,
   available: true,
+  usesUserKey: false,
 }
 const pro: AiModelOption = {
   provider: 'GEMINI',
@@ -15,6 +16,7 @@ const pro: AiModelOption = {
   label: 'Pro',
   serverDefault: false,
   available: false,
+  usesUserKey: false,
 }
 
 describe('resolveChoice', () => {

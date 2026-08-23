@@ -104,7 +104,12 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
   // timedOut 을 빼면 상한에 걸린 뒤에도 running 이 true 로 굳어 버튼이 영구 비활성이 된다.
   // 계약상 필수는 fileIds(1개 이상)·metadata.title·instructions 세 가지다.
-  const canSubmit = selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== ''
+  // 모델 목록이 아직 없으면 기억해 둔 선택이 조용히 기본 모델로 바뀌므로, 목록이 올 때까지 제출을 막는다.
+  const canSubmit =
+    selectedIds.length > 0 &&
+    title.trim() !== '' &&
+    instructions.trim() !== '' &&
+    modelChoice !== null
 
   if (recovery !== null) {
     return <Navigate to={`/projects/${projectId}/templates`} replace />

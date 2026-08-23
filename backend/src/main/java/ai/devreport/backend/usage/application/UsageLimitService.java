@@ -106,7 +106,8 @@ public class UsageLimitService {
 		}
 	}
 
-	private void lockUser(UUID userId) {
+	/** 사용자 행 잠금. 한도 검사·키 삭제·생성 접수를 같은 잠금으로 직렬화한다. */
+	public void lockUser(UUID userId) {
 		users.findForUpdate(userId).orElseThrow(() -> new IllegalStateException("Authenticated user is missing"));
 	}
 

@@ -67,10 +67,11 @@ class AiCredentialIntegrationTest {
 			.andReturn().getResponse().getContentAsString();
 		assertThat(body).doesNotContain(SECRET_KEY);
 
-		List<UserAiCredential> stored = credentials.findAll();
+		List<UserAiCredential> stored = credentials.findAll().stream()
+			.filter(credential -> credential.getKeyHint().equals("1234")).toList();
 		assertThat(stored).hasSize(1);
-		assertThat(stored.getFirst().getKeyHint()).isEqualTo("1234");
-		List<Map<String, Object>> rows = jdbc.queryForList("select * from user_ai_credentials");
+		List<Map<String, Object>> rows = jdbc.queryForList(
+			"select * from user_ai_credentials where id = ?", stored.getFirst().getId());
 		assertThat(rows).hasSize(1);
 		assertThat(rows.getFirst().toString()).doesNotContain(SECRET_KEY).doesNotContain("abcdefghijklmnop");
 
@@ -85,7 +86,28 @@ class AiCredentialIntegrationTest {
 		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].available").value(true))
+			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(true))
 			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(true));
+	}
+
+	@Test
+	void treatsUndecryptableKeysAsUnregistered() throws Exception {
+		String token = signupAndLogin("credential-unreadable@example.com");
+		mvc.perform(put("/api/me/ai-credentials/GEMINI")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"AIzaSyUnreadableKey-abcdefghijklmnop5678\"}"))
+			.andExpect(status().isOk());
+		UserAiCredential stored = credentials.findAll().stream()
+			.filter(credential -> credential.getKeyHint().equals("5678")).findFirst().orElseThrow();
+		// 마스터 키 rotation에서 이전 버전을 잃어버린 상황을 흉내 낸다.
+		jdbc.update("update user_ai_credentials set key_version = 99 where id = ?", stored.getId());
+
+		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].available").value(true))
+			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false))
+			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(false));
 	}
 
 	@Test
@@ -110,6 +132,20 @@ class AiCredentialIntegrationTest {
 				.content("{\"apiKey\":\"" + SECRET_KEY + "\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		// enum에는 있지만 allowlist에 모델이 없는 provider는 키를 저장하지 않는다.
+		mvc.perform(put("/api/me/ai-credentials/ANTHROPIC")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"sk-ant-" + SECRET_KEY + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("AI_PROVIDER_UNSUPPORTED"));
+		// 공백을 빼면 8자 미만인 키는 힌트를 만들 수 없으므로 400으로 거부한다.
+		mvc.perform(put("/api/me/ai-credentials/GEMINI")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"       a\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("AI_CREDENTIAL_INVALID"));
 		assertThat(credentials.count()).isZero();
 
 		mvc.perform(put("/api/me/ai-credentials/GEMINI")
@@ -136,6 +172,7 @@ class AiCredentialIntegrationTest {
 
 		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false))
 			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(false));
 	}
 

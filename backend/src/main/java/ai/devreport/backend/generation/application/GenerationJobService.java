@@ -73,8 +73,11 @@ public class GenerationJobService {
 		if (jobs.existsByProjectIdAndStatusIn(projectId, ACTIVE_STATUSES)) {
 			throw alreadyRunning();
 		}
-		// 사용자 키가 있으면 서버 기본 모델이라도 사용자 키로 실행한다. 서버 키는 기본 모델에만 쓴다.
-		GenerationJob.KeySource keySource = credentials.exists(ownerId, model.provider())
+		// 키 삭제(AiCredentialService.delete)와 같은 사용자 행 잠금을 먼저 잡아 keySource 판정과 저장을 직렬화한다.
+		usageLimits.lockUser(ownerId);
+		// 복호화 가능한 사용자 키가 있으면 서버 기본 모델이라도 사용자 키로 실행한다. 서버 키는 기본 모델에만 쓴다.
+		// 복호화할 수 없는 키(마스터 키 분실)는 없는 것으로 보아 기본 모델이 계속 동작하게 한다.
+		GenerationJob.KeySource keySource = credentials.isUsable(ownerId, model.provider())
 			? GenerationJob.KeySource.USER : GenerationJob.KeySource.SERVER;
 		if (keySource == GenerationJob.KeySource.SERVER && !model.serverDefault()) {
 			throw credentialRequired();
@@ -164,7 +167,7 @@ public class GenerationJobService {
 
 	private static GenerationException credentialRequired() {
 		return new GenerationException(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_REQUIRED",
-			"이 모델을 사용하려면 해당 provider의 API Key를 먼저 등록해야 합니다.");
+			"이 모델을 사용하려면 해당 provider의 API Key를 등록해야 합니다. 등록한 키가 있다면 다시 등록해 주세요.");
 	}
 
 	private static GenerationException invalidRequest() {
