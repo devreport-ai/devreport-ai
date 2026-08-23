@@ -55,7 +55,6 @@ public class ProjectFileService {
 
 	private static final Logger log = LoggerFactory.getLogger(ProjectFileService.class);
 	private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
-	private static final byte[] PDF_SIGNATURE = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 	private static final byte[] PNG_SIGNATURE = {
 		(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
 	};
@@ -323,7 +322,10 @@ public class ProjectFileService {
 
 	private static void validateContent(Path path, String extension) throws IOException {
 		boolean valid = switch (extension) {
-			case "pdf" -> startsWith(path, PDF_SIGNATURE);
+			case "pdf" -> {
+				PdfFileValidator.validate(path);
+				yield true;
+			}
 			case "docx" -> isDocx(path);
 			case "txt", "md" -> isUtf8Text(path);
 			case "zip" -> isZip(path);

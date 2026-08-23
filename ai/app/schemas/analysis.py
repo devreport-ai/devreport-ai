@@ -37,6 +37,16 @@ class ImageEvidence:
 
 
 @dataclass(frozen=True)
+class PdfEvidence:
+    """Gemini native PDF 입력으로만 사용하는 요청 수명 내 바이트 근거."""
+
+    file_id: UUID
+    path: str
+    mime_type: str
+    content: bytes
+
+
+@dataclass(frozen=True)
 class OmittedFile:
     """bundle에는 있었지만 분석 근거로 쓰지 못한 파일."""
 
@@ -53,7 +63,8 @@ class AnalysisContext:
     source_files: tuple[TextEvidence, ...]
     images: tuple[ImageEvidence, ...]
     omitted: tuple[OmittedFile, ...] = ()
+    pdfs: tuple[PdfEvidence, ...] = ()
 
     @property
     def has_evidence(self) -> bool:
-        return bool(self.documents or self.source_files or self.images)
+        return bool(self.documents or self.source_files or self.images or self.pdfs)

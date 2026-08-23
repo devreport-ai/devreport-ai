@@ -8,6 +8,7 @@ from app.core.errors import AIServiceError, ErrorCode
 from app.schemas.generation import GenerationManifest
 from app.services.bundle_normalizer import (
     MAX_IMAGE_BYTES,
+    MAX_PDF_PAGES,
     MAX_TEXT_CHARS_PER_FILE,
     MAX_TOTAL_TEXT_CHARS,
     BundleNormalizer,
@@ -15,6 +16,7 @@ from app.services.bundle_normalizer import (
 
 FILE_ID = UUID("00000000-0000-4000-8000-000000000001")
 SECOND_FILE_ID = UUID("00000000-0000-4000-8000-000000000002")
+PDF_ID = UUID("00000000-0000-4000-8000-000000000003")
 
 
 def manifest_file(
@@ -29,14 +31,24 @@ def manifest_file(
     }
 
 
-def manifest(category: str, path: str, mime_type: str, size: int) -> GenerationManifest:
+def manifest(
+    category: str, path: str, mime_type: str, size: int, file_id: UUID = FILE_ID
+) -> GenerationManifest:
     return GenerationManifest.model_validate(
-        {"version": 1, "files": [manifest_file(FILE_ID, category, path, mime_type, size)]}
+        {"version": 1, "files": [manifest_file(file_id, category, path, mime_type, size)]}
     )
 
 
 def upload(path: str, content: bytes, content_type: str) -> UploadFile:
     return UploadFile(filename=path, file=BytesIO(content), headers={"content-type": content_type})
+
+
+def pdf_content(pages: int = 1, encrypted: bool = False) -> bytes:
+    encryption = b"/Encrypt 3 0 R" if encrypted else b""
+    page_objects = b"".join(b"<< /Type /Page >>\n" for _ in range(pages))
+    prefix = b"%PDF-1.4\n/Type /Catalog\n" + page_objects + encryption
+    xref_offset = len(prefix)
+    return prefix + b"xref\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
 
 
 @pytest.mark.anyio
@@ -50,6 +62,64 @@ async def test_normalizes_document_and_keeps_original_file_id():
     assert context.documents[0].file_id == FILE_ID
     assert context.documents[0].content == "과제 요구사항"
     assert context.source_files == ()
+
+
+@pytest.mark.anyio
+async def test_keeps_pdf_as_native_byte_evidence():
+    content = pdf_content()
+
+    context = await BundleNormalizer().normalize(
+        manifest(
+            "documents",
+            f"documents/{PDF_ID}/assignment.pdf",
+            "application/pdf",
+            len(content),
+            PDF_ID,
+        ),
+        [upload(f"documents/{PDF_ID}/assignment.pdf", content, "application/pdf")],
+    )
+
+    assert context.documents == ()
+    assert context.pdfs[0].file_id == PDF_ID
+    assert context.pdfs[0].content == content
+
+
+@pytest.mark.anyio
+async def test_rejects_encrypted_pdf():
+    content = pdf_content(encrypted=True)
+
+    with pytest.raises(AIServiceError) as raised:
+        await BundleNormalizer().normalize(
+            manifest(
+                "documents",
+                f"documents/{PDF_ID}/assignment.pdf",
+                "application/pdf",
+                len(content),
+                PDF_ID,
+            ),
+            [upload(f"documents/{PDF_ID}/assignment.pdf", content, "application/pdf")],
+        )
+
+    assert raised.value.code == ErrorCode.AI_FILE_PROCESSING_FAILED
+
+
+@pytest.mark.anyio
+async def test_rejects_pdf_over_the_page_limit():
+    content = pdf_content(pages=MAX_PDF_PAGES + 1)
+
+    with pytest.raises(AIServiceError) as raised:
+        await BundleNormalizer().normalize(
+            manifest(
+                "documents",
+                f"documents/{PDF_ID}/assignment.pdf",
+                "application/pdf",
+                len(content),
+                PDF_ID,
+            ),
+            [upload(f"documents/{PDF_ID}/assignment.pdf", content, "application/pdf")],
+        )
+
+    assert raised.value.code == ErrorCode.AI_FILE_PROCESSING_FAILED
 
 
 @pytest.mark.anyio

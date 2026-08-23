@@ -96,13 +96,15 @@ Report
 
 ## MVP 입력 파일
 
-AI 보고서 생성 입력은 `ZIP`, `MD`, `TXT`, `PNG`, `JPG/JPEG`만 지원한다. 업로드 API가
-별도로 보관하거나 미리보기할 수 있는 형식과 AI 생성 입력 형식은 구분한다. `PDF`와
-`DOCX`는 필요성이 확인된 뒤 추가한다.
+AI 보고서 생성 입력은 `ZIP`, `PDF`, `MD`, `TXT`, `PNG`, `JPG/JPEG`를 지원한다. 업로드 API가
+별도로 보관하거나 미리보기할 수 있는 형식과 AI 생성 입력 형식은 구분한다. `DOCX`는
+필요성이 확인된 뒤 추가한다.
 
 ZIP은 소스코드 전달용이다. Backend는 기존 `SafeZipExtractor`로 ZIP을 검사하고 선별한
 안전한 파일만 AI Service에 전달한다. ZIP 내부 이미지는 AI 이미지 자료로 사용하지 않으며,
 보고서용 스크린샷은 PNG/JPG로 별도 업로드한다. AI Service가 원본 ZIP 보안 검사를 반복하지 않는다.
+PDF는 Backend가 구조·암호화·페이지 제한을 확인한 뒤 `documents/`에 원본 바이트로 전달하고,
+AI Service가 요구사항 분석 단계에서 한 번만 native PDF 입력으로 사용한다.
 
 Backend는 다음 구조의 임시 bundle을 구성하고 Base64가 아닌 `multipart/form-data`로 전송한다.
 

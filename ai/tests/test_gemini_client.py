@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from uuid import UUID
 
 import httpx
 import pytest
@@ -7,11 +8,13 @@ import pytest
 from app.clients.gemini_client import (
     ANALYSIS_MAX_OUTPUT_TOKENS,
     GeminiClient,
+    content_parts,
     response_config,
     retry_delay_seconds,
 )
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
+from app.schemas.analysis import PdfEvidence
 
 
 @dataclass
@@ -79,6 +82,21 @@ def test_rejects_missing_api_key_without_creating_sdk_client():
 
 def test_returns_json_text_from_sdk_response():
     assert client(Response('{"result":true}')).generate_json("prompt") == '{"result":true}'
+
+
+def test_builds_a_native_pdf_part_without_base64_encoding():
+    pdf = PdfEvidence(
+        UUID("00000000-0000-4000-8000-000000000001"),
+        "document.pdf",
+        "application/pdf",
+        b"pdf",
+    )
+
+    parts = content_parts("prompt", pdfs=(pdf,))
+
+    assert parts[-1] == "prompt"
+    assert parts[0].inline_data.data == b"pdf"
+    assert parts[0].inline_data.mime_type == "application/pdf"
 
 
 def test_uses_low_thinking_and_sufficient_output_limit_for_json_responses():

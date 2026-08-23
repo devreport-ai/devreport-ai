@@ -76,7 +76,7 @@ class ProjectFileIntegrationTest {
 		String token = signupAndLogin("file-owner@example.com");
 		String projectId = createProject(token);
 		List<TestFile> allowed = List.of(
-			new TestFile("assignment.pdf", "application/pdf", "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII)),
+			new TestFile("assignment.pdf", "application/pdf", pdf()),
 			new TestFile("document.docx",
 				"application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx()),
 			new TestFile("notes.txt", "text/plain", "메모".getBytes(StandardCharsets.UTF_8)),
@@ -202,8 +202,7 @@ class ProjectFileIntegrationTest {
 		for (TestFile preview : List.of(
 			new TestFile("screen.jpg", "image/jpeg",
 				new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xe0}),
-			new TestFile("document.pdf", "application/pdf",
-				"%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII)))) {
+				new TestFile("document.pdf", "application/pdf", pdf()))) {
 			String fileId = upload(token, projectId, preview);
 			assertThat(mvc.perform(get("/api/projects/{projectId}/files/{fileId}", projectId, fileId)
 					.header("Authorization", bearer(token)))
@@ -408,6 +407,28 @@ class ProjectFileIntegrationTest {
 			addZipEntry(zip, name, content);
 		}
 		return output.toByteArray();
+	}
+
+	private static byte[] pdf() {
+		String[] objects = {
+			"<< /Type /Catalog /Pages 2 0 R >>",
+			"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+			"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>"
+		};
+		StringBuilder content = new StringBuilder("%PDF-1.4\n");
+		int[] offsets = new int[objects.length + 1];
+		for (int index = 0; index < objects.length; index++) {
+			offsets[index + 1] = content.length();
+			content.append(index + 1).append(" 0 obj\n").append(objects[index]).append("\nendobj\n");
+		}
+		int xrefOffset = content.length();
+		content.append("xref\n0 ").append(offsets.length).append("\n0000000000 65535 f \n");
+		for (int index = 1; index < offsets.length; index++) {
+			content.append("%010d 00000 n \n".formatted(offsets[index]));
+		}
+		content.append("trailer\n<< /Root 1 0 R /Size ").append(offsets.length)
+			.append(" >>\nstartxref\n").append(xrefOffset).append("\n%%EOF\n");
+		return content.toString().getBytes(StandardCharsets.US_ASCII);
 	}
 
 	private static void addZipEntry(ZipOutputStream zip, String name, String content) throws IOException {

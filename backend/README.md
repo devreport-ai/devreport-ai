@@ -263,6 +263,7 @@ cd backend
 - 이미지: JPG/JPEG, PNG
 - GIF와 WEBP는 MVP의 보고서·AI 처리 호환 범위에 포함되지 않아 업로드할 수 없다.
 - 확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다.
+- PDF는 암호화·손상·페이지 제한(최대 200페이지)을 추가로 검증한다.
 - 실제 파일은 `UPLOAD_PATH/{projectId}/{fileId}`에 UUID 이름으로 저장한다.
 
 업로드 오류는 공통 오류 응답의 `code`로 구분한다.
@@ -273,6 +274,9 @@ cd backend
 | `FILE_NAME_INVALID` | 400 | 파일 이름 누락 또는 255자 초과 |
 | `FILE_TOO_LARGE` | 413 | 20 MiB 초과 |
 | `FILE_TYPE_NOT_ALLOWED` | 415 | 지원하지 않는 형식 또는 확장자·MIME·실제 형식 불일치 |
+| `PDF_INVALID` | 400 | 손상되었거나 페이지가 없는 PDF |
+| `PDF_ENCRYPTED` | 422 | 암호화된 PDF |
+| `PDF_PAGE_LIMIT_EXCEEDED` | 413 | 200페이지 초과 PDF |
 | `FILE_NOT_FOUND` | 404 | 프로젝트에 해당 파일이 없음 |
 | `FILE_STORAGE_ERROR` | 500 | 업로드·조회·삭제·완전 삭제 중 저장소 처리 또는 정합성 검증 실패 |
 
