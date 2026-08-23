@@ -12,7 +12,7 @@ from app.clients.gemini_client import is_json_object, retry_delay_seconds, retry
 from app.clients.structured_client import ANALYSIS_MAX_OUTPUT_TOKENS
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
-from app.schemas.analysis import ImageEvidence
+from app.schemas.analysis import ImageEvidence, PdfEvidence
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class ClaudeClient:
         prompt: str,
         images: Sequence[ImageEvidence] = (),
         *,
+        pdfs: Sequence[PdfEvidence] = (),
         max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
         response_model: type[BaseModel] | None = None,
         response_validator: Callable[[str], Any] | None = None,
@@ -68,7 +69,10 @@ class ClaudeClient:
         for attempt in range(self._max_retries + 1):
             call_timeout = self._call_timeout()
             messages = [
-                {"role": "user", "content": content_blocks(retry_prompt(prompt, rejection), images)}
+                {
+                    "role": "user",
+                    "content": content_blocks(retry_prompt(prompt, rejection), images, pdfs),
+                }
             ]
             try:
                 response = self._generate_once(
@@ -165,11 +169,27 @@ def create_sdk_client(api_key: str, timeout_seconds: float) -> Any:
     return anthropic.Anthropic(api_key=api_key, timeout=timeout_seconds, max_retries=0)
 
 
-def content_blocks(prompt: str, images: Sequence[ImageEvidence]) -> str | list[dict[str, Any]]:
-    """텍스트만 있으면 문자열을 유지하고, 이미지는 요청 수명 안의 base64로만 전달한다."""
-    if not images:
+def content_blocks(
+    prompt: str, images: Sequence[ImageEvidence], pdfs: Sequence[PdfEvidence] = ()
+) -> str | list[dict[str, Any]]:
+    """텍스트만 있으면 문자열을 유지하고, 파일은 요청 수명 안의 base64로만 전달한다.
+
+    PDF는 document block(base64 application/pdf)으로 넣어 Claude가 직접 읽게 한다.
+    """
+    if not images and not pdfs:
         return prompt
     return [
+        *(
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": pdf.mime_type,
+                    "data": base64.standard_b64encode(pdf.content).decode("ascii"),
+                },
+            }
+            for pdf in pdfs
+        ),
         *(
             {
                 "type": "image",

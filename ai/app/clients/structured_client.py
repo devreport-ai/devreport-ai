@@ -5,7 +5,7 @@ from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from app.schemas.analysis import ImageEvidence
+from app.schemas.analysis import ImageEvidence, PdfEvidence
 
 ANALYSIS_MAX_OUTPUT_TOKENS = 8192
 # thinking 토큰도 출력 한도에 포함되므로 최종 문서에는 넉넉한 한도가 필요하다.
@@ -27,6 +27,7 @@ class StructuredGenerationClient(Protocol):
         prompt: str,
         images: Sequence[ImageEvidence] = (),
         *,
+        pdfs: Sequence[PdfEvidence] = (),
         max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
         response_model: type[BaseModel] | None = None,
         response_validator: Callable[[str], ValidatedT] | None = None,

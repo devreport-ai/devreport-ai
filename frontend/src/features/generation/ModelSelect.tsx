@@ -13,11 +13,13 @@ export function ModelSelect({
   value,
   onChange,
   disabled,
+  error,
 }: {
   options: AiModelOption[]
   value: AiModelOption | null
   onChange: (option: AiModelOption) => void
   disabled?: boolean
+  error?: string
 }) {
   const selectedKey = value ? choiceKey(value) : ''
   const lockedCount = options.filter((option) => !option.available).length
@@ -32,6 +34,8 @@ export function ModelSelect({
         className="field-control"
         value={selectedKey}
         disabled={disabled || options.length === 0}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? 'generation-model-error' : undefined}
         onChange={(event) => {
           const next = options.find((option) => choiceKey(option) === event.target.value)
           if (next && next.available) onChange(next)
@@ -46,6 +50,11 @@ export function ModelSelect({
           </option>
         ))}
       </select>
+      {error && (
+        <p id="generation-model-error" role="alert" className="inline-alert">
+          {error}
+        </p>
+      )}
       <p className="inline-hint">
         {value?.usesUserKey
           ? '등록한 API Key 로 실행되며 비용은 해당 provider 계정에 청구됩니다.'

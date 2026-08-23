@@ -75,6 +75,7 @@ DevReport AI의 인증, 프로젝트, 파일, 생성 작업과 보고서를 관�
 | `USAGE_LIMITS_RATE_SIGNUP` | `10` / window / IP |
 | `USAGE_LIMITS_RATE_LOGIN` | `20` / window / IP |
 | `USAGE_LIMITS_RATE_REFRESH` | `30` / window / IP |
+| `USAGE_LIMITS_RATE_PASSWORD_CHANGE` | `5` / window / user |
 | `USAGE_LIMITS_RATE_UPLOAD` | `30` / window / user |
 | `USAGE_LIMITS_RATE_GENERATION` | `10` / window / user |
 
@@ -103,6 +104,7 @@ cd backend && ./gradlew bootRun
 - `POST /api/auth/login`은 Access Token만 JSON 본문으로 반환하고 Refresh Token은 `HttpOnly`·`SameSite=Lax`·`Path=/api/auth` 쿠키로 설정한다.
 - `POST /api/auth/refresh`는 요청 본문 없이 쿠키를 읽고, 기존 Refresh Token을 폐기한 뒤 회전된 쿠키와 Access Token을 반환한다.
 - `POST /api/auth/logout`은 쿠키에 대응하는 서버 토큰을 폐기하고, 토큰이 없거나 이미 폐기된 경우에도 `Max-Age=0` 쿠키로 브라우저 값을 삭제한다.
+- `POST /api/auth/password`는 현재 비밀번호를 확인한 뒤 새 비밀번호를 저장하고 사용자의 모든 Refresh Token과 브라우저 쿠키를 폐기한다. 성공하면 Frontend는 다시 로그인한다.
 - Refresh Token 쿠키는 JavaScript와 `localStorage`에 노출하지 않는다. 보호 API는 기존 `Authorization: Bearer` 방식을 유지한다.
 - Frontend가 Backend와 다른 Origin에서 실행되면 `CORS_ALLOWED_ORIGINS`에 정확한 Origin을 지정하고 요청에 `credentials: 'include'`를 사용한다. `*`와 credentials 조합은 허용하지 않는다.
 - 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 사용한다. `SameSite=None`을 사용할 때는 반드시 Secure 쿠키를 함께 사용한다.
@@ -212,6 +214,7 @@ quota와 동시성 검사를 중복 통과할 수 없다. 파일 quota는 휴지
 | AI 생성 | 하루 10회, 동시 2개 | 429 `GENERATION_DAILY_LIMIT_EXCEEDED` 또는 `GENERATION_CONCURRENCY_LIMIT_EXCEEDED` |
 | PDF export | 하루 20회, 동시 1개 | 429 `PDF_DAILY_LIMIT_EXCEEDED` 또는 `PDF_CONCURRENCY_LIMIT_EXCEEDED` |
 | 회원가입·로그인·refresh | 1분당 IP별 10·20·30회 | 429 `RATE_LIMIT_EXCEEDED` |
+| 비밀번호 변경 | 1분당 사용자별 5회 | 429 `RATE_LIMIT_EXCEEDED` |
 | 업로드·AI 생성 요청 | 1분당 사용자별 30·10회 | 429 `RATE_LIMIT_EXCEEDED` |
 
 rate limit bucket은 `rate_limit_buckets`에 저장되며 Backend 재시작 뒤에도 현재 윈도우가
@@ -260,6 +263,7 @@ cd backend
 - 이미지: JPG/JPEG, PNG
 - GIF와 WEBP는 MVP의 보고서·AI 처리 호환 범위에 포함되지 않아 업로드할 수 없다.
 - 확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다.
+- PDF는 암호화·손상·페이지 제한(최대 200페이지)을 추가로 검증한다.
 - 실제 파일은 `UPLOAD_PATH/{projectId}/{fileId}`에 UUID 이름으로 저장한다.
 
 업로드 오류는 공통 오류 응답의 `code`로 구분한다.
@@ -270,6 +274,9 @@ cd backend
 | `FILE_NAME_INVALID` | 400 | 파일 이름 누락 또는 255자 초과 |
 | `FILE_TOO_LARGE` | 413 | 20 MiB 초과 |
 | `FILE_TYPE_NOT_ALLOWED` | 415 | 지원하지 않는 형식 또는 확장자·MIME·실제 형식 불일치 |
+| `PDF_INVALID` | 400 | 손상되었거나 페이지가 없는 PDF |
+| `PDF_ENCRYPTED` | 422 | 암호화된 PDF |
+| `PDF_PAGE_LIMIT_EXCEEDED` | 413 | 200페이지 초과 PDF |
 | `FILE_NOT_FOUND` | 404 | 프로젝트에 해당 파일이 없음 |
 | `FILE_STORAGE_ERROR` | 500 | 업로드·조회·삭제·완전 삭제 중 저장소 처리 또는 정합성 검증 실패 |
 

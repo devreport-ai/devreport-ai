@@ -44,7 +44,7 @@ Backend는 요청 본문과 위 세 필드를 필수로 검증하고 프로젝�
 
 ## Backend → AI Service
 
-AI 생성 입력은 `ZIP`, `MD`, `TXT`, `PNG`, `JPG/JPEG`다. `PDF`와 `DOCX`는 MVP에서 제외한다.
+AI 생성 입력은 `ZIP`, `PDF`, `MD`, `TXT`, `PNG`, `JPG/JPEG`다. `DOCX`는 MVP에서 제외한다.
 
 Backend는 업로드 소유권과 상태를 확인하고 `SafeZipExtractor`가 선별한 소스만 사용해 다음 임시
 bundle을 만든다.
@@ -58,7 +58,8 @@ temporary bundle
 ```
 
 - ZIP 원본과 ZIP 내부 이미지는 전달하지 않는다.
-- `source/`에는 검증·선별된 ZIP 소스, `documents/`에는 MD/TXT를 둔다.
+- `source/`에는 검증·선별된 ZIP 소스, `documents/`에는 PDF/MD/TXT를 둔다.
+- PDF는 텍스트로 추출하지 않고 원본 바이트를 native PDF 입력으로 전달한다.
 - `images/`에는 별도 업로드한 PNG/JPG를 둔다.
 - manifest는 각 전달 파일을 원본 `fileId`, 분류, 상대 경로와 연결해야 한다.
 - Base64를 사용하지 않고 `multipart/form-data`로 전달한다.
@@ -120,7 +121,9 @@ provider가 거부하면 `401 AI_CREDENTIAL_INVALID`를 반환한다.
 
 - 업로드 단계의 개별 파일 제한 20 MiB를 그대로 적용한다.
 - bundle 전체 파일은 최대 1,000개, 실제 파일 합계는 최대 100 MiB다.
-- ZIP 원본, ZIP 내부의 비분석 파일·이미지, 별도 업로드된 PDF·DOCX는 manifest와 multipart에서 제외한다.
+- ZIP 원본과 ZIP 내부의 비분석 파일·이미지는 manifest와 multipart에서 제외한다.
+- PDF는 파일당 20 MiB, 최대 200페이지까지 허용하며 암호화·손상 PDF는 거부한다.
+- AI Service는 PDF를 요구사항 분석 단계에 한 번만 첨부하고 이후 단계에는 분석 결과만 사용한다.
 - 제한 초과나 bundle 파일 처리 실패는 생성 작업 실패로 기록한다.
 
 AI Service는 같은 서버 또는 Docker private network에서만 접근할 수 있다. MVP 내부 인증은 환경변수

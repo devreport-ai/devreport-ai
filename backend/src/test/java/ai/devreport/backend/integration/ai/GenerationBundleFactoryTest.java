@@ -34,7 +34,7 @@ class GenerationBundleFactoryTest {
 		UploadedFile zip = file(projectId, "project.zip", "application/zip", 1);
 		UploadedFile document = file(projectId, "notes.md", "text/markdown", 4);
 		UploadedFile image = file(projectId, "screen.png", "image/png", 3);
-		UploadedFile pdf = file(projectId, "excluded.pdf", "application/pdf", 4);
+		UploadedFile pdf = file(projectId, "assignment.pdf", "application/pdf", 4);
 		Path projectRoot = Files.createDirectories(uploadRoot.resolve(projectId.toString()));
 
 		Path zipPath = projectRoot.resolve(zip.getStoredName());
@@ -42,7 +42,7 @@ class GenerationBundleFactoryTest {
 		new SafeZipExtractor().extract(zipPath, projectRoot.resolve(zip.getStoredName() + ".extracted"));
 		Files.writeString(projectRoot.resolve(document.getStoredName()), "문서", StandardCharsets.UTF_8);
 		Files.write(projectRoot.resolve(image.getStoredName()), new byte[]{1, 2, 3});
-		Files.writeString(projectRoot.resolve(pdf.getStoredName()), "%PDF");
+		Files.writeString(projectRoot.resolve(pdf.getStoredName()), "%PDF-1.4\n%%EOF");
 
 		UploadedFileRepository repository = mock(UploadedFileRepository.class);
 		for (UploadedFile file : List.of(zip, document, image, pdf)) {
@@ -58,11 +58,12 @@ class GenerationBundleFactoryTest {
 			"source/" + zip.getId() + "/README.md",
 			"source/" + zip.getId() + "/src/App.java",
 			"documents/" + document.getId() + "/notes.md",
-			"images/" + image.getId() + "/screen.png"
-		).noneMatch(path -> path.endsWith("inside.png") || path.endsWith("excluded.pdf"));
+			"images/" + image.getId() + "/screen.png",
+			"documents/" + pdf.getId() + "/assignment.pdf"
+		).noneMatch(path -> path.endsWith("inside.png"));
 		String manifest = Files.readString(bundle.manifest());
-		assertThat(manifest).contains(zip.getId().toString(), document.getId().toString(), image.getId().toString())
-			.doesNotContain(pdf.getId().toString()).contains("\"mimeType\"", "\"size\"");
+		assertThat(manifest).contains(zip.getId().toString(), document.getId().toString(), image.getId().toString(),
+			pdf.getId().toString()).contains("\"mimeType\"", "\"size\"");
 		var manifestFiles = objectMapper.readTree(manifest).get("files");
 		assertThat(manifestFiles.size()).isEqualTo(bundle.files().size());
 		for (int index = 0; index < bundle.files().size(); index++) {

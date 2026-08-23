@@ -290,3 +290,20 @@ def test_verify_api_key_converts_provider_failures(error: Exception, code: Error
         )
 
     assert raised.value.code == code
+
+
+def test_sends_pdfs_as_document_blocks_before_images_and_prompt():
+    from app.schemas.analysis import PdfEvidence
+
+    pdf = PdfEvidence(
+        file_id=UUID("00000000-0000-4000-8000-000000000002"),
+        path="documents/a.pdf",
+        mime_type="application/pdf",
+        content=b"%PDF-1.4",
+    )
+    blocks = content_blocks("prompt", (), (pdf,))
+
+    assert blocks[0]["type"] == "document"
+    assert blocks[0]["source"]["media_type"] == "application/pdf"
+    assert blocks[0]["source"]["data"] == "JVBERi0xLjQ="
+    assert blocks[-1] == {"type": "text", "text": "prompt"}

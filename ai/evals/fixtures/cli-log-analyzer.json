@@ -1,0 +1,45 @@
+{
+  "id": "cli-log-analyzer",
+  "request": {
+    "metadata": {
+      "title": "CLI 로그 분석기 구현 보고서",
+      "author": "평가 fixture"
+    },
+    "instructions": "명령행 사용법과 입력·출력 흐름을 구체적인 코드 근거로 설명해 주세요."
+  },
+  "documents": [
+    {
+      "fileId": "20000000-0000-4000-8000-000000000001",
+      "path": "documents/20000000-0000-4000-8000-000000000001/assignment.txt",
+      "mimeType": "text/plain",
+      "content": "Python CLI 프로그램을 만들고 CSV 로그를 읽어 상태별 집계를 출력한다. argparse로 옵션을 제공한다."
+    },
+    {
+      "fileId": "20000000-0000-4000-8000-000000000002",
+      "path": "documents/20000000-0000-4000-8000-000000000002/project.md",
+      "mimeType": "text/markdown",
+      "content": "작은 팀이 반복적으로 실행할 수 있는 로그 분석 도구를 목표로 한다."
+    }
+  ],
+  "sourceFiles": [
+    {
+      "fileId": "20000000-0000-4000-8000-000000000003",
+      "path": "source/20000000-0000-4000-8000-000000000003/main.py",
+      "mimeType": "text/plain",
+      "content": "parser = argparse.ArgumentParser(); parser.add_argument(\"path\"); rows = csv.DictReader(file)"
+    }
+  ],
+  "expected": {
+    "requiredTerms": ["Python", "argparse", "CSV"],
+    "forbiddenTerms": ["실시간 결제", "외부 OCR"],
+    "allowedImageFileIds": [],
+    "minNonEmptyBlocks": 3,
+    "requiredBlockTypes": ["code", "bulletList"],
+    "maxAverageSentenceWords": 30,
+    "manualReview": [
+      "argparse 옵션과 CSV 입력이 실제 소스에 근거하는가",
+      "구현하지 않은 실시간 처리나 외부 연동을 덧붙이지 않았는가",
+      "사용자가 실행 순서를 재현할 수 있을 만큼 구체적인가"
+    ]
+  }
+}

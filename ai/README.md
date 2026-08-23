@@ -90,7 +90,7 @@ Backend 자신을 가리키므로 사용하면 안 된다.
 
 AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 검증한다.
 `MOCK_REPORT=true`에서는 유효한 bundle을 받으면 샘플 `ReportDocument`를 반환한다.
-`false`이면 Gemini를 통해 요구사항·소스·이미지를 단계별로 분석하고,
+`false`이면 Gemini를 통해 PDF·요구사항·소스·이미지를 단계별로 분석하고,
 `ReportDocument`를 생성·검증한다. 상세 계약은
 [`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
 
@@ -102,19 +102,47 @@ Backend는 확장자로만 소스를 선별하므로 AI Service가 다음을 방
 | --- | --- |
 | UTF-8이 아닌 텍스트 | CP949로 재시도하고, 실패하면 대체 문자로 읽어 `lossy`로 표시 |
 | 텍스트로 볼 수 없는 파일 | 해당 파일만 근거에서 제외하고 나머지로 생성 |
+| PDF가 암호화·손상되었거나 200페이지 초과 | `422 AI_FILE_PROCESSING_FAILED`로 생성 거부 |
 | 파일 합계 100만 자 초과 | 초과분을 제외하고 `omittedFiles`로 모델에 알림 |
 | 이미지 `MAX_ANALYZED_IMAGES` 초과, 7 MiB 초과 | 해당 이미지를 근거에서 제외 |
 | 근거가 하나도 남지 않음 | `422 AI_FILE_PROCESSING_FAILED` (근거 없는 보고서를 만들지 않는다) |
 
 ### 생성 시간 제한
 
-Gemini 호출은 요구사항·소스·계획·문서 4단계에 이미지 장수를 더한 만큼 발생한다.
+Gemini 호출은 PDF가 있으면 요구사항 단계에 PDF를 한 번 첨부하고, 요구사항·소스·계획·문서
+4단계에 이미지 장수를 더한 만큼 발생한다.
 호출당 `GEMINI_TIMEOUT_SECONDS`와 별개로 요청 전체에 `GENERATION_DEADLINE_SECONDS`
 예산을 적용해, Backend가 이미 포기한 요청을 계속 처리하며 무료 티어 쿼터를 소모하지
 않게 한다. 예산이 만료되면 `504 AI_TIMEOUT`을 반환한다.
 
 생성 API의 multipart 본문은 ASGI 수신 단계에서 최대 100 MiB로 제한한다. `Content-Length`
 요청은 파싱 전에 즉시 거부하며, chunked 요청도 수신 바이트가 한도를 넘는 즉시 거부한다.
+
+### 보고서 품질 평가
+
+`evals/fixtures/`에는 REST API, CLI 분석기, React 대시보드를 대표하는 고정 입력 3개가 있다.
+동일 fixture를 프롬프트·모델·provider별로 실행해 결과를 각 디렉터리에
+`{fixture-id}.json`으로 저장한 뒤 다음 명령으로 비교한다.
+
+```bash
+uv run python -m app.evaluation \
+  --fixtures evals/fixtures \
+  --run gemini-v2=evals/results/gemini-v2 \
+  --run gemini-v3=evals/results/gemini-v3
+```
+
+결과 파일은 ReportDocument 원문 또는 다음 envelope을 사용할 수 있다.
+
+```json
+{
+  "run": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "promptVersion": "report-generation-v3"},
+  "document": {"metadata": {}, "sections": []}
+}
+```
+
+평가기는 요구사항 충족도, 근거 일치·허용 이미지 참조, 내용 구체성, 읽기 쉬운 문장 길이,
+ReportDocument Schema 유효성을 정량화한다. 자연어 품질을 자동 합격 처리하지 않으므로 각
+fixture의 `manualReview` 항목을 함께 검토하고, 점수는 동일 입력 간 회귀 비교용으로만 사용한다.
 
 ### 5. 테스트 및 린트
 

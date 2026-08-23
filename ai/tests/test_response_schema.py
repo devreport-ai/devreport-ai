@@ -37,7 +37,12 @@ def test_keeps_field_names_and_nested_models():
     schema = response_schema_for(RequirementAnalysis)
 
     requirement = schema["properties"]["requirements"]["items"]
-    assert list(requirement["properties"]) == ["id", "description", "evidenceFileIds"]
+    assert list(requirement["properties"]) == [
+        "id",
+        "description",
+        "evidenceFileIds",
+        "acceptanceCriteria",
+    ]
     assert requirement["properties"]["evidenceFileIds"]["type"] == "array"
 
 

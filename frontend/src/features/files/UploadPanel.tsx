@@ -17,10 +17,10 @@ import { Icon } from '../../components/ui'
 /**
  * 파일 선택창에서 미리 걸러 줄 확장자.
  *
- * 계약은 업로드 자체는 PDF·DOCX 도 허용하지만 AI 가 읽지 않는다. 고를 수 있게 두면
- * "올렸는데 왜 반영이 안 되지" 가 되므로 목록에서 뺀다. 서버 검증을 대체하지는 않는다.
+ * 업로드 계약과 AI 분석 입력 계약이 모두 허용하는 형식만 고를 수 있게 한다.
+ * 서버 검증을 대체하지는 않는다.
  */
-const ACCEPT = '.zip,.md,.txt,.png,.jpg,.jpeg'
+const ACCEPT = '.zip,.pdf,.md,.txt,.png,.jpg,.jpeg'
 
 /** 계약상 파일당 상한. 서버가 413 으로 거절하기 전에 미리 알려 주면 기다림을 아낀다. */
 const MAX_BYTES = 20 * 1024 * 1024
@@ -132,7 +132,7 @@ export function UploadPanel({ projectId }: { projectId: string }) {
         <strong>
           파일 선택 <span>또는 여기에 파일을 놓아 주세요</span>
         </strong>
-        <span>ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</span>
+        <span>ZIP · PDF · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</span>
       </label>
       <input
         id="file-input"

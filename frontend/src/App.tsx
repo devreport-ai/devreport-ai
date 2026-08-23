@@ -19,6 +19,7 @@ import TemplateChoicePage from './routes/TemplateChoicePage'
 import ReportPage from './routes/ReportPage'
 import NotFoundPage from './routes/NotFoundPage'
 import PolicyPage from './routes/PolicyPage'
+import SettingsPage from './routes/SettingsPage'
 import ApiKeysPage from './routes/ApiKeysPage'
 
 export default function App() {
@@ -60,6 +61,14 @@ export default function App() {
         element={
           <RequireAuth>
             <ReportPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <RequireAuth>
+            <SettingsPage />
           </RequireAuth>
         }
       />

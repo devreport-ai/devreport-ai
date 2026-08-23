@@ -111,5 +111,6 @@ usage-limits:
     signup: ${USAGE_LIMITS_RATE_SIGNUP:10}
     login: ${USAGE_LIMITS_RATE_LOGIN:20}
     refresh: ${USAGE_LIMITS_RATE_REFRESH:30}
+    password-change: ${USAGE_LIMITS_RATE_PASSWORD_CHANGE:5}
     upload: ${USAGE_LIMITS_RATE_UPLOAD:30}
     generation: ${USAGE_LIMITS_RATE_GENERATION:10}
