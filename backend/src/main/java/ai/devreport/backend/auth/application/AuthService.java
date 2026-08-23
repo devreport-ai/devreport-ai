@@ -104,6 +104,25 @@ public class AuthService {
 		return issueTokens(user.get());
 	}
 
+	public void changePassword(UUID userId, String currentPassword, String newPassword) {
+		if (newPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
+			throw new AuthException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD",
+				"비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.");
+		}
+		User user = users.findForUpdate(userId)
+			.orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증 정보를 확인할 수 없습니다."));
+		if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+			throw new AuthException(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
+				"현재 비밀번호가 올바르지 않습니다.");
+		}
+		if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+			throw new AuthException(HttpStatus.BAD_REQUEST, "PASSWORD_UNCHANGED",
+				"새 비밀번호는 기존 비밀번호와 달라야 합니다.");
+		}
+		user.changePassword(passwordEncoder.encode(newPassword));
+		refreshTokens.revokeAllByUserId(userId, Instant.now());
+	}
+
 	public TokenPair refresh(String rawToken) {
 		if (rawToken == null || rawToken.isBlank()) {
 			throw invalidRefreshToken();

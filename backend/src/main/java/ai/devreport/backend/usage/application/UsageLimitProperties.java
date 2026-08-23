@@ -180,6 +180,9 @@ public class UsageLimitProperties {
 		private int refresh = 30;
 
 		@Min(1)
+		private int passwordChange = 5;
+
+		@Min(1)
 		private int upload = 30;
 
 		@Min(1)
@@ -250,6 +253,14 @@ public class UsageLimitProperties {
 
 		public void setRefresh(int refresh) {
 			this.refresh = refresh;
+		}
+
+		public int getPasswordChange() {
+			return passwordChange;
+		}
+
+		public void setPasswordChange(int passwordChange) {
+			this.passwordChange = passwordChange;
 		}
 
 		public int getUpload() {

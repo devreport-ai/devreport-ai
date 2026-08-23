@@ -14,6 +14,7 @@ type Schemas = components['schemas']
 
 export type SignupRequest = Schemas['SignupRequest']
 export type LoginRequest = Schemas['LoginRequest']
+export type PasswordChangeRequest = Schemas['PasswordChangeRequest']
 export type TokenResponse = Schemas['TokenResponse']
 export type UserResponse = Schemas['UserResponse']
 

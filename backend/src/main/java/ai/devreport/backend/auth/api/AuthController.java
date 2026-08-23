@@ -1,6 +1,7 @@
 package ai.devreport.backend.auth.api;
 
 import ai.devreport.backend.auth.application.AuthException;
+import ai.devreport.backend.auth.application.AuthenticatedUser;
 import ai.devreport.backend.auth.application.AuthService;
 import ai.devreport.backend.auth.domain.User;
 import ai.devreport.backend.usage.application.RateLimitService;
@@ -104,6 +105,17 @@ class AuthController {
 		} finally {
 			servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 		}
+	}
+
+	@PostMapping("/password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void changePassword(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
+		@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordChangeRequest request) {
+		validateOrigin(servletRequest);
+		UUID userId = AuthenticatedUser.id(jwt);
+		rateLimits.checkPasswordChange(userId);
+		authService.changePassword(userId, request.currentPassword(), request.newPassword());
+		servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO));
 	}
 
 	@GetMapping("/me")
@@ -239,6 +251,20 @@ class AuthController {
 	record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
 		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
 		public boolean isPasswordWithinByteLimit() {
+			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
+		}
+	}
+
+	record PasswordChangeRequest(
+		@NotBlank @Size(min = 8, max = 72) String currentPassword,
+		@NotBlank @Size(min = 8, max = 72) String newPassword
+	) {
+		@AssertTrue(message = "비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+		public boolean isPasswordWithinByteLimit() {
+			return withinByteLimit(currentPassword) && withinByteLimit(newPassword);
+		}
+
+		private static boolean withinByteLimit(String password) {
 			return password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72;
 		}
 	}
