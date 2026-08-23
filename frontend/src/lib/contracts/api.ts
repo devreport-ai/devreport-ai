@@ -338,6 +338,137 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/auth/password-reset/request': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 비밀번호 재설정 링크 요청
+     * @description 계정 존재 여부와 메일 발송 성공 여부를 노출하지 않고 항상 같은 성공 응답을 반환한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['PasswordResetRequest']
+        }
+      }
+      responses: {
+        /** @description 요청 접수 */
+        202: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['PasswordResetRequestedResponse']
+          }
+        }
+        /** @description 입력값 오류 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description IP 또는 이메일 해시별 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/password-reset/confirm': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 비밀번호 재설정
+     * @description 유효한 일회용 토큰으로 비밀번호를 변경하고 모든 Refresh Token을 폐기한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['PasswordResetConfirmRequest']
+        }
+      }
+      responses: {
+        /** @description 비밀번호 재설정 성공. 기존 Refresh Token 쿠키도 삭제한다. */
+        204: {
+          headers: {
+            /** @description 폐기된 Refresh Token 쿠키 (`Max-Age=0`). */
+            'Set-Cookie'?: string
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 입력값 오류, 만료·위조·재사용 토큰 또는 기존 비밀번호와 동일함 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/auth/me': {
     parameters: {
       query?: never
@@ -1990,8 +2121,26 @@ export interface components {
       password: string
     }
     PasswordChangeRequest: {
-      /** Format: password */
+      /**
+       * Format: password
+       * @description UTF-8 인코딩 기준 최대 72바이트
+       */
       currentPassword: string
+      /**
+       * Format: password
+       * @description UTF-8 인코딩 기준 최대 72바이트
+       */
+      newPassword: string
+    }
+    PasswordResetRequest: {
+      /** Format: email */
+      email: string
+    }
+    PasswordResetRequestedResponse: {
+      message: string
+    }
+    PasswordResetConfirmRequest: {
+      token: string
       /**
        * Format: password
        * @description UTF-8 인코딩 기준 최대 72바이트

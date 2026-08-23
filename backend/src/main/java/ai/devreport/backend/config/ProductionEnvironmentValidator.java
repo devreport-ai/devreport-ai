@@ -1,5 +1,7 @@
 package ai.devreport.backend.config;
 
+import java.net.URI;
+
 import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -18,6 +20,9 @@ public class ProductionEnvironmentValidator implements EnvironmentPostProcessor 
 		requireConfigured(environment, "AI_INTERNAL_TOKEN");
 		requireConfigured(environment, "AI_CREDENTIAL_MASTER_KEY");
 		requireConfigured(environment, "EXPORT_PRINT_URL");
+		requireHttpsUrl(environment, "PUBLIC_APP_URL");
+		requireConfigured(environment, "PASSWORD_RESET_FROM");
+		requireConfigured(environment, "RESEND_API_KEY");
 		if (environment.getProperty("ai.service.mock", Boolean.class, false)) {
 			throw new IllegalStateException("운영 환경에서는 AI_SERVICE_MOCK=true를 사용할 수 없습니다.");
 		}
@@ -38,6 +43,19 @@ public class ProductionEnvironmentValidator implements EnvironmentPostProcessor 
 		String value = environment.getProperty(name);
 		if (value == null || value.isBlank()) {
 			throw new IllegalStateException(name + "이 운영 환경에 설정되지 않았습니다.");
+		}
+	}
+
+	private static void requireHttpsUrl(ConfigurableEnvironment environment, String name) {
+		requireConfigured(environment, name);
+		try {
+			URI uri = URI.create(environment.getProperty(name));
+			if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+				|| uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+				throw new IllegalArgumentException();
+			}
+		} catch (IllegalArgumentException exception) {
+			throw new IllegalStateException(name + "은 query와 fragment가 없는 절대 HTTPS URL이어야 합니다.");
 		}
 	}
 }

@@ -79,6 +79,9 @@ services:
       # 생성·rotation 절차는 docs/user-api-key-policy.md 참고.
       AI_CREDENTIAL_MASTER_KEY: ${AI_CREDENTIAL_MASTER_KEY}
       AI_CREDENTIAL_KEY_VERSION: ${AI_CREDENTIAL_KEY_VERSION:-1}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM}
       AI_SERVICE_RESPONSE_TIMEOUT: 300s
       # Chromium이 컨테이너 네트워크 안에서 접근하는 출력 전용 페이지 주소
       EXPORT_PRINT_URL: http://caddy/print/{exportId}
