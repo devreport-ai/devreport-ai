@@ -242,13 +242,13 @@ class GenerationIntegrationTest {
 		long jobsBefore = jobs.count();
 
 		rejectGeneration(token, projectId, """
-			{"fileIds":["%s"],"metadata":{},"instructions":"모델만","model":"gemini-3.5-pro"}
+			{"fileIds":["%s"],"metadata":{},"instructions":"모델만","model":"gemini-3.7-flash"}
 			""".formatted(fileId), "GENERATION_REQUEST_INVALID");
 		rejectGeneration(token, projectId, """
 			{"fileIds":["%s"],"metadata":{},"instructions":"없는 모델","provider":"GEMINI","model":"gemini-9"}
 			""".formatted(fileId), "AI_MODEL_NOT_ALLOWED");
 		rejectGeneration(token, projectId, """
-			{"fileIds":["%s"],"metadata":{},"instructions":"키 없음","provider":"GEMINI","model":"gemini-3.5-pro"}
+			{"fileIds":["%s"],"metadata":{},"instructions":"키 없음","provider":"GEMINI","model":"gemini-3.7-flash"}
 			""".formatted(fileId), "AI_CREDENTIAL_REQUIRED");
 		assertThat(jobs.count()).isEqualTo(jobsBefore);
 
@@ -274,18 +274,18 @@ class GenerationIntegrationTest {
 
 		aiService.prepare(false);
 		String userJobId = createGeneration(token, projectId, """
-			{"fileIds":["%s"],"metadata":{},"instructions":"사용자 키","provider":"GEMINI","model":"gemini-3.5-pro"}
+			{"fileIds":["%s"],"metadata":{},"instructions":"사용자 키","provider":"GEMINI","model":"gemini-3.7-flash"}
 			""".formatted(fileId));
 		assertThat(aiService.awaitStarted()).isTrue();
 		aiService.release();
 		awaitStatus(token, userJobId, "COMPLETED");
 		assertThat(aiService.lastProviderApiKey()).isEqualTo(userKey);
-		assertThat(aiService.lastRequest().model()).isEqualTo("gemini-3.5-pro");
+		assertThat(aiService.lastRequest().model()).isEqualTo("gemini-3.7-flash");
 		String jobBody = mvc.perform(get("/api/generations/{jobId}", userJobId)
 				.header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.provider").value("GEMINI"))
-			.andExpect(jsonPath("$.model").value("gemini-3.5-pro"))
+			.andExpect(jsonPath("$.model").value("gemini-3.7-flash"))
 			.andReturn().getResponse().getContentAsString();
 		assertThat(jobBody).doesNotContain(userKey);
 		GenerationJob userJob = jobs.findById(UUID.fromString(userJobId)).orElseThrow();

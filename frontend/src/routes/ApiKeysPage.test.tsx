@@ -28,8 +28,8 @@ const models = {
     },
     {
       provider: 'GEMINI',
-      model: 'gemini-3.5-pro',
-      label: 'Gemini 3.5 Pro',
+      model: 'gemini-3.7-flash',
+      label: 'Gemini 3.7 Flash',
       serverDefault: false,
       available: false,
       usesUserKey: false,

@@ -117,21 +117,23 @@ function ProviderCard({
   models: AiModelOption[]
 }) {
   const [apiKey, setApiKey] = useState('')
+  // 오류 문구는 별도 상태로 들고 있는다. mutation 의 error 상태를 그대로 쓰면 실패한 mutation 의
+  // variables(키 원문)가 카드가 마운트된 동안 React Query 에 남기 때문이다.
+  const [saveError, setSaveError] = useState<string | null>(null)
   const save = useSaveAiCredential()
   const remove = useDeleteAiCredential()
   const trimmed = apiKey.trim()
 
   const handleSave = (event: React.FormEvent) => {
     event.preventDefault()
+    setSaveError(null)
     save.mutate(
       { provider, apiKey: trimmed },
       {
-        onSuccess: () => {
-          setApiKey('')
-          // 성공하면 mutation 변수(키 원문)를 바로 지운다. 실패 시에는 오류 문구를 보여줘야 하므로
-          // 상태를 남기되 gcTime: 0 으로 곧 정리된다.
-          save.reset()
-        },
+        onSuccess: () => setApiKey(''),
+        onError: (error) => setSaveError(toDisplayMessage(error)),
+        // 성공·실패 모두 mutation 상태(variables 의 키 원문)를 즉시 비운다.
+        onSettled: () => save.reset(),
       },
     )
   }
@@ -191,9 +193,9 @@ function ProviderCard({
             </button>
           )}
         </div>
-        {save.error && (
+        {saveError && (
           <p role="alert" className="inline-alert">
-            {toDisplayMessage(save.error)}
+            {saveError}
           </p>
         )}
         {remove.error && (

@@ -67,9 +67,9 @@ class AiCredentialIntegrationTest {
 			.andReturn().getResponse().getContentAsString();
 		assertThat(body).doesNotContain(SECRET_KEY);
 
-		List<UserAiCredential> stored = credentials.findAll().stream()
-			.filter(credential -> credential.getKeyHint().equals("1234")).toList();
+		List<UserAiCredential> stored = credentialsOf("credential-owner@example.com");
 		assertThat(stored).hasSize(1);
+		assertThat(stored.getFirst().getKeyHint()).isEqualTo("1234");
 		List<Map<String, Object>> rows = jdbc.queryForList(
 			"select * from user_ai_credentials where id = ?", stored.getFirst().getId());
 		assertThat(rows).hasSize(1);
@@ -87,7 +87,7 @@ class AiCredentialIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].available").value(true))
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(true))
-			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(true));
+			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.7-flash')].available").value(true));
 	}
 
 	@Test
@@ -98,8 +98,7 @@ class AiCredentialIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"apiKey\":\"AIzaSyUnreadableKey-abcdefghijklmnop5678\"}"))
 			.andExpect(status().isOk());
-		UserAiCredential stored = credentials.findAll().stream()
-			.filter(credential -> credential.getKeyHint().equals("5678")).findFirst().orElseThrow();
+		UserAiCredential stored = credentialsOf("credential-unreadable@example.com").getFirst();
 		// 마스터 키 rotation에서 이전 버전을 잃어버린 상황을 흉내 낸다.
 		jdbc.update("update user_ai_credentials set key_version = 99 where id = ?", stored.getId());
 
@@ -107,7 +106,7 @@ class AiCredentialIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].available").value(true))
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false))
-			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(false));
+			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.7-flash')].available").value(false));
 	}
 
 	@Test
@@ -146,22 +145,23 @@ class AiCredentialIntegrationTest {
 				.content("{\"apiKey\":\"       a\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("AI_CREDENTIAL_INVALID"));
-		assertThat(credentials.count()).isZero();
+		assertThat(credentialsOf("credential-rotate@example.com")).isEmpty();
 
 		mvc.perform(put("/api/me/ai-credentials/GEMINI")
 				.header("Authorization", bearer(token))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"apiKey\":\"" + SECRET_KEY + "\"}"))
 			.andExpect(status().isOk());
-		UUID firstId = credentials.findAll().getFirst().getId();
+		UUID firstId = credentialsOf("credential-rotate@example.com").getFirst().getId();
 		mvc.perform(put("/api/me/ai-credentials/GEMINI")
 				.header("Authorization", bearer(token))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"apiKey\":\"AIzaSyReplacedKey-zzzzzzzzzzzz9876\"}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.keyHint").value("****9876"));
-		assertThat(credentials.findAll()).hasSize(1);
-		assertThat(credentials.findAll().getFirst().getId()).isEqualTo(firstId);
+		List<UserAiCredential> rotated = credentialsOf("credential-rotate@example.com");
+		assertThat(rotated).hasSize(1);
+		assertThat(rotated.getFirst().getId()).isEqualTo(firstId);
 
 		mvc.perform(delete("/api/me/ai-credentials/GEMINI").header("Authorization", bearer(token)))
 			.andExpect(status().isNoContent());
@@ -173,13 +173,19 @@ class AiCredentialIntegrationTest {
 		mvc.perform(get("/api/ai/models").header("Authorization", bearer(token)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[?(@.serverDefault == true)].usesUserKey").value(false))
-			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.5-pro')].available").value(false));
+			.andExpect(jsonPath("$.items[?(@.model == 'gemini-3.7-flash')].available").value(false));
 	}
 
 	@Test
 	void requiresAuthentication() throws Exception {
 		mvc.perform(get("/api/me/ai-credentials")).andExpect(status().isUnauthorized());
 		mvc.perform(get("/api/ai/models")).andExpect(status().isUnauthorized());
+	}
+
+	/** 공유 H2 DB에서 다른 테스트가 만든 행과 섞이지 않도록 이메일 기준으로 현재 사용자의 자격 증명만 조회한다. */
+	private List<UserAiCredential> credentialsOf(String email) {
+		UUID userId = jdbc.queryForObject("select id from app_users where email = ?", UUID.class, email);
+		return credentials.findAllByUserIdOrderByProviderAsc(userId);
 	}
 
 	private String signupAndLogin(String email) throws Exception {

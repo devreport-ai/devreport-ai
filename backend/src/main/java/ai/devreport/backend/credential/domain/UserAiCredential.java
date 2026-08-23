@@ -1,6 +1,7 @@
 package ai.devreport.backend.credential.domain;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -63,11 +64,12 @@ public class UserAiCredential {
 	}
 
 	public void replace(EncryptedKey encrypted, String keyHint, Instant verifiedAt) {
-		this.ciphertext = encrypted.ciphertext();
+		this.ciphertext = Objects.requireNonNull(encrypted, "encrypted").ciphertext();
 		this.nonce = encrypted.nonce();
 		this.keyVersion = encrypted.keyVersion();
-		this.keyHint = keyHint;
-		this.verifiedAt = verifiedAt;
+		this.keyHint = Objects.requireNonNull(keyHint, "keyHint");
+		// 검증을 거치지 않은 키는 저장하지 않는다. 계약(AiCredentialResponse.verifiedAt 필수)과 맞춘다.
+		this.verifiedAt = Objects.requireNonNull(verifiedAt, "verifiedAt");
 		this.updatedAt = Instant.now();
 	}
 

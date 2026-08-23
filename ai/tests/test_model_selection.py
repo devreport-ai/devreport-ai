@@ -32,10 +32,10 @@ def test_uses_server_key_and_default_model_when_nothing_is_selected():
 
 def test_uses_user_key_for_any_allowed_model():
     selection = resolve_model_selection(
-        request(provider="GEMINI", model="gemini-3.5-pro"), settings(), "  user-key "
+        request(provider="GEMINI", model="gemini-3.7-flash"), settings(), "  user-key "
     )
 
-    assert selection.model == "gemini-3.5-pro"
+    assert selection.model == "gemini-3.7-flash"
     assert selection.api_key == "user-key"
     assert selection.uses_user_key is True
 
@@ -49,7 +49,9 @@ def test_user_key_overrides_server_key_for_the_default_model():
 
 def test_rejects_non_default_model_without_user_key():
     with pytest.raises(AIServiceError) as raised:
-        resolve_model_selection(request(provider="GEMINI", model="gemini-3.5-pro"), settings(), "")
+        resolve_model_selection(
+            request(provider="GEMINI", model="gemini-3.7-flash"), settings(), ""
+        )
 
     assert raised.value.code == ErrorCode.AI_MODEL_NOT_ALLOWED
 
@@ -67,11 +69,11 @@ def test_rejects_models_outside_the_allowlist(provider: str, model: str):
 
 def test_request_requires_provider_and_model_together():
     with pytest.raises(ValueError):
-        request(model="gemini-3.5-pro")
+        request(model="gemini-3.7-flash")
     with pytest.raises(ValueError):
         request(provider="GEMINI")
 
 
 def test_settings_require_default_model_inside_allowlist():
     with pytest.raises(ValueError):
-        Settings(gemini_allowed_models=("gemini-3.5-pro",))
+        Settings(gemini_allowed_models=("gemini-3.7-flash",))
