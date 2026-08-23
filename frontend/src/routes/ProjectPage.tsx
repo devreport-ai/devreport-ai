@@ -179,7 +179,8 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
             {items.length > 0 && selectable.length === 0 && (
               <p className="inline-hint">
-                AI 가 분석할 수 있는 파일이 없습니다. ZIP · MD · TXT · PNG · JPG 를 올려 주세요.
+                AI 가 분석할 수 있는 파일이 없습니다. ZIP · PDF · MD · TXT · PNG · JPG 를 올려
+                주세요.
               </p>
             )}
           </section>
@@ -403,7 +404,7 @@ function FileRow({
         <span className="file-row__name">{file.originalName}</span>
         <span className="file-row__meta">
           {file.contentType}
-          {!usable && <span>AI 분석 대상 아님</span>}
+          <span>{usable ? 'AI 분석 대상' : 'AI 분석 대상 아님'}</span>
         </span>
       </label>
       <button

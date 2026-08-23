@@ -36,15 +36,16 @@ describe('UploadPanel', () => {
   it('올릴 수 있는 형식과 크기를 안내한다', () => {
     renderWithProviders(<UploadPanel projectId="p1" />)
 
-    expect(screen.getByText('ZIP · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.')).toBeInTheDocument()
+    expect(
+      screen.getByText('ZIP · PDF · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.'),
+    ).toBeInTheDocument()
   })
 
-  it('AI 가 읽지 않는 PDF·DOCX 는 파일 선택창에서 고를 수 없다', () => {
-    // 고를 수 있게 두면 "올렸는데 왜 반영이 안 되지" 가 된다.
+  it('AI 가 읽을 수 있는 PDF를 파일 선택창에서 고를 수 있다', () => {
     renderWithProviders(<UploadPanel projectId="p1" />)
 
     const accept = document.getElementById('file-input')?.getAttribute('accept')
-    expect(accept).toBe('.zip,.md,.txt,.png,.jpg,.jpeg')
+    expect(accept).toBe('.zip,.pdf,.md,.txt,.png,.jpg,.jpeg')
   })
 
   it('업로드 중 진행률을 보여주고 끝나면 완료로 바꾼다', async () => {
