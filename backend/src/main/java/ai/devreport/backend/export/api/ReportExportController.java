@@ -1,15 +1,15 @@
 package ai.devreport.backend.export.api;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import ai.devreport.backend.auth.application.AuthenticatedUser;
+import ai.devreport.backend.export.api.response.ExportIdResponse;
+import ai.devreport.backend.export.api.response.ExportResponse;
+import ai.devreport.backend.export.api.response.RenderDataResponse;
 import ai.devreport.backend.export.application.ReportExportService;
-import ai.devreport.backend.export.domain.ReportExport;
 import ai.devreport.backend.upload.application.ProjectFileService.FileContent;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,14 +39,14 @@ class ReportExportController {
 	}
 
 	@PostMapping("/reports/{reportId}/exports")
-	@ResponseStatus(HttpStatus.ACCEPTED)
-	ExportIdResponse create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId) {
-		return new ExportIdResponse(exports.create(AuthenticatedUser.id(jwt), reportId).getId());
+	ResponseEntity<ExportIdResponse> create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reportId) {
+		UUID exportId = exports.create(AuthenticatedUser.id(jwt), reportId).getId();
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new ExportIdResponse(exportId));
 	}
 
 	@GetMapping("/report-exports/{exportId}")
-	ExportResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID exportId) {
-		return ExportResponse.from(exports.get(AuthenticatedUser.id(jwt), exportId));
+	ResponseEntity<ExportResponse> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID exportId) {
+		return ResponseEntity.ok(ExportResponse.from(exports.get(AuthenticatedUser.id(jwt), exportId)));
 	}
 
 	@GetMapping("/report-exports/{exportId}/render-data")
@@ -73,7 +72,7 @@ class ReportExportController {
 		} catch (RuntimeException exception) {
 			try {
 				content.inputStream().close();
-			} catch (java.io.IOException closeException) {
+			} catch (IOException closeException) {
 				exception.addSuppressed(closeException);
 			}
 			throw exception;
@@ -91,30 +90,5 @@ class ReportExportController {
 			.header(HttpHeaders.CONTENT_DISPOSITION,
 				ContentDisposition.attachment().filename("report-" + exportId + ".pdf").build().toString())
 			.body(resource);
-	}
-
-	record ExportIdResponse(UUID exportId) {
-	}
-
-	record ExportResponse(UUID exportId, UUID reportId, String status, Long size, String failureCode,
-		String failureMessage, Instant expiresAt, Instant createdAt, Instant startedAt, Instant completedAt) {
-
-		static ExportResponse from(ReportExport export) {
-			String status = export.isExpired() ? "EXPIRED" : export.getStatus().name();
-			return new ExportResponse(export.getId(), export.getReportId(), status, export.getSize(),
-				export.getFailureCode(), export.getFailureMessage(), export.getExpiresAt(), export.getCreatedAt(),
-				export.getStartedAt(), export.getCompletedAt());
-		}
-	}
-
-	record RenderDataResponse(UUID exportId, UUID reportId, UUID projectId, long reportVersion,
-		Map<String, Object> document, String templateId, Integer templateVersion,
-		Map<String, Object> presentationSettings, Set<UUID> imageFileIds) {
-
-		static RenderDataResponse from(ReportExportService.RenderData data) {
-			return new RenderDataResponse(data.exportId(), data.reportId(), data.projectId(), data.reportVersion(),
-				data.document(), data.templateId(), data.templateVersion(), data.presentationSettings(),
-				data.imageFileIds());
-		}
 	}
 }
