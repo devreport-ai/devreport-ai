@@ -871,7 +871,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/FileIdResponse"
         "400":
-          description: 빈 파일, 잘못된 파일 이름, 손상된 ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, ZIP_INVALID, ZIP_PATH_INVALID)
+          description: 빈 파일, 잘못된 파일 이름, 손상된 PDF·ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, PDF_INVALID, ZIP_INVALID, ZIP_PATH_INVALID)
           content:
             application/json:
               schema:
@@ -889,7 +889,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "413":
-          description: 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED)
+          description: 파일 크기·PDF 페이지·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, PDF_PAGE_LIMIT_EXCEEDED, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED)
           content:
             application/json:
               schema:
@@ -907,7 +907,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
-          description: ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT)
+          description: 암호화된 PDF 또는 ZIP에 환경변수·인증서·키·실행 파일 포함 (PDF_ENCRYPTED, ZIP_BLOCKED_CONTENT)
           content:
             application/json:
               schema:
