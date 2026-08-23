@@ -2,6 +2,8 @@ package ai.devreport.backend.upload.infrastructure;
 
 import ai.devreport.backend.upload.domain.ProjectFileException;
 
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.isAnalyzable;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,10 +35,6 @@ public class SafeZipExtractor {
 	private static final Set<String> EXECUTABLE_EXTENSIONS = Set.of(
 		"exe", "dll", "so", "dylib", "bin", "com", "msi", "apk", "jar", "war", "class",
 		"sh", "bat", "cmd", "ps1");
-	private static final Set<String> ANALYSIS_EXTENSIONS = Set.of(
-		"java", "kt", "py", "js", "jsx", "ts", "tsx", "html", "css", "scss", "sql", "xml",
-		"json", "yaml", "yml", "md", "txt", "gradle", "properties", "toml", "go", "rs", "c",
-		"h", "cpp", "hpp", "cs", "php", "rb", "swift", "dart", "vue", "svelte");
 
 	public void extract(Path zipPath, Path targetDirectory) throws IOException {
 		Path target = targetDirectory.toAbsolutePath().normalize();
@@ -79,7 +77,7 @@ public class SafeZipExtractor {
 				}
 
 				boolean selected = !hasExcludedDirectory(target.relativize(output))
-					&& ANALYSIS_EXTENSIONS.contains(extension);
+					&& isAnalyzable(extension);
 				if (selected) {
 					Files.createDirectories(output.getParent());
 				}

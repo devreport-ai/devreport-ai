@@ -106,8 +106,55 @@ const AI_INPUT_MIME_TYPES = [
   'text/plain',
   'text/markdown',
   'application/zip',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
-const AI_INPUT_EXTENSIONS = ['.zip', '.pdf', '.md', '.txt', '.png', '.jpg', '.jpeg']
+const SOURCE_EXTENSIONS = [
+  '.java',
+  '.kt',
+  '.py',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.html',
+  '.css',
+  '.scss',
+  '.sql',
+  '.xml',
+  '.json',
+  '.yaml',
+  '.yml',
+  '.gradle',
+  '.properties',
+  '.toml',
+  '.go',
+  '.rs',
+  '.c',
+  '.h',
+  '.cpp',
+  '.hpp',
+  '.cs',
+  '.php',
+  '.rb',
+  '.swift',
+  '.dart',
+  '.vue',
+  '.svelte',
+]
+const AI_INPUT_EXTENSIONS = [
+  '.zip',
+  '.pdf',
+  '.docx',
+  '.md',
+  '.txt',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  ...SOURCE_EXTENSIONS,
+]
+
+/** 브라우저 파일 선택창과 AI 입력 판별이 같은 확장자 기준을 쓰게 한다. */
+export const AI_INPUT_ACCEPT = AI_INPUT_EXTENSIONS.join(',')
 
 /** 이 파일을 AI 분석 대상으로 고를 수 있는가. */
 export function isAiInputFile(file: Pick<FileResponse, 'contentType' | 'originalName'>): boolean {
@@ -117,4 +164,11 @@ export function isAiInputFile(file: Pick<FileResponse, 'contentType' | 'original
   // `text/plain; charset=utf-8` 처럼 파라미터가 붙어 오므로 앞부분만 떼어 비교한다.
   const mime = file.contentType.split(';')[0].trim().toLowerCase()
   return AI_INPUT_MIME_TYPES.includes(mime)
+}
+
+export function aiInputExclusionReason(
+  file: Pick<FileResponse, 'contentType' | 'originalName'>,
+): string | undefined {
+  if (isAiInputFile(file)) return undefined
+  return 'AI 분석을 지원하지 않는 파일 형식입니다.'
 }

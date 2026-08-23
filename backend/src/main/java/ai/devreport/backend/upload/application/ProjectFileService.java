@@ -7,6 +7,9 @@ import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 import ai.devreport.backend.export.domain.ReportExport;
 import ai.devreport.backend.export.infrastructure.ReportExportRepository;
 
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.extension;
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.isSource;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -285,11 +288,6 @@ public class ProjectFileService {
 		return name;
 	}
 
-	private static String extension(String name) {
-		int separator = name.lastIndexOf('.');
-		return separator < 0 ? "" : name.substring(separator + 1).toLowerCase(Locale.ROOT);
-	}
-
 	private static String contentType(MultipartFile file) {
 		String contentType = file.getContentType();
 		return contentType == null ? "" : contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
@@ -313,7 +311,7 @@ public class ProjectFileService {
 			case "zip" -> ZIP_MIME_TYPES.contains(contentType);
 			case "jpg", "jpeg" -> contentType.equals("image/jpeg");
 			case "png" -> contentType.equals("image/png");
-			default -> false;
+			default -> isSource(extension) && isSourceContentType(contentType);
 		};
 		if (!allowed) {
 			throw typeNotAllowed();
@@ -331,11 +329,18 @@ public class ProjectFileService {
 			case "zip" -> isZip(path);
 			case "jpg", "jpeg" -> startsWith(path, JPEG_SIGNATURE);
 			case "png" -> startsWith(path, PNG_SIGNATURE);
-			default -> false;
+			default -> isSource(extension) && isUtf8Text(path);
 		};
 		if (!valid) {
 			throw typeNotAllowed();
 		}
+	}
+
+	private static boolean isSourceContentType(String contentType) {
+		return contentType.isEmpty() || contentType.equals("application/octet-stream")
+			|| contentType.startsWith("text/") || contentType.equals("application/json")
+			|| contentType.equals("application/xml") || contentType.equals("application/yaml")
+			|| contentType.equals("application/sql") || contentType.equals("application/toml");
 	}
 
 	private static boolean startsWith(Path path, byte[] signature) throws IOException {
@@ -527,7 +532,7 @@ public class ProjectFileService {
 
 	private static ProjectFileException typeNotAllowed() {
 		return new ProjectFileException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE_TYPE_NOT_ALLOWED",
-			"PDF, DOCX, TXT, MD, ZIP, JPG, JPEG, PNG 파일만 업로드할 수 있습니다.");
+			"PDF, DOCX, TXT, MD, ZIP, JPG, JPEG, PNG와 지원되는 소스 코드 파일만 업로드할 수 있습니다.");
 	}
 
 	private static ProjectFileException fileNotFound() {

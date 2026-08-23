@@ -13,14 +13,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { fileKeys, uploadProjectFile } from './api'
 import { toDisplayMessage } from '../../lib/api/errors'
 import { Icon } from '../../components/ui'
-
-/**
- * 파일 선택창에서 미리 걸러 줄 확장자.
- *
- * 업로드 계약과 AI 분석 입력 계약이 모두 허용하는 형식만 고를 수 있게 한다.
- * 서버 검증을 대체하지는 않는다.
- */
-const ACCEPT = '.zip,.pdf,.md,.txt,.png,.jpg,.jpeg'
+import { AI_INPUT_ACCEPT } from '../../lib/contracts/types'
 
 /** 계약상 파일당 상한. 서버가 413 으로 거절하기 전에 미리 알려 주면 기다림을 아낀다. */
 const MAX_BYTES = 20 * 1024 * 1024
@@ -132,14 +125,14 @@ export function UploadPanel({ projectId }: { projectId: string }) {
         <strong>
           파일 선택 <span>또는 여기에 파일을 놓아 주세요</span>
         </strong>
-        <span>ZIP · PDF · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.</span>
+        <span>ZIP · PDF/DOCX · MD/TXT · 소스 코드 · PNG/JPG, 파일당 20 MiB 까지.</span>
       </label>
       <input
         id="file-input"
         ref={inputRef}
         type="file"
         multiple
-        accept={ACCEPT}
+        accept={AI_INPUT_ACCEPT}
         onChange={handleSelect}
         className="sr-only"
       />

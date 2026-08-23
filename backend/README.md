@@ -269,12 +269,15 @@ cd backend
 ## 파일 업로드
 
 - 파일당 최대 크기: 20 MiB
-- 문서·소스: PDF, DOCX, TXT, MD, ZIP
+- 문서: PDF, DOCX, TXT, MD
+- 소스: Java, Kotlin, Python, JavaScript/TypeScript 등 ZIP 분석 allowlist와 같은 텍스트 코드
+- 묶음: ZIP
 - 이미지: JPG/JPEG, PNG
 - GIF와 WEBP는 MVP의 보고서·AI 처리 호환 범위에 포함되지 않아 업로드할 수 없다.
 - 확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다.
 - PDF는 암호화·손상·페이지 제한(최대 200페이지)을 추가로 검증한다.
 - 실제 파일은 `UPLOAD_PATH/{projectId}/{fileId}`에 UUID 이름으로 저장한다.
+- 문서·소스·ZIP·이미지는 AI 생성 입력으로 선택할 수 있다.
 
 업로드 오류는 공통 오류 응답의 `code`로 구분한다.
 

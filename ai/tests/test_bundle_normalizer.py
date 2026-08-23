@@ -1,5 +1,6 @@
 from io import BytesIO
 from uuid import UUID
+from zipfile import ZipFile
 
 import pytest
 from fastapi import UploadFile
@@ -17,6 +18,7 @@ from app.services.bundle_normalizer import (
 FILE_ID = UUID("00000000-0000-4000-8000-000000000001")
 SECOND_FILE_ID = UUID("00000000-0000-4000-8000-000000000002")
 PDF_ID = UUID("00000000-0000-4000-8000-000000000003")
+DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
 def manifest_file(
@@ -49,6 +51,16 @@ def pdf_content(pages: int = 1, encrypted: bool = False) -> bytes:
     prefix = b"%PDF-1.4\n/Type /Catalog\n" + page_objects + encryption
     xref_offset = len(prefix)
     return prefix + b"xref\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
+
+
+def docx(document_xml: str, images: dict[str, bytes] | None = None) -> bytes:
+    output = BytesIO()
+    with ZipFile(output, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("word/document.xml", document_xml)
+        for path, content in (images or {}).items():
+            archive.writestr(path, content)
+    return output.getvalue()
 
 
 @pytest.mark.anyio
@@ -120,6 +132,67 @@ async def test_rejects_pdf_over_the_page_limit():
         )
 
     assert raised.value.code == ErrorCode.AI_FILE_PROCESSING_FAILED
+
+
+@pytest.mark.anyio
+async def test_extracts_docx_paragraphs_tables_and_embedded_images():
+    document_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+      <w:body>
+        <w:p><w:r><w:t>과제 요구사항</w:t></w:r></w:p>
+        <w:tbl><w:tr><w:tc><w:p><w:r><w:t>항목</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>결과</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+      </w:body>
+    </w:document>"""
+    content = docx(
+        document_xml,
+        {
+            "word/media/result.png": b"\x89PNG\r\n\x1a\nimage",
+            "word/media/ignored.gif": b"GIF89a",
+        },
+    )
+    path = f"documents/{FILE_ID}/assignment.docx"
+
+    context = await BundleNormalizer().normalize(
+        manifest("documents", path, DOCX_MIME_TYPE, len(content)),
+        [upload(path, content, DOCX_MIME_TYPE)],
+    )
+
+    assert "과제 요구사항" in context.documents[0].content
+    assert "| 항목 | 결과 |" in context.documents[0].content
+    assert context.document_images[0].content.startswith(b"\x89PNG")
+    assert context.document_images[0].file_id == FILE_ID
+    assert [(item.reason, item.path) for item in context.omitted] == [
+        ("unsupported-embedded-image", f"{path}#word/media/ignored.gif")
+    ]
+
+
+@pytest.mark.anyio
+async def test_omits_docx_with_unsafe_xml_but_keeps_other_evidence():
+    unsafe = docx('<!DOCTYPE x [<!ENTITY a "boom">]><document>&a;</document>')
+    docx_path = f"documents/{FILE_ID}/unsafe.docx"
+    source_path = f"source/{SECOND_FILE_ID}/App.java"
+    files = GenerationManifest.model_validate(
+        {
+            "version": 1,
+            "files": [
+                manifest_file(FILE_ID, "documents", docx_path, DOCX_MIME_TYPE, len(unsafe)),
+                manifest_file(SECOND_FILE_ID, "source", source_path, "text/plain", 12),
+            ],
+        }
+    )
+
+    context = await BundleNormalizer().normalize(
+        files,
+        [
+            upload(docx_path, unsafe, DOCX_MIME_TYPE),
+            upload(source_path, b"class App {}", "text/plain"),
+        ],
+    )
+
+    assert context.documents == ()
+    assert context.source_files[0].file_id == SECOND_FILE_ID
+    assert [(item.file_id, item.reason) for item in context.omitted] == [(FILE_ID, "unreadable")]
 
 
 @pytest.mark.anyio

@@ -37,15 +37,17 @@ describe('UploadPanel', () => {
     renderWithProviders(<UploadPanel projectId="p1" />)
 
     expect(
-      screen.getByText('ZIP · PDF · MD · TXT · PNG · JPG, 파일당 20 MiB 까지.'),
+      screen.getByText('ZIP · PDF/DOCX · MD/TXT · 소스 코드 · PNG/JPG, 파일당 20 MiB 까지.'),
     ).toBeInTheDocument()
   })
 
-  it('AI 가 읽을 수 있는 PDF를 파일 선택창에서 고를 수 있다', () => {
+  it('PDF와 DOCX, 직접 소스를 파일 선택창에서 고를 수 있다', () => {
     renderWithProviders(<UploadPanel projectId="p1" />)
 
     const accept = document.getElementById('file-input')?.getAttribute('accept')
-    expect(accept).toBe('.zip,.pdf,.md,.txt,.png,.jpg,.jpeg')
+    expect(accept).toContain('.pdf')
+    expect(accept).toContain('.docx')
+    expect(accept).toContain('.java')
   })
 
   it('업로드 중 진행률을 보여주고 끝나면 완료로 바꾼다', async () => {

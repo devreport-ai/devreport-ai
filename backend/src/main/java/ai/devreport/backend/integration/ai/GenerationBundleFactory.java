@@ -3,6 +3,11 @@ package ai.devreport.backend.integration.ai;
 import ai.devreport.backend.upload.domain.UploadedFile;
 import ai.devreport.backend.upload.infrastructure.UploadedFileRepository;
 
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.contentType;
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.extension;
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.isDocument;
+import static ai.devreport.backend.upload.domain.AnalysisFileTypes.isSource;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -13,8 +18,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -29,15 +32,6 @@ public class GenerationBundleFactory {
 	private static final Logger log = LoggerFactory.getLogger(GenerationBundleFactory.class);
 	private static final int MAX_FILE_COUNT = 1_000;
 	private static final long MAX_TOTAL_SIZE = 100L * 1024 * 1024;
-	private static final Map<String, String> SOURCE_CONTENT_TYPES = Map.ofEntries(
-		Map.entry("json", "application/json"), Map.entry("xml", "application/xml"),
-		Map.entry("html", "text/html"), Map.entry("css", "text/css"),
-		Map.entry("scss", "text/x-scss"), Map.entry("js", "text/javascript"),
-		Map.entry("jsx", "text/jsx"), Map.entry("ts", "text/typescript"),
-		Map.entry("tsx", "text/tsx"), Map.entry("md", "text/markdown"),
-		Map.entry("yaml", "application/yaml"), Map.entry("yml", "application/yaml"),
-		Map.entry("sql", "application/sql"), Map.entry("toml", "application/toml")
-	);
 
 	private final UploadedFileRepository uploadedFiles;
 	private final ObjectMapper objectMapper;
@@ -86,13 +80,18 @@ public class GenerationBundleFactory {
 				for (Path source : paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
 					.sorted().toList()) {
 					Path relative = extracted.relativize(source);
-					copy(root, source, "source/" + file.getId() + "/" + portable(relative), file,
-						sourceContentType(source), parts, manifestFiles);
+					String sourceExtension = extension(source);
+					String category = isDocument(sourceExtension) ? "documents" : "source";
+					copy(root, source, category + "/" + file.getId() + "/" + portable(relative), file,
+						contentType(sourceExtension), parts, manifestFiles);
 				}
 			}
-		} else if (extension.equals("md") || extension.equals("txt") || extension.equals("pdf")) {
+		} else if (isDocument(extension) || extension.equals("pdf")) {
 			copy(root, storedPath(file), "documents/" + file.getId() + "/" + file.getOriginalName(), file,
-				file.getContentType(), parts, manifestFiles);
+				contentType(extension), parts, manifestFiles);
+		} else if (isSource(extension)) {
+			copy(root, storedPath(file), "source/" + file.getId() + "/" + file.getOriginalName(), file,
+				contentType(extension), parts, manifestFiles);
 		} else if (extension.equals("png") || extension.equals("jpg") || extension.equals("jpeg")) {
 			copy(root, storedPath(file), "images/" + file.getId() + "/" + file.getOriginalName(), file,
 				file.getContentType(), parts, manifestFiles);
@@ -125,15 +124,6 @@ public class GenerationBundleFactory {
 
 	private Path storedPath(UploadedFile file) {
 		return uploadRoot.resolve(file.getProjectId().toString()).resolve(file.getStoredName());
-	}
-
-	private static String sourceContentType(Path path) {
-		return SOURCE_CONTENT_TYPES.getOrDefault(extension(path.getFileName().toString()), "text/plain");
-	}
-
-	private static String extension(String name) {
-		int separator = name.lastIndexOf('.');
-		return separator < 0 ? "" : name.substring(separator + 1).toLowerCase(Locale.ROOT);
 	}
 
 	private static String portable(Path path) {

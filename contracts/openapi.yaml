@@ -1184,11 +1184,13 @@ paths:
     post:
       summary: 프로젝트 파일 업로드
       description: |
-        파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG만 허용하며
+        파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG와 아래
+        소스 코드 확장자를 허용하며
         확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다. GIF와 WEBP는 MVP의
         보고서·AI 처리 호환 범위에서 제외되어 FILE_TYPE_NOT_ALLOWED로 거부된다.
         ZIP은 해제 용량 100 MiB와 내부 엔트리 1,000개로 제한하며 ZIP Slip, 환경변수,
-        인증서·키, 실행 파일을 차단한다. java, kt, py, js, jsx, ts, tsx, html, css, scss,
+        인증서·키, 실행 파일을 차단한다. 소스 코드는 직접 업로드와 ZIP 내부에서 동일하게
+        java, kt, py, js, jsx, ts, tsx, html, css, scss,
         sql, xml, json, yaml, yml, md, txt, gradle, properties, toml, go, rs, c, h, cpp, hpp,
         cs, php, rb, swift, dart, vue, svelte 확장자만 별도 디렉터리에 해제한다.
       requestBody:

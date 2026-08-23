@@ -35,9 +35,9 @@ export default function PolicyPage() {
         <section id="ai-data" className="policy-section">
           <h2>AI 자료 처리 고지</h2>
           <p>
-            사용자가 선택한 ZIP·MD·TXT·PNG·JPG 자료와 생성 지시사항은 보고서 생성 과정에서 Backend를
-            거쳐 AI Service에 전달될 수 있습니다. Frontend가 AI 제공자를 직접 호출하지 않으며,
-            생성이 끝나면 Backend의 임시 bundle은 삭제됩니다.
+            사용자가 선택한 ZIP·PDF·DOCX·MD·TXT·소스 코드·PNG·JPG 자료와 생성 지시사항은 보고서 생성
+            과정에서 Backend를 거쳐 AI Service에 전달될 수 있습니다. Frontend가 AI 제공자를 직접
+            호출하지 않으며, 생성이 끝나면 Backend의 임시 bundle은 삭제됩니다.
           </p>
           <p>
             업로드·생성 전에 이 고지를 확인해야 하며, 민감하거나 제3자의 개인정보가 포함된 자료는

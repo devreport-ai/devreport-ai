@@ -1158,11 +1158,13 @@ export interface paths {
     put?: never
     /**
      * 프로젝트 파일 업로드
-     * @description 파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG만 허용하며
+     * @description 파일당 최대 크기는 20 MiB이다. PDF, DOCX, TXT, MD, ZIP, JPG/JPEG, PNG와 아래
+     *     소스 코드 확장자를 허용하며
      *     확장자, 요청 MIME, 실제 파일 형식이 모두 일치해야 한다. GIF와 WEBP는 MVP의
      *     보고서·AI 처리 호환 범위에서 제외되어 FILE_TYPE_NOT_ALLOWED로 거부된다.
      *     ZIP은 해제 용량 100 MiB와 내부 엔트리 1,000개로 제한하며 ZIP Slip, 환경변수,
-     *     인증서·키, 실행 파일을 차단한다. java, kt, py, js, jsx, ts, tsx, html, css, scss,
+     *     인증서·키, 실행 파일을 차단한다. 소스 코드는 직접 업로드와 ZIP 내부에서 동일하게
+     *     java, kt, py, js, jsx, ts, tsx, html, css, scss,
      *     sql, xml, json, yaml, yml, md, txt, gradle, properties, toml, go, rs, c, h, cpp, hpp,
      *     cs, php, rb, swift, dart, vue, svelte 확장자만 별도 디렉터리에 해제한다.
      */
@@ -1193,7 +1195,7 @@ export interface paths {
             'application/json': components['schemas']['FileIdResponse']
           }
         }
-        /** @description 빈 파일, 잘못된 파일 이름, 손상된 ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, ZIP_INVALID, ZIP_PATH_INVALID) */
+        /** @description 빈 파일, 잘못된 파일 이름, 손상된 PDF·ZIP 또는 ZIP Slip 위험 경로 (FILE_EMPTY, FILE_NAME_INVALID, PDF_INVALID, ZIP_INVALID, ZIP_PATH_INVALID) */
         400: {
           headers: {
             [name: string]: unknown
@@ -1220,7 +1222,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
-        /** @description 파일 크기·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED) */
+        /** @description 파일 크기·PDF 페이지·ZIP 해제·사용자 업로드 quota 초과 (FILE_TOO_LARGE, PDF_PAGE_LIMIT_EXCEEDED, ZIP_LIMIT_EXCEEDED, UPLOAD_STORAGE_QUOTA_EXCEEDED, UPLOAD_FILE_QUOTA_EXCEEDED) */
         413: {
           headers: {
             [name: string]: unknown
@@ -1238,7 +1240,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse']
           }
         }
-        /** @description ZIP에 환경변수·인증서·키·실행 파일 포함 (ZIP_BLOCKED_CONTENT) */
+        /** @description 암호화된 PDF 또는 ZIP에 환경변수·인증서·키·실행 파일 포함 (PDF_ENCRYPTED, ZIP_BLOCKED_CONTENT) */
         422: {
           headers: {
             [name: string]: unknown
