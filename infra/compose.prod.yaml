@@ -75,6 +75,9 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_MOCK: "false"
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM}
       AI_SERVICE_RESPONSE_TIMEOUT: 300s
       # Chromium이 컨테이너 네트워크 안에서 접근하는 출력 전용 페이지 주소
       EXPORT_PRINT_URL: http://caddy/print/{exportId}

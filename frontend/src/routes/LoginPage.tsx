@@ -71,6 +71,10 @@ export function LoginPage() {
           error={submitted ? errors.password : null}
         />
 
+        <p className="auth-inline-link">
+          <Link to="/forgot-password">비밀번호를 잊으셨나요?</Link>
+        </p>
+
         <button type="submit" disabled={login.isPending} className="primary-button">
           {login.isPending ? '로그인 중…' : '로그인'}
         </button>
