@@ -25,8 +25,9 @@ public interface GenerationJobRepository extends JpaRepository<GenerationJob, UU
 
 	@Query("select count(job) from GenerationJob job, Project project "
 		+ "where job.projectId = project.id and project.ownerId = :ownerId "
+		+ "and job.keySource = ai.devreport.backend.generation.domain.GenerationJob.KeySource.SERVER "
 		+ "and job.createdAt >= :from")
-	long countByOwnerIdAndCreatedAtOnOrAfter(UUID ownerId, Instant from);
+	long countServerKeyByOwnerIdAndCreatedAtOnOrAfter(UUID ownerId, Instant from);
 
 	List<GenerationJob> findAllByStatus(GenerationJob.Status status);
 

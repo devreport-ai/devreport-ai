@@ -17,6 +17,8 @@ class ProductionEnvironmentValidatorTest {
 			.hasMessageContaining("AI_INTERNAL_TOKEN");
 		assertThatThrownBy(() -> validate(environment().withProperty("EXPORT_PRINT_URL", " ")))
 			.hasMessageContaining("EXPORT_PRINT_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("AI_CREDENTIAL_MASTER_KEY", " ")))
+			.hasMessageContaining("AI_CREDENTIAL_MASTER_KEY");
 	}
 
 	@Test
@@ -56,6 +58,7 @@ class ProductionEnvironmentValidatorTest {
 			.withProperty("JWT_SECRET", "jwt-secret")
 			.withProperty("AI_INTERNAL_TOKEN", "internal-secret")
 			.withProperty("EXPORT_PRINT_URL", "https://app.example.com/print/{exportId}")
+			.withProperty("AI_CREDENTIAL_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LXRlc3QtbWFzdGVyLWtleS0xMg==")
 			.withProperty("ai.service.mock", "false")
 			.withProperty("security.headers.enabled", "true")
 			.withProperty("management.endpoints.web.exposure.include", "health");

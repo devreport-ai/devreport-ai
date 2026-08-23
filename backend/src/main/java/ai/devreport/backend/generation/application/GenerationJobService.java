@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import ai.devreport.backend.credential.application.AiCredentialService;
+import ai.devreport.backend.integration.ai.AiModelCatalog;
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.project.application.ProjectService;
 import ai.devreport.backend.report.domain.Report;
@@ -41,11 +43,14 @@ public class GenerationJobService {
 	private final ProjectFileService files;
 	private final UsageEventService usageEvents;
 	private final UsageLimitService usageLimits;
+	private final AiModelCatalog models;
+	private final AiCredentialService credentials;
 	private final ObjectMapper objectMapper;
 
 	GenerationJobService(GenerationJobRepository jobs, ProjectService projects, ApplicationEventPublisher events,
 		ReportService reports, ProjectFileService files, UsageEventService usageEvents,
-		UsageLimitService usageLimits, ObjectMapper objectMapper) {
+		UsageLimitService usageLimits, AiModelCatalog models, AiCredentialService credentials,
+		ObjectMapper objectMapper) {
 		this.jobs = jobs;
 		this.projects = projects;
 		this.events = events;
@@ -53,6 +58,8 @@ public class GenerationJobService {
 		this.files = files;
 		this.usageEvents = usageEvents;
 		this.usageLimits = usageLimits;
+		this.models = models;
+		this.credentials = credentials;
 		this.objectMapper = objectMapper;
 	}
 
@@ -61,12 +68,19 @@ public class GenerationJobService {
 		if (request.fileIds().stream().distinct().count() != request.fileIds().size()) {
 			throw invalidRequest();
 		}
+		AiModelCatalog.AiModel model = resolveModel(request);
 		files.requireAvailable(projectId, request.fileIds());
 		if (jobs.existsByProjectIdAndStatusIn(projectId, ACTIVE_STATUSES)) {
 			throw alreadyRunning();
 		}
-		usageLimits.checkGeneration(ownerId);
-		GenerationJob job = new GenerationJob(projectId, request);
+		// 사용자 키가 있으면 서버 기본 모델이라도 사용자 키로 실행한다. 서버 키는 기본 모델에만 쓴다.
+		GenerationJob.KeySource keySource = credentials.exists(ownerId, model.provider())
+			? GenerationJob.KeySource.USER : GenerationJob.KeySource.SERVER;
+		if (keySource == GenerationJob.KeySource.SERVER && !model.serverDefault()) {
+			throw credentialRequired();
+		}
+		usageLimits.checkGeneration(ownerId, keySource == GenerationJob.KeySource.SERVER);
+		GenerationJob job = new GenerationJob(projectId, request.withModel(model.provider(), model.model()), keySource);
 		try {
 			jobs.saveAndFlush(job);
 		} catch (DataIntegrityViolationException exception) {
@@ -95,11 +109,12 @@ public class GenerationJobService {
 		}
 	}
 
-	Optional<GenerationRequest> start(UUID jobId) {
+	Optional<StartedJob> start(UUID jobId) {
 		return jobs.findForUpdateById(jobId).filter(job -> job.getStatus() == GenerationJob.Status.PENDING)
 			.map(job -> {
 				job.start();
-				return job.getRequestDocument();
+				return new StartedJob(job.getRequestDocument(), projects.ownerIdOf(job.getProjectId()),
+					job.getKeySource());
 			});
 	}
 
@@ -132,6 +147,26 @@ public class GenerationJobService {
 			"이 프로젝트에서 이미 보고서를 생성하고 있습니다.");
 	}
 
+	private AiModelCatalog.AiModel resolveModel(GenerationRequest request) {
+		if (request.provider() == null && request.model() == null) {
+			return models.serverDefault();
+		}
+		if (request.provider() == null || request.model() == null) {
+			throw invalidRequest();
+		}
+		return models.find(request.provider(), request.model()).orElseThrow(GenerationJobService::modelNotAllowed);
+	}
+
+	private static GenerationException modelNotAllowed() {
+		return new GenerationException(HttpStatus.BAD_REQUEST, "AI_MODEL_NOT_ALLOWED",
+			"선택할 수 없는 provider 또는 모델입니다.");
+	}
+
+	private static GenerationException credentialRequired() {
+		return new GenerationException(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_REQUIRED",
+			"이 모델을 사용하려면 해당 provider의 API Key를 먼저 등록해야 합니다.");
+	}
+
 	private static GenerationException invalidRequest() {
 		return new GenerationException(HttpStatus.BAD_REQUEST, "GENERATION_REQUEST_INVALID",
 			"보고서 생성 요청이 올바르지 않습니다.");
@@ -150,5 +185,9 @@ public class GenerationJobService {
 	private static GenerationException notFound() {
 		return new GenerationException(HttpStatus.NOT_FOUND, "GENERATION_NOT_FOUND",
 			"생성 작업을 찾을 수 없습니다.");
+	}
+
+	/** 워커가 실행에 필요한 최소 정보. 사용자 키 원문은 포함하지 않고 워커가 호출 직전에 복호화한다. */
+	record StartedJob(GenerationRequest request, UUID ownerId, GenerationJob.KeySource keySource) {
 	}
 }

@@ -32,7 +32,10 @@ public class UsageEventService {
 		"GENERATION_CAPACITY_EXCEEDED",
 		"GENERATION_FAILED",
 		"GENERATION_INTERRUPTED",
-		"REPORT_DOCUMENT_INVALID"
+		"REPORT_DOCUMENT_INVALID",
+		"AI_CREDENTIAL_REQUIRED",
+		"AI_CREDENTIAL_INVALID",
+		"PROVIDER_QUOTA_EXCEEDED"
 	);
 	private static final Set<String> SAFE_CONTENT_TYPES = Set.of(
 		"application/pdf",
@@ -74,7 +77,9 @@ public class UsageEventService {
 	public void generationRequested(UUID userId, GenerationJob job) {
 		record(UsageEventType.GENERATION_REQUESTED, key("generation-requested", job.getId()), userId,
 			job.getProjectId(), null, null, job.getId(), null, job.getCreatedAt(),
-			Map.of("fileCount", job.getRequestDocument().fileIds().size()));
+			Map.of("fileCount", job.getRequestDocument().fileIds().size(),
+				"provider", job.getProvider().name(), "model", job.getModel(),
+				"keySource", job.getKeySource().name()));
 	}
 
 	public void generationCompleted(GenerationJob job) {

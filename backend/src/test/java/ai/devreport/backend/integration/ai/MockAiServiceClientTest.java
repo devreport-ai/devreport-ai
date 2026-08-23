@@ -18,8 +18,8 @@ class MockAiServiceClientTest {
 	void returnsHealthyStatusAndSchemaShapedReport() {
 		assertThat(client.health().status()).isEqualTo("UP");
 		ReportDocument report = client.generate(
-			new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "테스트"),
-			new GenerationBundle(Path.of("."), Path.of("manifest.json"), List.of()));
+			new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "테스트", null, null),
+			new GenerationBundle(Path.of("."), Path.of("manifest.json"), List.of()), null);
 		assertThat(report.metadata().title()).isEqualTo("Spring Boot 실습보고서");
 		assertThat(report.sections().getFirst().blocks())
 			.allSatisfy(block -> assertThat(block).containsKeys("id", "type"));

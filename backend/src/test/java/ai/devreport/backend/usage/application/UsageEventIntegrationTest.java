@@ -175,7 +175,8 @@ class UsageEventIntegrationTest {
 			assertThat(event.getUserId()).isNotNull();
 			assertThat(event.getOccurredAt()).isNotNull();
 			assertThat(event.getMetadata().keySet()).isSubsetOf(
-				Set.of("contentType", "sizeBytes", "fileCount", "failureCode", "previousVersion"));
+				Set.of("contentType", "sizeBytes", "fileCount", "failureCode", "previousVersion",
+					"provider", "model", "keySource"));
 			assertThat(event.getMetadata().toString())
 				.doesNotContain("개인정보", "프롬프트", "notes.txt", "민감한 제목");
 		});
@@ -421,12 +422,16 @@ class UsageEventIntegrationTest {
 		}
 
 		@Override
+		public void verifyCredential(ai.devreport.backend.integration.ai.AiProvider provider, String providerApiKey) {
+		}
+
+		@Override
 		public ai.devreport.backend.report.domain.ReportDocument generate(GenerationRequest request,
-			GenerationBundle bundle) {
+			GenerationBundle bundle, String providerApiKey) {
 			if (fail.get()) {
 				throw new IllegalStateException("AI failed");
 			}
-			return new MockAiServiceClient().generate(request, bundle);
+			return new MockAiServiceClient().generate(request, bundle, providerApiKey);
 		}
 	}
 }

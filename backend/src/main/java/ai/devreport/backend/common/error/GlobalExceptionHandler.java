@@ -77,6 +77,13 @@ public class GlobalExceptionHandler {
 			exception.code(), exception.getMessage(), null));
 	}
 
+	@ExceptionHandler(ai.devreport.backend.credential.domain.AiCredentialException.class)
+	ResponseEntity<ErrorResponse> handleAiCredential(
+		ai.devreport.backend.credential.domain.AiCredentialException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
 	@ExceptionHandler(ai.devreport.backend.generation.domain.GenerationException.class)
 	ResponseEntity<ErrorResponse> handleGeneration(
 		ai.devreport.backend.generation.domain.GenerationException exception) {

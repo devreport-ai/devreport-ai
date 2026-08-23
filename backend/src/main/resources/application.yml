@@ -36,6 +36,29 @@ ai:
     response-timeout: ${AI_SERVICE_RESPONSE_TIMEOUT:300s}
     internal-token: ${AI_INTERNAL_TOKEN:}
     mock: ${AI_SERVICE_MOCK:false}
+  # 사용자가 선택할 수 있는 provider·model allowlist. 임의 모델 ID는 받지 않는다.
+  # server-default 모델 하나만 서버 키로 실행되고, 나머지는 사용자 API Key가 있어야 선택할 수 있다.
+  # AI Service의 allowlist(ai/app/core/config.py)와 같은 값을 유지한다.
+  models:
+    allowlist:
+      - provider: GEMINI
+        model: gemini-3.5-flash-lite
+        label: Gemini 3.5 Flash-Lite
+        server-default: true
+      - provider: GEMINI
+        model: gemini-3.5-flash
+        label: Gemini 3.5 Flash
+      - provider: GEMINI
+        model: gemini-3.5-pro
+        label: Gemini 3.5 Pro
+
+# 사용자 provider API Key 암호화(AES-256-GCM) 마스터 키. Base64로 인코딩한 32바이트 값이다.
+# 운영에서는 필수이며, 비우면 로컬에서만 임시 키를 생성한다(재시작 시 저장된 키 복호화 불가).
+# rotation: 새 버전 키를 keys에 추가하고 active-key-version을 올리면 이후 저장분은 새 키로 암호화된다.
+ai-credentials:
+  active-key-version: ${AI_CREDENTIAL_KEY_VERSION:1}
+  keys:
+    "1": ${AI_CREDENTIAL_MASTER_KEY:}
 
 auth:
   jwt-secret: ${JWT_SECRET:}

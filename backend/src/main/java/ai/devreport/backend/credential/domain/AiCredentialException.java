@@ -1,14 +1,14 @@
-package ai.devreport.backend.integration.ai;
+package ai.devreport.backend.credential.domain;
 
 import org.springframework.http.HttpStatus;
 
-public class AiServiceException extends RuntimeException {
+public class AiCredentialException extends RuntimeException {
 
 	private final HttpStatus status;
 	private final String code;
 
-	public AiServiceException(HttpStatus status, String code, String message, Throwable cause) {
-		super(message, cause);
+	public AiCredentialException(HttpStatus status, String code, String message) {
+		super(message);
 		this.status = status;
 		this.code = code;
 	}

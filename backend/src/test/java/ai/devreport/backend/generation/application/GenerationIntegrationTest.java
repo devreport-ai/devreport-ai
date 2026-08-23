@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,7 +24,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.devreport.backend.integration.ai.AiHealthResponse;
+import ai.devreport.backend.integration.ai.AiProvider;
 import ai.devreport.backend.integration.ai.AiServiceClient;
+import ai.devreport.backend.integration.ai.AiServiceException;
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.integration.ai.GenerationBundle;
 import ai.devreport.backend.integration.ai.MockAiServiceClient;
@@ -39,6 +42,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -50,7 +54,8 @@ import org.springframework.test.web.servlet.MockMvc;
 	"spring.datasource.username=sa",
 	"spring.datasource.password=",
 	"spring.datasource.driver-class-name=org.h2.Driver",
-	"auth.jwt-secret=test-secret-that-is-at-least-32-bytes-long"
+	"auth.jwt-secret=test-secret-that-is-at-least-32-bytes-long",
+	"usage-limits.rate-limit.signup=100"
 })
 @AutoConfigureMockMvc
 class GenerationIntegrationTest {
@@ -230,6 +235,118 @@ class GenerationIntegrationTest {
 	}
 
 	@Test
+	void requiresRegisteredKeyForNonDefaultModelsAndPassesUserKeyToAiService() throws Exception {
+		String token = signupAndLogin("generation-byok@example.com");
+		String projectId = createProject(token, "BYOK 프로젝트");
+		String fileId = upload(token, projectId, "byok.txt", "BYOK 자료");
+		long jobsBefore = jobs.count();
+
+		rejectGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"모델만","model":"gemini-3.5-pro"}
+			""".formatted(fileId), "GENERATION_REQUEST_INVALID");
+		rejectGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"없는 모델","provider":"GEMINI","model":"gemini-9"}
+			""".formatted(fileId), "AI_MODEL_NOT_ALLOWED");
+		rejectGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"키 없음","provider":"GEMINI","model":"gemini-3.5-pro"}
+			""".formatted(fileId), "AI_CREDENTIAL_REQUIRED");
+		assertThat(jobs.count()).isEqualTo(jobsBefore);
+
+		aiService.prepare(false);
+		String serverJobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"서버 키"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, serverJobId, "COMPLETED");
+		assertThat(aiService.lastProviderApiKey()).isNull();
+		assertThat(aiService.lastRequest().provider()).isEqualTo(AiProvider.GEMINI);
+		assertThat(aiService.lastRequest().model()).isEqualTo("gemini-3.5-flash-lite");
+		assertThat(jobs.findById(UUID.fromString(serverJobId)).orElseThrow().getKeySource())
+			.isEqualTo(GenerationJob.KeySource.SERVER);
+
+		String userKey = "AIzaSyUserOwnedKey-0123456789abcdefXYZ";
+		mvc.perform(put("/api/me/ai-credentials/GEMINI")
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"apiKey\":\"" + userKey + "\"}"))
+			.andExpect(status().isOk());
+
+		aiService.prepare(false);
+		String userJobId = createGeneration(token, projectId, """
+			{"fileIds":["%s"],"metadata":{},"instructions":"사용자 키","provider":"GEMINI","model":"gemini-3.5-pro"}
+			""".formatted(fileId));
+		assertThat(aiService.awaitStarted()).isTrue();
+		aiService.release();
+		awaitStatus(token, userJobId, "COMPLETED");
+		assertThat(aiService.lastProviderApiKey()).isEqualTo(userKey);
+		assertThat(aiService.lastRequest().model()).isEqualTo("gemini-3.5-pro");
+		String jobBody = mvc.perform(get("/api/generations/{jobId}", userJobId)
+				.header("Authorization", bearer(token)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.provider").value("GEMINI"))
+			.andExpect(jsonPath("$.model").value("gemini-3.5-pro"))
+			.andReturn().getResponse().getContentAsString();
+		assertThat(jobBody).doesNotContain(userKey);
+		GenerationJob userJob = jobs.findById(UUID.fromString(userJobId)).orElseThrow();
+		assertThat(userJob.getKeySource()).isEqualTo(GenerationJob.KeySource.USER);
+		assertThat(userJob.getRequestDocument().toString()).doesNotContain(userKey);
+	}
+
+	@Test
+	void skipsDailyLimitForUserKeyGenerations() throws Exception {
+		long originalLimit = usageLimits.getGeneration().getDailyLimit();
+		usageLimits.getGeneration().setDailyLimit(1);
+		try {
+			String token = signupAndLogin("generation-byok-daily@example.com");
+			String projectId = createProject(token, "BYOK 일일 제한");
+			String fileId = upload(token, projectId, "daily.txt", "일일 제한 자료");
+			aiService.prepare(false);
+			String firstJobId = createGeneration(token, projectId, """
+				{"fileIds":["%s"],"metadata":{},"instructions":"서버 키 1회"}
+				""".formatted(fileId));
+			assertThat(aiService.awaitStarted()).isTrue();
+			aiService.release();
+			awaitStatus(token, firstJobId, "COMPLETED");
+			rejectGeneration(token, projectId, """
+				{"fileIds":["%s"],"metadata":{},"instructions":"서버 키 2회"}
+				""".formatted(fileId), "GENERATION_DAILY_LIMIT_EXCEEDED");
+
+			mvc.perform(put("/api/me/ai-credentials/GEMINI")
+					.header("Authorization", bearer(token))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"apiKey\":\"AIzaSyDailyBypassKey-0123456789abcdef\"}"))
+				.andExpect(status().isOk());
+			aiService.prepare(false);
+			String userJobId = createGeneration(token, projectId, """
+				{"fileIds":["%s"],"metadata":{},"instructions":"사용자 키는 한도 없음"}
+				""".formatted(fileId));
+			assertThat(aiService.awaitStarted()).isTrue();
+			aiService.release();
+			awaitStatus(token, userJobId, "COMPLETED");
+			assertThat(aiService.lastProviderApiKey()).isEqualTo("AIzaSyDailyBypassKey-0123456789abcdef");
+
+			mvc.perform(delete("/api/me/ai-credentials/GEMINI").header("Authorization", bearer(token)))
+				.andExpect(status().isNoContent());
+			rejectGeneration(token, projectId, """
+				{"fileIds":["%s"],"metadata":{},"instructions":"다시 서버 키"}
+				""".formatted(fileId), "GENERATION_DAILY_LIMIT_EXCEEDED");
+		} finally {
+			usageLimits.getGeneration().setDailyLimit(originalLimit);
+		}
+	}
+
+	private void rejectGeneration(String token, String projectId, String requestBody, String expectedCode)
+		throws Exception {
+		mvc.perform(post("/api/projects/{projectId}/generations", projectId)
+				.header("Authorization", bearer(token))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody))
+			.andExpect(status().is4xxClientError())
+			.andExpect(jsonPath("$.code").value(expectedCode));
+	}
+
+	@Test
 	void limitsDailyGenerationsAfterACompletedRequest() throws Exception {
 		long originalLimit = usageLimits.getGeneration().getDailyLimit();
 		usageLimits.getGeneration().setDailyLimit(1);
@@ -348,9 +465,11 @@ class GenerationIntegrationTest {
 		UUID processingFileId = UUID.fromString(upload(token, processingProjectId.toString(),
 			"processing.txt", "실행 파일"));
 		GenerationJob pending = jobs.save(new GenerationJob(pendingProjectId,
-			new GenerationRequest(List.of(pendingFileId), Map.of(), "복구 테스트")));
+			new GenerationRequest(List.of(pendingFileId), Map.of(), "복구 테스트", AiProvider.GEMINI,
+				"gemini-3.5-flash-lite"), GenerationJob.KeySource.SERVER));
 		GenerationJob processing = new GenerationJob(processingProjectId,
-			new GenerationRequest(List.of(processingFileId), Map.of(), "복구 테스트"));
+			new GenerationRequest(List.of(processingFileId), Map.of(), "복구 테스트", AiProvider.GEMINI,
+				"gemini-3.5-flash-lite"), GenerationJob.KeySource.SERVER);
 		processing.start();
 		jobs.save(processing);
 
@@ -490,6 +609,8 @@ class GenerationIntegrationTest {
 		private volatile boolean fail;
 		private volatile ReportDocument generatedResult;
 		private volatile Path bundleRoot;
+		private volatile String lastProviderApiKey;
+		private volatile GenerationRequest lastRequest;
 		private final AtomicInteger generationCalls = new AtomicInteger();
 
 		void prepare(boolean shouldFail) {
@@ -521,14 +642,31 @@ class GenerationIntegrationTest {
 			return generationCalls.get();
 		}
 
+		String lastProviderApiKey() {
+			return lastProviderApiKey;
+		}
+
+		GenerationRequest lastRequest() {
+			return lastRequest;
+		}
+
 		@Override
 		public AiHealthResponse health() {
 			return new AiHealthResponse("UP", "test", "test", "test", true, true);
 		}
 
 		@Override
-		public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
+		public void verifyCredential(AiProvider provider, String providerApiKey) {
+			if (providerApiKey == null || providerApiKey.startsWith("invalid")) {
+				throw new AiServiceException(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_INVALID", "invalid", null);
+			}
+		}
+
+		@Override
+		public ReportDocument generate(GenerationRequest request, GenerationBundle bundle, String providerApiKey) {
 			generationCalls.incrementAndGet();
+			lastProviderApiKey = providerApiKey;
+			lastRequest = request;
 			bundleRoot = bundle.root();
 			assertThat(bundleRoot).exists();
 			started.countDown();
@@ -543,7 +681,8 @@ class GenerationIntegrationTest {
 			if (fail) {
 				throw new IllegalStateException("AI failed");
 			}
-			return generatedResult == null ? new MockAiServiceClient().generate(request, bundle) : generatedResult;
+			return generatedResult == null
+				? new MockAiServiceClient().generate(request, bundle, providerApiKey) : generatedResult;
 		}
 	}
 

@@ -10,6 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import ai.devreport.backend.integration.ai.AiProvider;
 import ai.devreport.backend.integration.ai.GenerationRequest;
 import ai.devreport.backend.report.domain.ReportDocument;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -44,6 +45,17 @@ public class GenerationJob {
 	@Column(name = "result_document", columnDefinition = "jsonb")
 	private ReportDocument resultDocument;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private AiProvider provider;
+
+	@Column(nullable = false, length = 100)
+	private String model;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "key_source", nullable = false, length = 10)
+	private KeySource keySource;
+
 	@Column(name = "failure_code", length = 100)
 	private String failureCode;
 
@@ -68,13 +80,19 @@ public class GenerationJob {
 	protected GenerationJob() {
 	}
 
-	public GenerationJob(UUID projectId, GenerationRequest requestDocument) {
+	public GenerationJob(UUID projectId, GenerationRequest requestDocument, KeySource keySource) {
+		if (requestDocument.provider() == null || requestDocument.model() == null) {
+			throw new IllegalArgumentException("GenerationJob requires a resolved provider and model");
+		}
 		this.id = UUID.randomUUID();
 		this.projectId = projectId;
 		this.status = Status.PENDING;
 		this.progress = 0;
 		this.currentStage = Stage.QUEUED;
 		this.requestDocument = requestDocument;
+		this.provider = requestDocument.provider();
+		this.model = requestDocument.model();
+		this.keySource = keySource;
 		this.createdAt = Instant.now();
 		this.updatedAt = createdAt;
 	}
@@ -154,6 +172,18 @@ public class GenerationJob {
 		return resultDocument;
 	}
 
+	public AiProvider getProvider() {
+		return provider;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public KeySource getKeySource() {
+		return keySource;
+	}
+
 	public String getFailureCode() {
 		return failureCode;
 	}
@@ -184,5 +214,10 @@ public class GenerationJob {
 
 	public enum Stage {
 		QUEUED, CALLING_AI, COMPLETED, FAILED, CANCELED
+	}
+
+	/** 생성에 사용한 API Key 출처. SERVER는 서버 기본 키, USER는 사용자가 등록한 키다. */
+	public enum KeySource {
+		SERVER, USER
 	}
 }
