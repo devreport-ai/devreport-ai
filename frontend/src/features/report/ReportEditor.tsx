@@ -48,10 +48,13 @@ export function ReportEditor({
   // 좁은 화면에서는 편집·미리보기를 탭으로 전환한다 (#130). 넓은 화면에서는 CSS 가 둘 다 보여준다.
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [state, dispatch] = useReducer(editorReducer, report, (r): EditorState => {
+    const hasSavedTemplate = r.templateId !== null
     // 저장된 값도 생성 흐름 선택도 없으면 기본 템플릿을 쓴다.
     // null 로 두면 화면엔 기본 템플릿이 보이는데 서버에는 저장되지 않아 PDF 가 409 로 막힌다.
-    const chosen = findTemplate(r.templateId ?? initialTemplateId ?? null) ?? FALLBACK_TEMPLATE
-    const hasSavedTemplate = r.templateId !== null
+    // 저장된 id 가 목록에 없을 때는 건드리지 않는다 — 임의로 덮어쓰면 사용자 선택이 사라진다.
+    const chosen =
+      findTemplate(r.templateId ?? initialTemplateId ?? null) ??
+      (hasSavedTemplate ? null : FALLBACK_TEMPLATE)
     return {
       document: r.document,
       templateId: chosen?.id ?? r.templateId,
@@ -196,7 +199,12 @@ export function ReportEditor({
       )}
 
       <div className={`editor-workspace editor-workspace--${mobileView}`}>
-        <section className="editor-content-panel">
+        <section
+          className="editor-content-panel"
+          id="editor-panel-edit"
+          role="tabpanel"
+          aria-labelledby="editor-tab-edit"
+        >
           <header className="editor-panel-header">
             <div>
               <h1>보고서 콘텐츠</h1>
@@ -330,7 +338,12 @@ export function ReportEditor({
           </DndContext>
         </section>
 
-        <section className="editor-preview-panel">
+        <section
+          className="editor-preview-panel"
+          id="editor-panel-preview"
+          role="tabpanel"
+          aria-labelledby="editor-tab-preview"
+        >
           <header className="editor-preview-header">
             <h2>실시간 미리보기</h2>
           </header>
@@ -396,7 +409,9 @@ function Toolbar({
             key={view}
             type="button"
             role="tab"
+            id={`editor-tab-${view}`}
             aria-selected={mobileView === view}
+            aria-controls={`editor-panel-${view}`}
             onClick={() => onMobileView(view)}
             className={`editor-tab${mobileView === view ? ' editor-tab--active' : ''}`}
           >

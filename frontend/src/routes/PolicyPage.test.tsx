@@ -23,6 +23,13 @@ describe('PolicyPage', () => {
     expect(screen.getByRole('link', { name: '프로젝트로 돌아가기' })).toHaveAttribute('href', '/')
   })
 
+  it('주소에 앵커가 있어도 렌더에 실패하지 않는다', async () => {
+    renderWithProviders(<PolicyPage />, { route: '/policies#privacy' })
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(screen.getByRole('heading', { name: '개인정보처리방침·이용약관' })).toBeInTheDocument()
+  })
+
   it('로그인 전에는 로그인 화면으로 돌아간다', () => {
     renderWithProviders(<PolicyPage />)
 

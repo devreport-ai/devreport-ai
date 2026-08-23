@@ -3,12 +3,12 @@ import { POLICY_VERSIONS } from '../features/auth/policyVersions'
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router'
 import { BrandMark, Icon } from '../components/ui'
-import { isAuthenticated } from '../lib/auth/tokenStore'
+import { useAuthState } from '../features/auth/useAuthState'
 
 export default function PolicyPage() {
   const location = useLocation()
   // 로그인 상태면 로그인 화면이 아니라 홈으로 돌아가야 한다 (#130)
-  const backTo = isAuthenticated() ? '/' : '/login'
+  const backTo = useAuthState() ? '/' : '/login'
 
   // 브라우저는 SPA 라우팅에서 주소의 #앵커로 스크롤해 주지 않는다 (#130)
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function PolicyPage() {
     if (!id) return
     // 첫 페인트 뒤에 옮겨야 한다. 폰트·이미지로 높이가 밀리면 위치가 어긋난다.
     const timer = setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ block: 'start' })
+      document.getElementById(id)?.scrollIntoView?.({ block: 'start' }) // jsdom 에는 없다
     }, 60)
     return () => clearTimeout(timer)
   }, [location.hash])

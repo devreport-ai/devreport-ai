@@ -68,6 +68,25 @@ describe('ReportEditor', () => {
     }
   })
 
+  it('등록되지 않은 템플릿 id 는 기본값으로 덮어쓰지 않는다', async () => {
+    // 목록에서 빠진 템플릿이라도 사용자가 고른 값이므로 자동 저장이 바꾸면 안 된다
+    vi.useFakeTimers()
+    try {
+      const saved = { ...report(), templateId: 'unknown-template', templateVersion: 9 }
+      renderWithProviders(<ReportEditor report={saved} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      const put = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(put).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('좁은 화면용 편집·미리보기 탭을 제공한다', () => {
     renderWithProviders(<ReportEditor report={report()} />)
 
