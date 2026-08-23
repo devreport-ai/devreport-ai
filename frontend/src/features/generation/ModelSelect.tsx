@@ -54,7 +54,7 @@ export function ModelSelect({
           <>
             {' '}
             다른 모델을 쓰려면{' '}
-            <Link to="/api-keys" className="underline">
+            <Link to="/ai-keys" className="underline">
               API 키 추가에서 등록
             </Link>
             하세요.

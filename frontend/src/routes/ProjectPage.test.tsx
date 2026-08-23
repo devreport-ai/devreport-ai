@@ -113,7 +113,7 @@ describe('ProjectPage report list', () => {
     expect(locked.textContent).toContain('API Key 등록 필요')
     expect(screen.getByRole('link', { name: 'API 키 추가에서 등록' })).toHaveAttribute(
       'href',
-      '/api-keys',
+      '/ai-keys',
     )
   })
 })

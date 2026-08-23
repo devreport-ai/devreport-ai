@@ -114,7 +114,7 @@ afterEach(() => {
 
 describe('ApiKeysPage', () => {
   it('allowlist 의 provider 별 카드를 보여주고 키를 등록하면 힌트만 표시한다', async () => {
-    renderWithProviders(<ApiKeysPage />, { route: '/api-keys' })
+    renderWithProviders(<ApiKeysPage />, { route: '/ai-keys' })
 
     expect(await screen.findByRole('heading', { name: 'Google Gemini' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Anthropic Claude' })).not.toBeInTheDocument()
@@ -141,7 +141,7 @@ describe('ApiKeysPage', () => {
   })
 
   it('서버가 키를 거부하면 오류 문구를 보여주고 등록 상태를 바꾸지 않는다', async () => {
-    renderWithProviders(<ApiKeysPage />, { route: '/api-keys' })
+    renderWithProviders(<ApiKeysPage />, { route: '/ai-keys' })
 
     fireEvent.change(await screen.findByLabelText('API Key'), {
       target: { value: 'invalid-key-value-0000' },

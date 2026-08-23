@@ -23,7 +23,7 @@ export function AppNav({ screen }: { screen?: string }) {
             <Icon name="file-text" />
             보고서
           </span>
-          <NavLink to="/api-keys" className="app-nav-link">
+          <NavLink to="/ai-keys" className="app-nav-link">
             <Icon name="key" />
             API 키 추가
           </NavLink>
