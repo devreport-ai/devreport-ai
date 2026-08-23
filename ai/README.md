@@ -116,6 +116,32 @@ Gemini 호출은 요구사항·소스·계획·문서 4단계에 이미지 장�
 생성 API의 multipart 본문은 ASGI 수신 단계에서 최대 100 MiB로 제한한다. `Content-Length`
 요청은 파싱 전에 즉시 거부하며, chunked 요청도 수신 바이트가 한도를 넘는 즉시 거부한다.
 
+### 보고서 품질 평가
+
+`evals/fixtures/`에는 REST API, CLI 분석기, React 대시보드를 대표하는 고정 입력 3개가 있다.
+동일 fixture를 프롬프트·모델·provider별로 실행해 결과를 각 디렉터리에
+`{fixture-id}.json`으로 저장한 뒤 다음 명령으로 비교한다.
+
+```bash
+uv run python -m app.evaluation \
+  --fixtures evals/fixtures \
+  --run gemini-v2=evals/results/gemini-v2 \
+  --run gemini-v3=evals/results/gemini-v3
+```
+
+결과 파일은 ReportDocument 원문 또는 다음 envelope을 사용할 수 있다.
+
+```json
+{
+  "run": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "promptVersion": "report-generation-v3"},
+  "document": {"metadata": {}, "sections": []}
+}
+```
+
+평가기는 요구사항 충족도, 근거 일치·허용 이미지 참조, 내용 구체성, 읽기 쉬운 문장 길이,
+ReportDocument Schema 유효성을 정량화한다. 자연어 품질을 자동 합격 처리하지 않으므로 각
+fixture의 `manualReview` 항목을 함께 검토하고, 점수는 동일 입력 간 회귀 비교용으로만 사용한다.
+
 ### 5. 테스트 및 린트
 
 ```bash

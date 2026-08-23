@@ -44,7 +44,9 @@ class ReportGenerationPipeline:
         self._document_validator = ReportDocumentValidator(report_schema_path)
 
     def generate(self, request: GenerationRequest, context: AnalysisContext) -> dict[str, Any]:
-        file_ids = {str(item.file_id) for item in (*context.documents, *context.source_files)}
+        document_ids = {str(item.file_id) for item in context.documents}
+        source_ids = {str(item.file_id) for item in context.source_files}
+        file_ids = document_ids | source_ids
         image_ids = {str(image.file_id) for image in context.images}
         log.info(
             "보고서 생성 시작 documents=%d sourceFiles=%d images=%d omitted=%d",
@@ -58,13 +60,13 @@ class ReportGenerationPipeline:
             "requirements",
             RequirementAnalysis,
             requirement_analysis_prompt(context.documents, context.omitted),
-            validate=lambda result: self._validate_requirement_references(result, file_ids),
+            validate=lambda result: self._validate_requirement_references(result, document_ids),
         )
         source = self._generate_model(
             "source",
             SourceAnalysis,
             source_analysis_prompt(context.source_files, context.omitted),
-            validate=lambda result: self._validate_source_references(result, file_ids),
+            validate=lambda result: self._validate_source_references(result, source_ids),
         )
         images = tuple(self._analyze_image(image) for image in context.images)
 
@@ -149,22 +151,26 @@ class ReportGenerationPipeline:
 
     @staticmethod
     def _validate_requirement_references(
-        requirements: RequirementAnalysis, allowed_file_ids: set[str]
+        requirements: RequirementAnalysis, allowed_document_ids: set[str]
     ) -> None:
+        role_file_ids = {str(document.file_id) for document in requirements.document_roles}
         referenced_file_ids = {
             str(file_id)
             for requirement in requirements.requirements
             for file_id in requirement.evidence_file_ids
         }
-        if not referenced_file_ids <= allowed_file_ids:
+        if (
+            not role_file_ids <= allowed_document_ids
+            or not referenced_file_ids <= allowed_document_ids
+        ):
             raise unknown_evidence()
 
     @staticmethod
-    def _validate_source_references(source: SourceAnalysis, allowed_file_ids: set[str]) -> None:
+    def _validate_source_references(source: SourceAnalysis, allowed_source_ids: set[str]) -> None:
         referenced_file_ids = {
             str(file_id) for finding in source.findings for file_id in finding.evidence_file_ids
         }
-        if not referenced_file_ids <= allowed_file_ids:
+        if not referenced_file_ids <= allowed_source_ids:
             raise unknown_evidence()
 
     @staticmethod
