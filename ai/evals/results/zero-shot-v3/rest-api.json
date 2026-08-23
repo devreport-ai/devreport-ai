@@ -1,0 +1,74 @@
+{
+  "run": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "promptVersion": "report-generation-v3",
+    "generatedAt": "2026-08-23T10:13:38.624470+00:00"
+  },
+  "document": {
+    "metadata": {
+      "title": "Spring Boot 프로젝트 API 구현 보고서",
+      "author": "평가 fixture"
+    },
+    "sections": [
+      {
+        "id": "sec1",
+        "title": "과제 개요 및 요구사항",
+        "blocks": [
+          {
+            "id": "blk1",
+            "type": "paragraph",
+            "content": "Spring Boot 기반 프로젝트 CRUD API 구현 과제와 REST API 설계 참고 문서가 제공되었습니다. 주요 요구사항과 인증 기준은 다음과 같습니다."
+          },
+          {
+            "id": "blk2",
+            "type": "bulletList",
+            "items": [
+              "Spring Boot로 프로젝트 CRUD API를 구현한다.",
+              "JWT 인증을 적용한다.",
+              "POST /projects 요청을 지원한다."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sec2",
+        "title": "프로젝트 생성 API 구현 분석",
+        "blocks": [
+          {
+            "id": "blk3",
+            "type": "paragraph",
+            "content": "ProjectController.java 파일을 통해 프로젝트 생성 기능을 제공하는 @RestController가 구현되어 있음을 확인했습니다."
+          },
+          {
+            "id": "blk4",
+            "type": "code",
+            "language": "java",
+            "code": "@RestController class ProjectController\n@PostMapping(\"/projects\") Project create(...)"
+          }
+        ]
+      }
+    ]
+  },
+  "manualReview": {
+    "reviewedBy": "김예찬",
+    "reviewedAt": "2026-08-23",
+    "checks": [
+      {
+        "criterion": "assignment와 reference를 요구사항으로 혼동하지 않았는가",
+        "passed": true,
+        "notes": "REST API 설계 문서는 참고 문서로 표현하고 과제 요구사항 목록에 섞지 않았다."
+      },
+      {
+        "criterion": "POST /projects와 실제 ProjectController 근거가 연결되는가",
+        "passed": true,
+        "notes": "프로젝트 생성 설명에 ProjectController와 PostMapping 코드 근거를 연결했다."
+      },
+      {
+        "criterion": "JWT 적용 여부를 파일 근거 없이 단정하지 않는가",
+        "passed": true,
+        "notes": "JWT는 요구사항으로만 열거했으며 구현됐다고 단정하지 않았다."
+      }
+    ]
+  }
+}

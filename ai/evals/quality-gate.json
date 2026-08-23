@@ -1,0 +1,28 @@
+{
+  "baseline": {
+    "label": "zero-shot-v3",
+    "directory": "results/zero-shot-v3"
+  },
+  "candidate": {
+    "label": "baseline-v4",
+    "directory": "results/baseline-v4"
+  },
+  "minimumScores": {
+    "requirementsSatisfaction": 1.0,
+    "requirementEvidenceLinkage": 0.444,
+    "evidenceConsistency": 1.0,
+    "specificity": 0.5,
+    "readability": 1.0,
+    "schemaValidity": 1.0
+  },
+  "maximumDetailCounts": {
+    "forbiddenTerms": 0,
+    "invalidImageFileIds": 0,
+    "invalidCodeQuotes": 0,
+    "unsupportedClaims": 4
+  },
+  "maxScoreRegression": 0.167,
+  "maxOverallRegression": 0.0,
+  "minimumManualReviewPassRate": 0.667,
+  "requireCompletedManualReview": true
+}

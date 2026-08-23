@@ -30,12 +30,31 @@
     }
   ],
   "expected": {
-    "requiredTerms": ["Python", "argparse", "CSV"],
+    "requiredTerms": ["Python", "argparse", "CSV", "상태별 집계"],
     "forbiddenTerms": ["실시간 결제", "외부 OCR"],
     "allowedImageFileIds": [],
     "minNonEmptyBlocks": 3,
     "requiredBlockTypes": ["code", "bulletList"],
     "maxAverageSentenceWords": 30,
+    "requirements": [
+      {
+        "id": "req-cli-path",
+        "status": "satisfied",
+        "requirementTerms": ["argparse"],
+        "evidenceTerms": ["ArgumentParser", "add_argument"]
+      },
+      {
+        "id": "req-csv-read",
+        "status": "satisfied",
+        "requirementTerms": ["CSV"],
+        "evidenceTerms": ["DictReader"]
+      },
+      {
+        "id": "req-status-aggregation",
+        "status": "unverified",
+        "requirementTerms": ["상태별 집계"]
+      }
+    ],
     "manualReview": [
       "argparse 옵션과 CSV 입력이 실제 소스에 근거하는가",
       "구현하지 않은 실시간 처리나 외부 연동을 덧붙이지 않았는가",

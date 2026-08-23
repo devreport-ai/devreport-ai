@@ -1,0 +1,45 @@
+name: AI Quality Baseline
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-quality-baseline
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ai-quality-baseline
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.7"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Generate reports with Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: uv run python -m app.evaluation_runner --output evals/generated
+      - name: Evaluate generated reports
+        run: uv run python -m app.evaluation --run generated=evals/generated
+      - name: Upload generated reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-quality-${{ github.run_id }}
+          path: ai/evals/generated
+          if-no-files-found: warn
+          retention-days: 14

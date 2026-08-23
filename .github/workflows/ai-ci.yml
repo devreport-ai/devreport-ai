@@ -45,3 +45,6 @@ jobs:
       - run: uv run ruff format --check .
       # contracts 를 참조하므로 저장소 루트 기준으로 실행해야 한다.
       - run: uv run pytest -q
+      # API Key 없이 저장된 실제 생성 결과만 재평가하며, 실패 원인을 별도 단계로 표시한다.
+      - name: Stored semantic quality gate
+        run: uv run python -m app.evaluation --gate evals/quality-gate.json

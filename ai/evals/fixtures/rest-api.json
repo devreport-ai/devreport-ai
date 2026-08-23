@@ -30,12 +30,30 @@
     }
   ],
   "expected": {
-    "requiredTerms": ["Spring Boot", "JWT", "/projects"],
+    "requiredTerms": ["Spring Boot", "CRUD", "JWT", "/projects"],
     "forbiddenTerms": ["결제 시스템", "Kubernetes 클러스터"],
     "allowedImageFileIds": [],
     "minNonEmptyBlocks": 4,
     "requiredBlockTypes": ["code", "table"],
     "maxAverageSentenceWords": 35,
+    "requirements": [
+      {
+        "id": "req-post-projects",
+        "status": "satisfied",
+        "requirementTerms": ["프로젝트 생성"],
+        "evidenceTerms": ["ProjectController", "PostMapping"]
+      },
+      {
+        "id": "req-full-crud",
+        "status": "unverified",
+        "requirementTerms": ["CRUD"]
+      },
+      {
+        "id": "req-jwt",
+        "status": "unverified",
+        "requirementTerms": ["JWT"]
+      }
+    ],
     "manualReview": [
       "assignment와 reference를 요구사항으로 혼동하지 않았는가",
       "POST /projects와 실제 ProjectController 근거가 연결되는가",

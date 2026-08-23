@@ -1,0 +1,80 @@
+{
+  "run": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "promptVersion": "report-generation-v4",
+    "generatedAt": "2026-08-23T10:22:03.169501+00:00"
+  },
+  "document": {
+    "metadata": {
+      "title": "React 대시보드 구현 보고서",
+      "author": "평가 fixture"
+    },
+    "sections": [
+      {
+        "id": "section-1",
+        "title": "대시보드 화면 구성 및 페이지네이션",
+        "blocks": [
+          {
+            "id": "block-1",
+            "type": "paragraph",
+            "content": "React 대시보드는 프로젝트 상태 카드와 진행률, 작업 통계 등을 포함한 화면으로 구성되어 있으며, 페이지네이션 컴포넌트를 통해 페이지 전환이 가능하도록 구현되었습니다."
+          },
+          {
+            "id": "block-2",
+            "type": "image",
+            "fileId": "30000000-0000-4000-8000-000000000004",
+            "alt": "Project Dashboard screen showing six different projects with status cards, progress bars, and task statistics.",
+            "caption": "Project Dashboard overview displaying project statuses, completion percentages, and task counts."
+          },
+          {
+            "id": "block-3",
+            "type": "code",
+            "code": "function Dashboard() { return <nav aria-label=\"페이지네이션\">...</nav> }",
+            "language": "tsx"
+          }
+        ]
+      },
+      {
+        "id": "section-2",
+        "title": "키보드 접근성 및 상세 이동",
+        "blocks": [
+          {
+            "id": "block-4",
+            "type": "paragraph",
+            "content": "키보드 사용자를 위한 접근성 상태를 제공하여 내비게이션을 통해 주요 요소에 접근할 수 있어야 하며, 포커스 상태가 시각적으로 식별 가능해야 합니다."
+          },
+          {
+            "id": "block-5",
+            "type": "bulletList",
+            "items": [
+              "카드 컴포넌트에 요약 정보 표시",
+              "카드를 클릭하거나 상호작용할 때 상세 화면으로 이동"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "manualReview": {
+    "reviewedBy": "김예찬",
+    "reviewedAt": "2026-08-23",
+    "checks": [
+      {
+        "criterion": "페이지네이션과 aria-label 근거가 실제 구현과 일치하는가",
+        "passed": true,
+        "notes": "Dashboard 함수와 aria-label=페이지네이션 코드가 원문과 정확히 일치한다."
+      },
+      {
+        "criterion": "이미지 블록이 fixture의 이미지 ID만 참조하는가",
+        "passed": true,
+        "notes": "fixture가 허용한 dashboard 이미지 fileId만 사용했다."
+      },
+      {
+        "criterion": "화면에 보이지 않는 OAuth 기능을 추측하지 않는가",
+        "passed": true,
+        "notes": "OAuth 또는 화면에서 확인할 수 없는 인증 기능을 추가하지 않았다."
+      }
+    ]
+  }
+}
