@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from re import findall
 
 from fastapi import UploadFile
 
@@ -10,6 +11,7 @@ from app.schemas.analysis import (
     ImageEvidence,
     OmissionReason,
     OmittedFile,
+    PdfEvidence,
     TextEvidence,
 )
 from app.schemas.generation import GenerationManifest, ManifestFile
@@ -19,6 +21,8 @@ MAX_TOTAL_TEXT_CHARS = 1_000_000
 MAX_ANALYZED_IMAGES = 10
 # 이미지는 inline bytes로 보내므로 요청 크기 한도(약 20 MB)를 넘지 않게 제한한다.
 MAX_IMAGE_BYTES = 7 * 1024 * 1024
+MAX_PDF_BYTES = 20 * 1024 * 1024
+MAX_PDF_PAGES = 200
 IMAGE_MIME_TYPES = {"image/jpeg", "image/png"}
 
 # Backend는 확장자로만 소스를 선별하므로 CP949/EUC-KR 소스가 그대로 들어온다.
@@ -39,6 +43,7 @@ class BundleNormalizer:
         self, manifest: GenerationManifest, files: Sequence[UploadFile]
     ) -> AnalysisContext:
         documents: list[TextEvidence] = []
+        pdfs: list[PdfEvidence] = []
         source_files: list[TextEvidence] = []
         images: list[ImageEvidence] = []
         omitted: list[OmittedFile] = []
@@ -54,6 +59,13 @@ class BundleNormalizer:
                     omitted.append(omit(manifest_file, "image-too-large"))
                     continue
                 images.append(self._image_evidence(manifest_file, content))
+                continue
+
+            if (
+                manifest_file.category == "documents"
+                and normalize_content_type(manifest_file.mime_type) == "application/pdf"
+            ):
+                pdfs.append(self._pdf_evidence(manifest_file, content))
                 continue
 
             if remaining_text_chars <= 0:
@@ -77,7 +89,7 @@ class BundleNormalizer:
                 source_files.append(evidence)
 
         context = AnalysisContext(
-            tuple(documents), tuple(source_files), tuple(images), tuple(omitted)
+            tuple(documents), tuple(source_files), tuple(images), tuple(omitted), tuple(pdfs)
         )
         if not context.has_evidence:
             # 근거가 하나도 없으면 지시문만으로 사실을 지어내게 되므로 생성하지 않는다.
@@ -114,6 +126,16 @@ class BundleNormalizer:
             content=content,
         )
 
+    @staticmethod
+    def _pdf_evidence(manifest_file: ManifestFile, content: bytes) -> PdfEvidence:
+        validate_pdf(content)
+        return PdfEvidence(
+            file_id=manifest_file.file_id,
+            path=manifest_file.path,
+            mime_type=manifest_file.mime_type,
+            content=content,
+        )
+
 
 def decode_text(content: bytes) -> tuple[str, bool] | None:
     """(텍스트, 손실 여부)를 반환한다. 텍스트로 볼 수 없으면 None."""
@@ -142,6 +164,39 @@ def omit(manifest_file: ManifestFile, reason: OmissionReason) -> OmittedFile:
 
 def normalize_content_type(value: str) -> str:
     return value.split(";", maxsplit=1)[0].strip().lower()
+
+
+def validate_pdf(content: bytes) -> None:
+    """공통 제품 한도와 Gemini가 읽을 수 있는 최소 PDF 구조를 확인한다."""
+    # ponytail: lightweight structure check; add a full PDF parser if semantic validation is needed.
+    if len(content) > MAX_PDF_BYTES:
+        raise file_processing_failed()
+    if not content.startswith(b"%PDF-") or b"/Encrypt" in content:
+        raise file_processing_failed()
+
+    eof = content.rfind(b"%%EOF")
+    if eof < 0 or content[eof + len(b"%%EOF") :].strip():
+        raise file_processing_failed()
+    if b"/Type /Catalog" not in content or not has_pdf_xref(content, eof):
+        raise file_processing_failed()
+
+    pages = len(findall(rb"/Type\s*/Page(?:\s|/|>)", content))
+    if pages == 0 or pages > MAX_PDF_PAGES:
+        raise file_processing_failed()
+
+
+def has_pdf_xref(content: bytes, eof: int) -> bool:
+    marker = b"startxref"
+    start = content.rfind(marker, 0, eof)
+    if start < 0:
+        return False
+    token = content[start + len(marker) : eof].strip().split(maxsplit=1)
+    if not token or not token[0].isdigit():
+        return False
+    offset = int(token[0])
+    if offset < 0 or offset >= eof:
+        return False
+    return content[offset:].startswith(b"xref") or b"/Type /XRef" in content[offset:eof]
 
 
 def file_processing_failed() -> AIServiceError:

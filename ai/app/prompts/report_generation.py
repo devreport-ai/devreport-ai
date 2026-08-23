@@ -4,7 +4,7 @@ import json
 from collections.abc import Sequence
 from typing import Any
 
-from app.schemas.analysis import ImageEvidence, OmittedFile, TextEvidence
+from app.schemas.analysis import ImageEvidence, OmittedFile, PdfEvidence, TextEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import ImageAnalysis, ReportPlan, RequirementAnalysis, SourceAnalysis
 
@@ -16,7 +16,9 @@ STABLE_ID_RULE = (
 
 
 def requirement_analysis_prompt(
-    documents: Sequence[TextEvidence], omitted: Sequence[OmittedFile] = ()
+    documents: Sequence[TextEvidence],
+    omitted: Sequence[OmittedFile] = (),
+    pdfs: Sequence[PdfEvidence] = (),
 ) -> str:
     return _prompt(
         task="과제 요구사항을 추출한다.",
@@ -40,14 +42,17 @@ def requirement_analysis_prompt(
         },
         evidence={
             "documents": _text_evidence(documents),
+            "pdfs": _pdf_evidence(pdfs),
             "omittedFiles": _omitted_files(omitted),
         },
         extra_rule=(
             "각 문서를 assignment(과제 명세), reference(참고 문서), "
             "project-description(프로젝트 설명), other 중 하나로 분류한다. "
             "requirements는 assignment 또는 문서에 명시된 요구만 추출하고, reference와 "
-            "project-description은 요구사항으로 둔갑시키지 않는다. 각 요구사항에는 확인 가능한 "
-            "acceptanceCriteria와 실제 근거 문서의 evidenceFileIds를 남긴다. 문서가 없으면 "
+            "project-description은 요구사항으로 둔갑시키지 않는다. "
+            "첨부된 PDF는 native PDF 입력으로 확인하고 PDF 안의 텍스트·표·이미지·스캔 내용을 "
+            "근거로 사용할 수 있다. 각 요구사항에는 확인 가능한 "
+            "acceptanceCriteria와 실제 근거 문서의 evidenceFileIds를 남긴다. 문서와 PDF가 없으면 "
             "빈 requirements와 그 사실을 설명하는 summary를 반환한다."
         ),
     )
@@ -247,6 +252,13 @@ def _text_evidence(items: Sequence[TextEvidence]) -> list[dict[str, Any]]:
             "lossy": item.lossy,
             "content": item.content,
         }
+        for item in items
+    ]
+
+
+def _pdf_evidence(items: Sequence[PdfEvidence]) -> list[dict[str, Any]]:
+    return [
+        {"fileId": str(item.file_id), "path": item.path, "mimeType": item.mime_type}
         for item in items
     ]
 

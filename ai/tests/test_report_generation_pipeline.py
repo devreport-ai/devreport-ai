@@ -10,7 +10,13 @@ import pytest
 from app.clients.gemini_client import REPORT_DOCUMENT_MAX_OUTPUT_TOKENS
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import report_document_prompt
-from app.schemas.analysis import AnalysisContext, ImageEvidence, OmittedFile, TextEvidence
+from app.schemas.analysis import (
+    AnalysisContext,
+    ImageEvidence,
+    OmittedFile,
+    PdfEvidence,
+    TextEvidence,
+)
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import ReportPlan, RequirementAnalysis, SourceAnalysis
 from app.services.report_generation_pipeline import ReportGenerationPipeline
@@ -20,6 +26,7 @@ REPORT_SCHEMA = REPO_ROOT / "contracts" / "report-document.schema.json"
 DOCUMENT_ID = UUID("00000000-0000-4000-8000-000000000001")
 SOURCE_ID = UUID("00000000-0000-4000-8000-000000000002")
 IMAGE_ID = UUID("00000000-0000-4000-8000-000000000003")
+PDF_ID = UUID("00000000-0000-4000-8000-000000000005")
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000099"
 UNREADABLE_ID = UUID("00000000-0000-4000-8000-000000000004")
 
@@ -27,7 +34,7 @@ UNREADABLE_ID = UUID("00000000-0000-4000-8000-000000000004")
 class FakeGemini:
     def __init__(self, responses: list[dict[str, object]]) -> None:
         self.responses = responses
-        self.calls: list[tuple[str, tuple[ImageEvidence, ...]]] = []
+        self.calls: list[tuple[str, tuple[ImageEvidence, ...], tuple[PdfEvidence, ...]]] = []
         self.output_token_limits: list[int | None] = []
         self.response_schemas: list[object] = []
 
@@ -36,11 +43,12 @@ class FakeGemini:
         prompt: str,
         images: tuple[ImageEvidence, ...] = (),
         *,
+        pdfs: tuple[PdfEvidence, ...] = (),
         max_output_tokens: int | None = None,
         response_schema: object = None,
         response_validator: object = None,
     ) -> object:
-        self.calls.append((prompt, images))
+        self.calls.append((prompt, images, pdfs))
         self.output_token_limits.append(max_output_tokens)
         self.response_schemas.append(response_schema)
         response = json.dumps(self.responses.pop(0), ensure_ascii=False)
@@ -70,6 +78,13 @@ def context() -> AnalysisContext:
             TextEvidence(SOURCE_ID, "source/id/App.java", "text/plain", "class App {}", False),
         ),
         images=(ImageEvidence(IMAGE_ID, "images/id/result.png", "image/png", b"png-bytes"),),
+    )
+
+
+def pdf_context() -> AnalysisContext:
+    return replace(
+        context(),
+        pdfs=(PdfEvidence(PDF_ID, "documents/id/assignment.pdf", "application/pdf", b"pdf"),),
     )
 
 
@@ -152,7 +167,17 @@ def test_generates_document_from_staged_analysis_and_passes_only_image_to_vision
     assert document["metadata"] == {"title": "실습보고서", "author": "김예찬"}
     assert len(gemini.calls) == 5
     assert gemini.calls[2][1] == context().images
-    assert all("신뢰할 수 없는 데이터" in prompt for prompt, _ in gemini.calls)
+    assert all("신뢰할 수 없는 데이터" in prompt for prompt, _, _ in gemini.calls)
+
+
+def test_passes_pdf_bytes_only_to_the_requirement_analysis_stage():
+    gemini = FakeGemini(responses())
+
+    ReportGenerationPipeline(gemini, REPORT_SCHEMA).generate(request(), pdf_context())
+
+    assert gemini.calls[0][2] == pdf_context().pdfs
+    assert all(not call[2] for call in gemini.calls[1:])
+    assert "assignment.pdf" in gemini.calls[0][0]
 
 
 def test_rejects_plan_that_references_a_file_outside_the_generation_bundle():

@@ -21,7 +21,7 @@ from app.prompts.report_generation import (
     requirement_analysis_prompt,
     source_analysis_prompt,
 )
-from app.schemas.analysis import AnalysisContext, ImageEvidence
+from app.schemas.analysis import AnalysisContext, ImageEvidence, PdfEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import (
     ImageAnalysis,
@@ -45,12 +45,14 @@ class ReportGenerationPipeline:
 
     def generate(self, request: GenerationRequest, context: AnalysisContext) -> dict[str, Any]:
         document_ids = {str(item.file_id) for item in context.documents}
+        document_ids.update(str(pdf.file_id) for pdf in context.pdfs)
         source_ids = {str(item.file_id) for item in context.source_files}
         file_ids = document_ids | source_ids
         image_ids = {str(image.file_id) for image in context.images}
         log.info(
-            "보고서 생성 시작 documents=%d sourceFiles=%d images=%d omitted=%d",
+            "보고서 생성 시작 documents=%d pdfs=%d sourceFiles=%d images=%d omitted=%d",
             len(context.documents),
+            len(context.pdfs),
             len(context.source_files),
             len(context.images),
             len(context.omitted),
@@ -59,8 +61,9 @@ class ReportGenerationPipeline:
         requirements = self._generate_model(
             "requirements",
             RequirementAnalysis,
-            requirement_analysis_prompt(context.documents, context.omitted),
+            requirement_analysis_prompt(context.documents, context.omitted, context.pdfs),
             validate=lambda result: self._validate_requirement_references(result, document_ids),
+            pdfs=context.pdfs,
         )
         source = self._generate_model(
             "source",
@@ -99,6 +102,7 @@ class ReportGenerationPipeline:
         model: type[ModelT],
         prompt: str,
         images: Sequence[ImageEvidence] = (),
+        pdfs: Sequence[PdfEvidence] = (),
         validate: Callable[[ModelT], None] | None = None,
     ) -> ModelT:
         def validate_response(response: str) -> ModelT:
@@ -117,6 +121,7 @@ class ReportGenerationPipeline:
             result = self._gemini.generate_json(
                 prompt,
                 images,
+                pdfs=pdfs,
                 response_schema=response_schema_for(model),
                 response_validator=validate_response,
             )
