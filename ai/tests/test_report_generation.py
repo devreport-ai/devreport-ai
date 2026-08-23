@@ -193,6 +193,61 @@ def test_generate_uses_pipeline_when_mock_is_disabled(monkeypatch: pytest.Monkey
     assert captured["context"] is not None
 
 
+def test_generate_passes_user_key_and_selected_model_to_the_gemini_client(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    captured: dict[str, object] = {}
+
+    class FakePipeline:
+        def __init__(self, gemini: object, report_schema_path: Path) -> None:
+            captured["gemini"] = gemini
+
+        def generate(self, request: object, context: object) -> dict[str, object]:
+            return {"metadata": {"title": "실습보고서"}, "sections": []}
+
+    monkeypatch.setattr(reports, "ReportGenerationPipeline", FakePipeline)
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        mock_report=False, ai_internal_token=INTERNAL_TOKEN, gemini_api_key="server-key"
+    )
+    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.7-flash"}
+    try:
+        response = client.post(
+            "/internal/ai/reports/generate",
+            files=multipart_data(request=request),
+            headers={"X-Internal-Token": INTERNAL_TOKEN, "X-Provider-Api-Key": "AIzaUserKey"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_settings)
+
+    assert response.status_code == 200
+    gemini = captured["gemini"]
+    assert gemini._api_key == "AIzaUserKey"
+    assert gemini._model == "gemini-3.7-flash"
+
+
+def test_generate_rejects_non_default_model_without_user_key():
+    request = valid_request() | {"provider": "GEMINI", "model": "gemini-3.7-flash"}
+    response = client.post(
+        "/internal/ai/reports/generate",
+        files=multipart_data(request=request),
+        headers={"X-Internal-Token": INTERNAL_TOKEN},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_MODEL_NOT_ALLOWED"
+
+
+def test_generate_rejects_model_without_provider():
+    response = client.post(
+        "/internal/ai/reports/generate",
+        files=multipart_data(request=valid_request() | {"model": "gemini-3.7-flash"}),
+        headers={"X-Internal-Token": INTERNAL_TOKEN},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "AI_INVALID_REQUEST"
+
+
 def test_mock_generator_converts_invalid_utf8_contract_file_to_ai_error(tmp_path: Path):
     invalid_sample_path = tmp_path / "sample-report.json"
     invalid_sample_path.write_bytes(b"\xff")

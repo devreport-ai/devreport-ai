@@ -18,6 +18,7 @@ public class ProductionEnvironmentValidator implements EnvironmentPostProcessor 
 		requireConfigured(environment, "DATABASE_PASSWORD");
 		requireConfigured(environment, "JWT_SECRET");
 		requireConfigured(environment, "AI_INTERNAL_TOKEN");
+		requireConfigured(environment, "AI_CREDENTIAL_MASTER_KEY");
 		requireConfigured(environment, "EXPORT_PRINT_URL");
 		requireHttpsUrl(environment, "PUBLIC_APP_URL");
 		requireConfigured(environment, "PASSWORD_RESET_FROM");

@@ -77,7 +77,7 @@ class HttpAiServiceClientTest {
 		var bundle = new GenerationBundle(temporaryDirectory, manifest,
 			List.of(new GenerationBundle.FilePart(document, "documents/" + fileId + "/notes.txt", "text/plain")));
 		ReportDocument response = client(Duration.ofSeconds(1)).generate(new GenerationRequest(List.of(fileId),
-			Map.of(), "요약해 줘"), bundle);
+			Map.of(), "요약해 줘", null, null), bundle, null);
 
 		assertThat(response.metadata().title()).isEqualTo("생성 보고서");
 		assertThat(requestBody.get()).contains("name=\"request\"")
@@ -94,7 +94,7 @@ class HttpAiServiceClientTest {
 			List.of());
 
 		assertThatThrownBy(() -> client.generate(
-			new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약"), bundle))
+			new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약", null, null), bundle, null))
 			.isInstanceOfSatisfying(AiServiceException.class,
 				exception -> assertThat(exception.code()).isEqualTo("AI_SERVICE_UNAVAILABLE"));
 	}
@@ -135,7 +135,7 @@ class HttpAiServiceClientTest {
 			""".formatted(aiCode)));
 		var bundle = emptyBundle();
 		try {
-			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle, null))
 				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
 					assertThat(exception.status()).isEqualTo(status);
 					assertThat(exception.code()).isEqualTo(backendCode);
@@ -155,7 +155,7 @@ class HttpAiServiceClientTest {
 			"""));
 		var bundle = emptyBundle();
 		try {
-			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle, null))
 				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
 					assertThat(exception.code()).isEqualTo("GENERATION_FAILED");
 					assertThat(exception).hasMessageNotContaining("internal detail");
@@ -172,7 +172,7 @@ class HttpAiServiceClientTest {
 		startServer(exchange -> respond(exchange, 500, "not-json"));
 		var bundle = emptyBundle();
 		try {
-			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle))
+			assertThatThrownBy(() -> client(Duration.ofSeconds(1)).generate(generationRequest(), bundle, null))
 				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
 					assertThat(exception.code()).isEqualTo("GENERATION_FAILED");
 					assertThat(exception.getCause()).isNull();
@@ -212,7 +212,7 @@ class HttpAiServiceClientTest {
 		});
 		var bundle = emptyBundle();
 		try {
-			assertThatThrownBy(() -> client(Duration.ofMillis(50)).generate(generationRequest(), bundle))
+			assertThatThrownBy(() -> client(Duration.ofMillis(50)).generate(generationRequest(), bundle, null))
 				.isInstanceOfSatisfying(AiServiceException.class, exception -> {
 					assertThat(exception.status()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
 					assertThat(exception.code()).isEqualTo("GENERATION_TIMEOUT");
@@ -228,7 +228,7 @@ class HttpAiServiceClientTest {
 	}
 
 	private GenerationRequest generationRequest() {
-		return new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약");
+		return new GenerationRequest(List.of(UUID.randomUUID()), Map.of(), "요약", null, null);
 	}
 
 	private GenerationBundle emptyBundle() throws IOException {

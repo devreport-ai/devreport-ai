@@ -22,6 +22,7 @@ import PolicyPage from './routes/PolicyPage'
 import SettingsPage from './routes/SettingsPage'
 import { ForgotPasswordPage } from './routes/ForgotPasswordPage'
 import { ResetPasswordPage } from './routes/ResetPasswordPage'
+import ApiKeysPage from './routes/ApiKeysPage'
 
 export default function App() {
   return (
@@ -72,6 +73,14 @@ export default function App() {
         element={
           <RequireAuth>
             <SettingsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/ai-keys"
+        element={
+          <RequireAuth>
+            <ApiKeysPage />
           </RequireAuth>
         }
       />

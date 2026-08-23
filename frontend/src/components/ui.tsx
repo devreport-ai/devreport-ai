@@ -22,6 +22,7 @@ export type IconName =
   | 'edit'
   | 'eye'
   | 'settings'
+  | 'key'
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const common = {
@@ -132,6 +133,12 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       <>
         <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
         <path d="m13.5 7.5 3 3" />
+      </>
+    ),
+    key: (
+      <>
+        <circle cx="8" cy="15" r="4" />
+        <path d="m10.8 12.2 8.7-8.7M16 7l2 2M13.5 9.5l2 2" />
       </>
     ),
     eye: (

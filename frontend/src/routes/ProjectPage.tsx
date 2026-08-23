@@ -7,7 +7,7 @@
  * 생성을 요청하면 곧바로 템플릿 선택으로 넘어간다(#36). 생성은 뒤에서 돌지만
  * 티를 내지 않는다 — 고르는 행위가 대기 시간을 대신한다.
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AppNav } from '../components/AppNav'
 import { AppTopBar, Icon } from '../components/ui'
@@ -18,6 +18,14 @@ import {
   saveGenerationRecovery,
   useStartGeneration,
 } from '../features/generation/api'
+import {
+  choiceKey,
+  loadModelChoice,
+  resolveChoice,
+  saveModelChoice,
+} from '../features/generation/modelChoice'
+import { ModelSelect } from '../features/generation/ModelSelect'
+import { useAiModels } from '../features/settings/api'
 import { findTemplate } from '../features/report/templates'
 import { useProject, useProjectReports } from '../features/projects/api'
 import { toDisplayMessage } from '../lib/api/errors'
@@ -33,11 +41,13 @@ function resolveFirstInvalidId(
   selectedIds: string[],
   title: string,
   instructions: string,
+  modelReady = true,
 ): string {
   if (selectedIds.length === 0) {
     return selectable[0] ? `file-${selectable[0].id}` : 'file-selection'
   }
   if (title.trim() === '') return 'title'
+  if (!modelReady) return 'generation-model'
   if (instructions.trim() === '') return 'instructions'
   return 'policy-agreement'
 }
@@ -61,6 +71,19 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const [showValidation, setShowValidation] = useState(false)
   const recovery = loadGenerationRecovery(projectId)
 
+  // 모델 목록은 계정의 키 등록 여부에 따라 달라진다. 선택은 키 문자열로만 들고 있고
+  // 실제 옵션은 목록에서 매번 다시 찾는다 — 목록이 바뀌어 못 쓰게 된 선택은 기본 모델로 돌아간다.
+  const models = useAiModels()
+  const modelOptions = useMemo(() => models.data?.items ?? [], [models.data])
+  const [selectedModelKey, setSelectedModelKey] = useState<string | null>(() => {
+    const remembered = loadModelChoice()
+    return remembered ? choiceKey(remembered) : null
+  })
+  const modelChoice = useMemo(
+    () => resolveChoice(modelOptions, selectedModelKey),
+    [modelOptions, selectedModelKey],
+  )
+
   const items = files.data?.items ?? []
   const selectable = items.filter(isAiInputFile)
 
@@ -74,7 +97,13 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
     event.preventDefault()
     if (!canSubmit || !policyAgreed) {
       setShowValidation(true)
-      const firstInvalidId = resolveFirstInvalidId(selectable, selectedIds, title, instructions)
+      const firstInvalidId = resolveFirstInvalidId(
+        selectable,
+        selectedIds,
+        title,
+        instructions,
+        modelChoice !== null,
+      )
       const firstInvalid = document.getElementById(firstInvalidId)
       firstInvalid?.focus({ preventScroll: true })
       firstInvalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
@@ -91,6 +120,8 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
           ...(date && { date }),
         },
         instructions: instructions.trim(),
+        // 서버 기본 모델도 명시해서 보낸다. 나중에 기본값이 바뀌어도 사용자가 본 모델 그대로 실행된다.
+        ...(modelChoice && { provider: modelChoice.provider, model: modelChoice.model }),
       },
       {
         onSuccess: ({ jobId: id }) => {
@@ -104,7 +135,12 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
   // timedOut 을 빼면 상한에 걸린 뒤에도 running 이 true 로 굳어 버튼이 영구 비활성이 된다.
   // 계약상 필수는 fileIds(1개 이상)·metadata.title·instructions 세 가지다.
-  const canSubmit = selectedIds.length > 0 && title.trim() !== '' && instructions.trim() !== ''
+  // 모델 목록이 아직 없으면 기억해 둔 선택이 조용히 기본 모델로 바뀌므로, 목록이 올 때까지 제출을 막는다.
+  const canSubmit =
+    selectedIds.length > 0 &&
+    title.trim() !== '' &&
+    instructions.trim() !== '' &&
+    modelChoice !== null
 
   if (recovery !== null) {
     return <Navigate to={`/projects/${projectId}/templates`} replace />
@@ -242,6 +278,26 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
               <Field id="author" label="작성자" value={author} onChange={setAuthor} />
               <Field id="course" label="과목" value={course} onChange={setCourse} />
               <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
+
+              <ModelSelect
+                options={modelOptions}
+                value={modelChoice}
+                onChange={(option) => {
+                  setSelectedModelKey(choiceKey(option))
+                  saveModelChoice({ provider: option.provider, model: option.model })
+                }}
+                disabled={startGeneration.isPending}
+                error={
+                  showValidation && modelChoice === null
+                    ? 'AI 모델 목록을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.'
+                    : undefined
+                }
+              />
+              {models.error && (
+                <p role="alert" className="inline-alert">
+                  {toDisplayMessage(models.error)}
+                </p>
+              )}
 
               <div className="field-group">
                 <label htmlFor="instructions" className="field-label">

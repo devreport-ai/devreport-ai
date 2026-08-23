@@ -17,6 +17,8 @@ class ProductionEnvironmentValidatorTest {
 			.hasMessageContaining("AI_INTERNAL_TOKEN");
 		assertThatThrownBy(() -> validate(environment().withProperty("EXPORT_PRINT_URL", " ")))
 			.hasMessageContaining("EXPORT_PRINT_URL");
+		assertThatThrownBy(() -> validate(environment().withProperty("AI_CREDENTIAL_MASTER_KEY", " ")))
+			.hasMessageContaining("AI_CREDENTIAL_MASTER_KEY");
 		assertThatThrownBy(() -> validate(environment().withProperty("PUBLIC_APP_URL", " ")))
 			.hasMessageContaining("PUBLIC_APP_URL");
 		assertThatThrownBy(() -> validate(environment().withProperty("PASSWORD_RESET_FROM", " ")))
@@ -70,6 +72,7 @@ class ProductionEnvironmentValidatorTest {
 			.withProperty("JWT_SECRET", "jwt-secret")
 			.withProperty("AI_INTERNAL_TOKEN", "internal-secret")
 			.withProperty("EXPORT_PRINT_URL", "https://app.example.com/print/{exportId}")
+			.withProperty("AI_CREDENTIAL_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LXRlc3QtbWFzdGVyLWtleS0xMg==")
 			.withProperty("PUBLIC_APP_URL", "https://app.example.com")
 			.withProperty("PASSWORD_RESET_FROM", "DevReport AI <no-reply@mail.example.com>")
 			.withProperty("RESEND_API_KEY", "resend-secret")

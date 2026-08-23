@@ -514,6 +514,213 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/me/ai-credentials': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 등록한 provider API Key 목록 조회 (힌트만) */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 등록 목록. 키 원문은 포함하지 않는다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiCredentialListResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/me/ai-credentials/{provider}': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        provider: components['schemas']['AiProvider']
+      }
+      cookie?: never
+    }
+    get?: never
+    /**
+     * provider API Key 등록 또는 교체
+     * @description 저장 전 AI Service를 통해 provider API로 키를 검증한다. Backend는 AES-256-GCM으로
+     *     암호화해 보관하고 생성 실행 시에만 복호화한다. 키 원문은 DB·로그·응답·GenerationJob에
+     *     남지 않는다. 교체하면 이전 키는 즉시 사용할 수 없다.
+     */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          provider: components['schemas']['AiProvider']
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['AiCredentialRequest']
+        }
+      }
+      responses: {
+        /** @description 등록 완료. 마스킹된 힌트만 반환한다. */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiCredentialResponse']
+          }
+        }
+        /** @description 키 형식 오류·provider가 키를 거부·아직 지원하지 않는 provider (VALIDATION_FAILED, AI_CREDENTIAL_INVALID, AI_PROVIDER_UNSUPPORTED, INVALID_REQUEST) */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description provider 검증 호출 실패 (AI_CREDENTIAL_VERIFICATION_FAILED, AI_SERVICE_UNAVAILABLE) */
+        502: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    post?: never
+    /** provider API Key 삭제 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          provider: components['schemas']['AiProvider']
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 삭제 완료. 이후 해당 provider의 비기본 모델은 선택할 수 없다. */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 등록된 키 없음 (AI_CREDENTIAL_NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/ai/models': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 선택 가능한 provider·model 목록 조회
+     * @description 서버 allowlist와 현재 사용자의 키 등록 여부를 합쳐 각 모델의 `available`을 계산한다.
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 모델 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['AiModelCatalogResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/projects': {
     parameters: {
       query?: never
@@ -1303,7 +1510,7 @@ export interface paths {
             'application/json': components['schemas']['JobIdResponse']
           }
         }
-        /** @description 생성 요청 필드 누락·빈 파일 목록·중복 파일·잘못된 metadata (VALIDATION_FAILED, GENERATION_REQUEST_INVALID) */
+        /** @description 생성 요청 필드 누락·빈 파일 목록·중복 파일·잘못된 metadata·허용되지 않은 provider/model·키 미등록 모델 선택 (VALIDATION_FAILED, GENERATION_REQUEST_INVALID, AI_MODEL_NOT_ALLOWED, AI_CREDENTIAL_REQUIRED) */
         400: {
           headers: {
             [name: string]: unknown
@@ -2068,6 +2275,54 @@ export interface components {
         date?: string
       }
       instructions: string
+      /**
+       * @description 생성에 사용할 LLM provider. model과 함께 지정하거나 둘 다 생략한다.
+       *     생략하면 서버 기본 모델(서버 키)로 실행한다. 선택한 provider의 API Key를
+       *     등록한 사용자는 해당 키로 실행되며, 서버 기본 모델이 아닌 모델은 키가 있어야 선택할 수 있다.
+       */
+      provider?: components['schemas']['AiProvider'] | null
+      /** @description `GET /api/ai/models` allowlist의 model 값. provider와 함께 지정한다. */
+      model?: string | null
+    }
+    /** @enum {string} */
+    AiProvider: 'GEMINI' | 'ANTHROPIC'
+    AiCredentialRequest: {
+      /**
+       * Format: password
+       * @description provider API Key 원문. 저장 전 provider API로 검증하며 어떤 응답에도 다시 노출되지 않는다.
+       */
+      apiKey: string
+    }
+    AiCredentialResponse: {
+      provider: components['schemas']['AiProvider']
+      /** @description 마스킹된 힌트(`****` + 끝 4자리). */
+      keyHint: string
+      /** Format: date-time */
+      verifiedAt: string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
+    }
+    AiCredentialListResponse: {
+      items: components['schemas']['AiCredentialResponse'][]
+    }
+    AiModelOption: {
+      provider: components['schemas']['AiProvider']
+      model: string
+      label: string
+      /** @description 서버 키로 실행되는 기본 모델이면 true. 목록에 정확히 하나 있다. */
+      serverDefault: boolean
+      /** @description 현재 사용자가 선택할 수 있으면 true (서버 기본 모델이거나 해당 provider 키를 등록함). */
+      available: boolean
+      /**
+       * @description 이 모델을 선택하면 사용자가 등록한 키로 실행되어 비용이 사용자 provider 계정에 청구되면 true.
+       *     해당 provider 키가 등록되어 있으면 서버 기본 모델도 사용자 키로 실행된다.
+       */
+      usesUserKey: boolean
+    }
+    AiModelCatalogResponse: {
+      items: components['schemas']['AiModelOption'][]
     }
     JobIdResponse: {
       /** Format: uuid */
@@ -2082,6 +2337,9 @@ export interface components {
       progress: 0 | 10 | 100
       /** @enum {string} */
       currentStage: 'QUEUED' | 'CALLING_AI' | 'COMPLETED' | 'FAILED' | 'CANCELED'
+      provider: components['schemas']['AiProvider']
+      /** @description 접수 시점에 확정된 모델 snapshot. */
+      model: string
       /** Format: uuid */
       reportId?: string | null
       failureCode?: string | null

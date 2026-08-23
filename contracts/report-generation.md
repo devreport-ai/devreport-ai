@@ -20,7 +20,9 @@
     "course": "과목",
     "date": "2026-08-12"
   },
-  "instructions": "보고서 작성 지시"
+  "instructions": "보고서 작성 지시",
+  "provider": "GEMINI",
+  "model": "gemini-3.5-flash"
 }
 ```
 
@@ -28,7 +30,12 @@
 - 삭제·누락 파일과 다른 프로젝트 파일은 거부한다.
 - `metadata`는 `ReportDocument.metadata`와 같은 형태다. `title`은 필수이고 `author`·`course`·`date`는 선택이며 그 밖의 키는 허용하지 않는다.
 - 디자인용 `templateId`와 `templateVersion`은 생성 요청에 포함하지 않는다.
-- 요청 원문은 `generation_jobs.request_document` JSONB에 저장한다.
+- `provider`·`model`은 선택이며 둘 다 지정하거나 둘 다 생략한다. 생략하면 서버 기본 모델로 실행한다.
+  값은 `GET /api/ai/models`의 allowlist로 검증하며(`400 AI_MODEL_NOT_ALLOWED`), 서버 기본 모델이
+  아닌 모델은 해당 provider의 사용자 API Key가 등록되어 있어야 선택할 수 있다(`400 AI_CREDENTIAL_REQUIRED`).
+- Backend는 확정한 `provider`·`model`과 키 출처(`key_source`: `SERVER`/`USER`)를 `generation_jobs`에
+  snapshot으로 보존하고 `GenerationJobResponse`에 `provider`·`model`을 돌려준다.
+- 요청 원문은 `generation_jobs.request_document` JSONB에 저장한다. 사용자 API Key는 요청 객체에 절대 담지 않는다.
 - 생성 작업이 `PENDING` 또는 `PROCESSING`인 동안에는 같은 프로젝트의 파일 삭제를
   `409 FILE_IN_USE`로 차단한다. 생성 요청과 삭제는 프로젝트 행 잠금으로 직렬화한다.
 - 콘텐츠 구조 구분이 필요해지면 디자인 템플릿과 별개인 `reportType` 또는 `contentProfile`을 정의한다.
@@ -89,13 +96,24 @@ temporary bundle
 
 | Part | Content-Type | 내용 |
 | --- | --- | --- |
-| `request` | `application/json` | `fileIds`, `metadata`, `instructions` |
+| `request` | `application/json` | `fileIds`, `metadata`, `instructions`, 확정된 `provider`·`model` |
 | `manifest` | `application/json` | `manifest.json` |
 | `files` | 각 파일 MIME | 파일별 반복 part, `filename`은 manifest의 `path` |
 
 요청은 `X-Internal-Token: ${AI_INTERNAL_TOKEN}` 헤더로 인증한다. Backend는 토큰이 없으면
 AI 호출을 수행하지 않고, AI Service는 헤더가 없거나 값이 다르면 `401 AI_UNAUTHORIZED`를
 반환한다. 인증 실패 응답에는 토큰·요청 원문·비밀값을 포함하지 않는다.
+
+### 사용자 API Key 전달
+
+사용자가 등록한 provider API Key는 `X-Provider-Api-Key` 헤더로만 전달한다. Backend는 생성 실행
+직전에 암호문을 복호화해 헤더에 싣고, 요청 본문·`generation_jobs`·로그·오류 응답에 남기지 않는다.
+AI Service는 헤더가 있으면 그 키로 요청의 `provider`·`model`을 실행하고, 없으면 서버 키로 서버 기본
+모델만 실행한다(다른 모델은 `400 AI_MODEL_NOT_ALLOWED`).
+
+`POST /internal/ai/credentials/verify`는 Backend가 키를 저장하기 전에 호출한다. 본문은
+`{"provider": "GEMINI"}`, 키는 같은 헤더로 전달하며 유효하면 `{"valid": true, "provider": "GEMINI"}`,
+provider가 거부하면 `401 AI_CREDENTIAL_INVALID`를 반환한다.
 
 ### 전송 제한
 
@@ -147,6 +165,9 @@ Frontend는 Report 응답의 `projectId`와 이미지 블록의 `fileId`를 조�
 | `AI_INVALID_RESPONSE` | `GENERATION_FAILED` |
 | `AI_TIMEOUT` | `GENERATION_TIMEOUT` |
 | `AI_UNAVAILABLE` | `AI_SERVICE_UNAVAILABLE` |
+| `AI_MODEL_NOT_ALLOWED` | `GENERATION_REQUEST_INVALID` |
+| `AI_CREDENTIAL_INVALID` | `AI_CREDENTIAL_INVALID` (생성 실패 코드) / 등록 시 `400 AI_CREDENTIAL_INVALID` |
+| `AI_PROVIDER_RATE_LIMITED` | `PROVIDER_QUOTA_EXCEEDED` |
 
 `HttpAiServiceClient`는 AI Service의 공통 오류 응답에서 `code`만 읽어 위 표로 변환한다.
 원격 `message`·`details`는 내부 정보일 수 있으므로 Backend 응답과 로그에 전달하지 않는다.
@@ -155,7 +176,8 @@ Frontend는 Report 응답의 `projectId`와 이미지 블록의 `fileId`를 조�
 ## 운영 보안 설정
 
 Backend는 `SPRING_PROFILES_ACTIVE=prod`에서 `DATABASE_PASSWORD`, `JWT_SECRET`,
-`AI_INTERNAL_TOKEN`, `EXPORT_PRINT_URL`이 비어 있으면 기동하지 않으며 `AI_SERVICE_MOCK=true`를
+`AI_INTERNAL_TOKEN`, `EXPORT_PRINT_URL`, `AI_CREDENTIAL_MASTER_KEY`(사용자 API Key 암호화용
+Base64 32바이트)가 비어 있으면 기동하지 않으며 `AI_SERVICE_MOCK=true`를
 허용하지 않는다. AI Service는 `APP_ENV=prod`에서 `AI_INTERNAL_TOKEN`, `GEMINI_API_KEY`가
 필수이고 `MOCK_REPORT=true`를 허용하지 않는다.
 
@@ -166,6 +188,9 @@ private network에 두고 외부 포트를 공개하지 않는다.
 ## 사용량 보호
 
 Backend는 AI 호출 전에 사용자별 일일 생성 횟수와 동시 생성 작업 수를 검사한다.
+일일 생성 횟수는 서버 키로 실행하는 요청에만 적용한다. 사용자 API Key로 실행하는 요청은
+비용이 사용자의 provider 계정에 청구되므로 일일 한도에서 제외하되, Backend·AI Service 자원
+보호를 위해 동시 생성 작업 수 제한은 그대로 적용한다.
 검사와 `generation_jobs` 저장은 같은 트랜잭션에서 사용자 행 잠금으로 직렬화한다.
 제한 초과는 다음 공통 오류로 반환하며, 이때 `GenerationJob`이나 AI 임시 bundle을
 만들지 않는다.

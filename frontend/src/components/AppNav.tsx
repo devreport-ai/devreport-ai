@@ -27,6 +27,10 @@ export function AppNav({ screen }: { screen?: string }) {
             <Icon name="settings" />
             계정 설정
           </NavLink>
+          <NavLink to="/ai-keys" className="app-nav-link">
+            <Icon name="key" />
+            API 키 추가
+          </NavLink>
         </nav>
 
         <div className="app-sidebar__bottom">

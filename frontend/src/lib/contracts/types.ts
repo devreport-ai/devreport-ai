@@ -60,6 +60,20 @@ export interface ReportUpdateRequest {
 
 export type GenerationRequest = Schemas['GenerationRequest']
 
+/** LLM provider·모델 선택과 사용자 API Key 설정 (#116). */
+export type AiProvider = Schemas['AiProvider']
+export type AiCredentialRequest = Schemas['AiCredentialRequest']
+export type AiCredentialResponse = Schemas['AiCredentialResponse']
+export type AiCredentialListResponse = Schemas['AiCredentialListResponse']
+export type AiModelOption = Schemas['AiModelOption']
+export type AiModelCatalogResponse = Schemas['AiModelCatalogResponse']
+
+/** 화면에 보여줄 provider 이름. 계약 enum 이 늘면 여기서 컴파일 에러가 나 누락을 알려준다. */
+export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
+  GEMINI: 'Google Gemini',
+  ANTHROPIC: 'Anthropic Claude',
+}
+
 /**
  * 생성 요청에 실을 metadata.
  *

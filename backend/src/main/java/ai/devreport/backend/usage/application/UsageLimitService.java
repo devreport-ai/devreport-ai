@@ -62,15 +62,21 @@ public class UsageLimitService {
 		}
 	}
 
-	public void checkGeneration(UUID userId) {
+	/**
+	 * @param usesServerKey 서버 기본 키로 실행하는 요청이면 일일 한도를 적용한다.
+	 *                      사용자 키(BYOK) 요청은 비용이 사용자 계정에 청구되므로 일일 한도 대신 동시 실행 한도만 적용한다.
+	 */
+	public void checkGeneration(UUID userId, boolean usesServerKey) {
 		lockUser(userId);
-		Instant dayStart = dayStart();
-		long dailyCount = generations.countByOwnerIdAndCreatedAtOnOrAfter(userId, dayStart);
-		long dailyLimit = properties.getGeneration().getDailyLimit();
-		if (dailyCount >= dailyLimit) {
-			throw limit(HttpStatus.TOO_MANY_REQUESTS, "GENERATION_DAILY_LIMIT_EXCEEDED",
-				"오늘의 보고서 생성 한도를 초과했습니다.",
-				Map.of("dailyLimit", dailyLimit, "currentCount", dailyCount));
+		if (usesServerKey) {
+			Instant dayStart = dayStart();
+			long dailyCount = generations.countServerKeyByOwnerIdAndCreatedAtOnOrAfter(userId, dayStart);
+			long dailyLimit = properties.getGeneration().getDailyLimit();
+			if (dailyCount >= dailyLimit) {
+				throw limit(HttpStatus.TOO_MANY_REQUESTS, "GENERATION_DAILY_LIMIT_EXCEEDED",
+					"오늘의 보고서 생성 한도를 초과했습니다.",
+					Map.of("dailyLimit", dailyLimit, "currentCount", dailyCount));
+			}
 		}
 		long activeCount = generations.countByOwnerIdAndStatusIn(userId, ACTIVE_GENERATIONS);
 		long concurrentLimit = properties.getGeneration().getConcurrentLimit();
@@ -100,7 +106,8 @@ public class UsageLimitService {
 		}
 	}
 
-	private void lockUser(UUID userId) {
+	/** 사용자 행 잠금. 한도 검사·키 삭제·생성 접수를 같은 잠금으로 직렬화한다. */
+	public void lockUser(UUID userId) {
 		users.findForUpdate(userId).orElseThrow(() -> new IllegalStateException("Authenticated user is missing"));
 	}
 

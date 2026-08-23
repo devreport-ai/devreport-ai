@@ -4,6 +4,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -31,6 +32,8 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnProperty(name = "ai.service.mock", havingValue = "false", matchIfMissing = true)
 class HttpAiServiceClient implements AiServiceClient {
 
+	static final String PROVIDER_API_KEY_HEADER = "X-Provider-Api-Key";
+
 	private final RestClient client;
 	private final String internalToken;
 	private final ObjectMapper objectMapper;
@@ -57,7 +60,7 @@ class HttpAiServiceClient implements AiServiceClient {
 	}
 
 	@Override
-	public ReportDocument generate(GenerationRequest request, GenerationBundle bundle) {
+	public ReportDocument generate(GenerationRequest request, GenerationBundle bundle, String providerApiKey) {
 		if (internalToken.isBlank()) {
 			throw Failure.AI_SERVICE_UNAVAILABLE.exception();
 		}
@@ -68,8 +71,29 @@ class HttpAiServiceClient implements AiServiceClient {
 		bundle.files().forEach(file -> body.add("files",
 			filePart(file.path(), "files", file.relativePath(), file.contentType())));
 		return execute(() -> client.post().uri("/internal/ai/reports/generate")
-			.header("X-Internal-Token", internalToken).contentType(MediaType.MULTIPART_FORM_DATA).body(body)
+			.header("X-Internal-Token", internalToken)
+			.headers(headers -> providerKeyHeader(headers, providerApiKey))
+			.contentType(MediaType.MULTIPART_FORM_DATA).body(body)
 			.retrieve().body(ReportDocument.class), response -> response != null, Operation.GENERATE);
+	}
+
+	@Override
+	public void verifyCredential(AiProvider provider, String providerApiKey) {
+		if (internalToken.isBlank()) {
+			throw Failure.AI_SERVICE_UNAVAILABLE.exception();
+		}
+		execute(() -> client.post().uri("/internal/ai/credentials/verify")
+			.header("X-Internal-Token", internalToken)
+			.headers(headers -> providerKeyHeader(headers, providerApiKey))
+			.contentType(MediaType.APPLICATION_JSON).body(Map.of("provider", provider.name()))
+			.retrieve().body(JsonNode.class),
+			response -> response != null && response.path("valid").asBoolean(false), Operation.VERIFY_CREDENTIAL);
+	}
+
+	private static void providerKeyHeader(HttpHeaders headers, String providerApiKey) {
+		if (providerApiKey != null && !providerApiKey.isBlank()) {
+			headers.set(PROVIDER_API_KEY_HEADER, providerApiKey);
+		}
 	}
 
 	private static HttpEntity<Object> jsonPart(Object value) {
@@ -127,7 +151,9 @@ class HttpAiServiceClient implements AiServiceClient {
 
 		return switch (code) {
 			case "AI_UNAUTHORIZED" -> Failure.AI_SERVICE_UNAVAILABLE.exception();
-			case "AI_INVALID_REQUEST" -> Failure.GENERATION_REQUEST_INVALID.exception();
+			case "AI_INVALID_REQUEST", "AI_MODEL_NOT_ALLOWED" -> Failure.GENERATION_REQUEST_INVALID.exception();
+			case "AI_CREDENTIAL_INVALID" -> Failure.AI_CREDENTIAL_INVALID.exception();
+			case "AI_PROVIDER_RATE_LIMITED" -> Failure.PROVIDER_QUOTA_EXCEEDED.exception();
 			case "AI_FILE_PROCESSING_FAILED", "AI_GENERATION_FAILED", "AI_INVALID_RESPONSE" ->
 				Failure.GENERATION_FAILED.exception();
 			case "AI_TIMEOUT" -> Failure.GENERATION_TIMEOUT.exception();
@@ -155,6 +181,11 @@ class HttpAiServiceClient implements AiServiceClient {
 			Failure.GENERATION_FAILED,
 			Failure.GENERATION_TIMEOUT,
 			Failure.GENERATION_FAILED
+		),
+		VERIFY_CREDENTIAL(
+			Failure.AI_CREDENTIAL_VERIFICATION_FAILED,
+			Failure.AI_CREDENTIAL_VERIFICATION_FAILED,
+			Failure.AI_CREDENTIAL_VERIFICATION_FAILED
 		);
 
 		private final Failure fallback;
@@ -188,7 +219,13 @@ class HttpAiServiceClient implements AiServiceClient {
 		AI_SERVICE_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "AI_SERVICE_UNAVAILABLE", "AI 서비스에 연결할 수 없습니다."),
 		AI_SERVICE_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_SERVICE_TIMEOUT", "AI 서비스 응답 시간이 초과되었습니다."),
 		AI_SERVICE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "AI_SERVICE_INVALID_RESPONSE",
-			"AI 서비스 응답을 확인할 수 없습니다.");
+			"AI 서비스 응답을 확인할 수 없습니다."),
+		AI_CREDENTIAL_INVALID(HttpStatus.BAD_REQUEST, "AI_CREDENTIAL_INVALID",
+			"등록된 API Key를 provider가 거부했습니다. 키를 확인해 주세요."),
+		AI_CREDENTIAL_VERIFICATION_FAILED(HttpStatus.BAD_GATEWAY, "AI_CREDENTIAL_VERIFICATION_FAILED",
+			"API Key를 확인할 수 없습니다."),
+		PROVIDER_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "PROVIDER_QUOTA_EXCEEDED",
+			"provider 사용량 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
 
 		private final HttpStatus status;
 		private final String code;

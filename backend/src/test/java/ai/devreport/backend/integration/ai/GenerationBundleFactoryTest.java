@@ -51,7 +51,7 @@ class GenerationBundleFactoryTest {
 		var objectMapper = JsonMapper.builder().build();
 		var factory = new GenerationBundleFactory(repository, objectMapper, uploadRoot.toString());
 		GenerationBundle bundle = factory.create(new GenerationRequest(
-			List.of(zip.getId(), document.getId(), image.getId(), pdf.getId()), Map.of(), "요약"));
+			List.of(zip.getId(), document.getId(), image.getId(), pdf.getId()), Map.of(), "요약", null, null));
 		Path bundleRoot = bundle.root();
 
 		assertThat(bundle.files()).extracting(GenerationBundle.FilePart::relativePath).containsExactly(

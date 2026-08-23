@@ -1,5 +1,7 @@
 package ai.devreport.backend;
 
+import ai.devreport.backend.credential.application.AiCredentialProperties;
+import ai.devreport.backend.integration.ai.AiModelProperties;
 import ai.devreport.backend.usage.application.UsageEventProperties;
 import ai.devreport.backend.usage.application.UsageLimitProperties;
 
@@ -10,7 +12,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableConfigurationProperties({UsageEventProperties.class, UsageLimitProperties.class})
+@EnableConfigurationProperties({UsageEventProperties.class, UsageLimitProperties.class, AiModelProperties.class,
+	AiCredentialProperties.class})
 @EnableAsync
 @EnableScheduling
 public class BackendApplication {

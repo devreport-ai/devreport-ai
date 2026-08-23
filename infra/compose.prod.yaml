@@ -75,6 +75,10 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_MOCK: "false"
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      # 사용자 provider API Key 암호화(AES-256-GCM) 마스터 키. Base64 32바이트, 필수.
+      # 생성·rotation 절차는 docs/user-api-key-policy.md 참고.
+      AI_CREDENTIAL_MASTER_KEY: ${AI_CREDENTIAL_MASTER_KEY}
+      AI_CREDENTIAL_KEY_VERSION: ${AI_CREDENTIAL_KEY_VERSION:-1}
       RESEND_API_KEY: ${RESEND_API_KEY}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL}
       PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM}

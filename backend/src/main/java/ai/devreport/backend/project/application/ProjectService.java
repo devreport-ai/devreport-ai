@@ -63,6 +63,11 @@ public class ProjectService {
 		projects.findForUpdate(projectId).orElseThrow(ProjectNotFoundException::new);
 	}
 
+	/** 휴지통 여부와 무관하게 소유자를 돌려준다. 비동기 작업이 접수 시점의 소유자 자원을 찾을 때 쓴다. */
+	public UUID ownerIdOf(UUID projectId) {
+		return projects.findById(projectId).map(Project::getOwnerId).orElseThrow(ProjectNotFoundException::new);
+	}
+
 	public List<Project> findExpired(Instant deletedBefore, Pageable pageable) {
 		return projects.findAllByDeletedAtBefore(deletedBefore, pageable);
 	}

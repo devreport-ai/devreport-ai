@@ -11,6 +11,7 @@ from app.clients.gemini_client import (
     content_parts,
     response_config,
     retry_delay_seconds,
+    verify_gemini_api_key,
 )
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
@@ -52,6 +53,12 @@ class FakeClient:
 
 class HttpError(Exception):
     def __init__(self, code: int) -> None:
+        self.code = code
+
+
+class ApiKeyError(Exception):
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__(message)
         self.code = code
 
 
@@ -225,9 +232,79 @@ def test_retries_invalid_validated_response_with_the_same_budget():
 
 def test_does_not_retry_non_retryable_sdk_error():
     with pytest.raises(AIServiceError) as raised:
-        client(HttpError(401), Response("{}"), max_retries=1).generate_json("prompt")
+        client(HttpError(404), Response("{}"), max_retries=1).generate_json("prompt")
 
     assert raised.value.code == ErrorCode.AI_UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        HttpError(401),
+        HttpError(403),
+        ApiKeyError(400, "API key not valid. Please pass a valid API key."),
+    ],
+)
+def test_converts_rejected_api_key_to_credential_error(error: Exception):
+    with pytest.raises(AIServiceError) as raised:
+        client(error, Response("{}"), max_retries=1).generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_CREDENTIAL_INVALID
+    assert "API key not valid" not in raised.value.message
+
+
+def test_converts_exhausted_rate_limit_retries_to_provider_rate_limited():
+    with pytest.raises(AIServiceError) as raised:
+        client(HttpError(429), HttpError(429), max_retries=1).generate_json("prompt")
+
+    assert raised.value.code == ErrorCode.AI_PROVIDER_RATE_LIMITED
+
+
+class FakeModelLister:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.calls: list[dict[str, object]] = []
+
+    def list(self, *, config: dict[str, object]) -> list[object]:
+        self.calls.append(config)
+        if self.error is not None:
+            raise self.error
+        return [object()]
+
+
+class FakeVerifyClient:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.models = FakeModelLister(error)
+
+
+def test_verify_api_key_lists_one_model_page_with_the_given_key():
+    captured: dict[str, object] = {}
+
+    def factory(key: str, timeout: float) -> FakeVerifyClient:
+        captured["key"] = key
+        captured["timeout"] = timeout
+        return FakeVerifyClient()
+
+    verify_gemini_api_key("user-key", 7.5, client_factory=factory)
+
+    assert captured == {"key": "user-key", "timeout": 7.5}
+
+
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (HttpError(401), ErrorCode.AI_CREDENTIAL_INVALID),
+        (ApiKeyError(400, "API_KEY_INVALID"), ErrorCode.AI_CREDENTIAL_INVALID),
+        (HttpError(429), ErrorCode.AI_PROVIDER_RATE_LIMITED),
+        (httpx.ReadTimeout("slow"), ErrorCode.AI_TIMEOUT),
+        (HttpError(500), ErrorCode.AI_UNAVAILABLE),
+    ],
+)
+def test_verify_api_key_converts_provider_failures(error: Exception, code: ErrorCode):
+    with pytest.raises(AIServiceError) as raised:
+        verify_gemini_api_key("user-key", 5, client_factory=lambda _k, _t: FakeVerifyClient(error))
+
+    assert raised.value.code == code
 
 
 def test_applies_exponential_backoff_between_retryable_failures():
