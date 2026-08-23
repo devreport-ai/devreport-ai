@@ -48,15 +48,20 @@ def test_compares_result_directories_for_the_same_fixtures(tmp_path: Path):
     (fixture_dir / "sample.json").write_text(
         json.dumps(
             {
+                "sourceFiles": [
+                    {"content": "@SpringBootApplication\npublic class BackendApplication {}"}
+                ],
                 "expected": {
                     "requiredTerms": ["Spring Boot"],
                     "allowedImageFileIds": ["00000000-0000-4000-8000-000000000001"],
-                }
+                },
             }
         ),
         encoding="utf-8",
     )
-    (baseline_dir / "sample.json").write_text(json.dumps(SAMPLE), encoding="utf-8")
+    baseline = json.loads(json.dumps(SAMPLE))
+    baseline["sections"][0]["blocks"][2]["code"] = "public class Invented {}"
+    (baseline_dir / "sample.json").write_text(json.dumps(baseline), encoding="utf-8")
     (improved_dir / "sample.json").write_text(
         json.dumps(
             {
@@ -75,4 +80,7 @@ def test_compares_result_directories_for_the_same_fixtures(tmp_path: Path):
 
     assert set(result["runs"]) == {"baseline", "improved"}
     assert result["runs"]["improved"]["metadata"]["promptVersion"] == "v3"
-    assert result["runs"]["baseline"]["average"] == 1.0
+    assert result["runs"]["baseline"]["average"] < result["runs"]["improved"]["average"]
+    assert result["runs"]["baseline"]["fixtures"]["sample"]["details"]["invalidCodeQuotes"] == [
+        "public class Invented {}"
+    ]

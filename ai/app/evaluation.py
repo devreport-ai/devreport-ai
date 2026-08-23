@@ -20,7 +20,10 @@ SENTENCE_SEPARATOR = re.compile(r"[.!?。！？]+")
 
 
 def evaluate_document(
-    document: dict[str, Any], expected: dict[str, Any], schema: dict[str, Any]
+    document: dict[str, Any],
+    expected: dict[str, Any],
+    schema: dict[str, Any],
+    source_snippets: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """한 fixture의 생성 결과를 다섯 가지 지표로 평가한다."""
     schema_error = validate_schema(document, schema)
@@ -33,6 +36,9 @@ def evaluate_document(
     allowed_image_ids = set(expected.get("allowedImageFileIds", []))
     image_ids = set(image_file_ids(document))
     invalid_image_ids = sorted(image_ids - allowed_image_ids)
+    invalid_code_quotes = (
+        unmatched_code_quotes(document, source_snippets) if source_snippets is not None else []
+    )
 
     block_types = document_block_types(document)
     non_empty_blocks = count_non_empty_blocks(document)
@@ -55,7 +61,9 @@ def evaluate_document(
         "requirementsSatisfaction": fraction(
             len(required_terms) - len(missing_terms), len(required_terms)
         ),
-        "evidenceConsistency": 1.0 if not invalid_image_ids and not forbidden_matches else 0.0,
+        "evidenceConsistency": 1.0
+        if not invalid_image_ids and not invalid_code_quotes and not forbidden_matches
+        else 0.0,
         "specificity": fraction(sum(specificity_checks), len(specificity_checks)),
         "readability": fraction(sum(readability_checks), len(readability_checks)),
         "schemaValidity": 0.0 if schema_error else 1.0,
@@ -67,6 +75,7 @@ def evaluate_document(
             "missingRequiredTerms": missing_terms,
             "forbiddenTerms": forbidden_matches,
             "invalidImageFileIds": invalid_image_ids,
+            "invalidCodeQuotes": invalid_code_quotes,
             "missingBlockTypes": missing_block_types,
             "nonEmptyBlocks": non_empty_blocks,
             "blockTypes": sorted(block_types),
@@ -91,6 +100,22 @@ def image_file_ids(document: dict[str, Any]) -> list[str]:
         for block in section.get("blocks", [])
         if block.get("type") == "image" and isinstance(block.get("fileId"), str)
     ]
+
+
+def unmatched_code_quotes(document: dict[str, Any], source_snippets: Sequence[str]) -> list[str]:
+    normalized_sources = tuple(normalize_code(source) for source in source_snippets)
+    return [
+        code
+        for section in document.get("sections", [])
+        for block in section.get("blocks", [])
+        if block.get("type") == "code"
+        and isinstance((code := block.get("code")), str)
+        and not any(normalize_code(code) in source for source in normalized_sources)
+    ]
+
+
+def normalize_code(value: str) -> str:
+    return value.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
 def document_block_types(document: dict[str, Any]) -> set[str]:
@@ -215,7 +240,10 @@ def evaluate_runs(
                 continue
             document, metadata = load_result(result_path)
             fixture_results[fixture_id] = evaluate_document(
-                document, fixture.get("expected", {}), schema
+                document,
+                fixture.get("expected", {}),
+                schema,
+                [source.get("content", "") for source in fixture.get("sourceFiles", [])],
             ) | {"run": metadata}
         valid_results = [result for result in fixture_results.values() if "scores" in result]
         runs[label] = {

@@ -17,13 +17,14 @@ from app.clients.structured_client import (
 )
 from app.core.errors import AIServiceError, ErrorCode
 from app.prompts.report_generation import (
+    MAX_REPORT_SOURCE_SNIPPET_CHARS,
     image_analysis_prompt,
     report_document_prompt,
     report_plan_prompt,
     requirement_analysis_prompt,
     source_analysis_prompt,
 )
-from app.schemas.analysis import AnalysisContext, ImageEvidence, PdfEvidence
+from app.schemas.analysis import AnalysisContext, ImageEvidence, PdfEvidence, TextEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import (
     ImageAnalysis,
@@ -31,6 +32,7 @@ from app.schemas.pipeline import (
     ReportPlan,
     RequirementAnalysis,
     SourceAnalysis,
+    SourceFinding,
 )
 from app.services.report_document_validator import ReportDocumentValidator
 
@@ -71,7 +73,9 @@ class ReportGenerationPipeline:
             "source",
             SourceAnalysis,
             source_analysis_prompt(context.source_files, context.omitted),
-            validate=lambda result: self._validate_source_references(result, source_ids),
+            validate=lambda result: self._validate_source_references(
+                result, {str(item.file_id): item for item in context.source_files}
+            ),
         )
         images = tuple(self._analyze_image(image) for image in context.images)
 
@@ -79,15 +83,25 @@ class ReportGenerationPipeline:
             "plan",
             ReportPlan,
             report_plan_prompt(request, requirements, source, images, file_ids, image_ids),
-            validate=lambda result: self._validate_plan_references(result, file_ids, image_ids),
+            validate=lambda result: self._validate_plan_references(
+                result, file_ids, image_ids, source_ids, source
+            ),
         )
+        source_findings = self._source_findings_for_plan(source, plan)
 
         document = self._generate_document(
             report_document_prompt(
-                request, requirements, source, images, plan, image_ids, context.omitted
+                request,
+                requirements,
+                source_findings,
+                images,
+                plan,
+                image_ids,
+                context.omitted,
             ),
             request,
             self._image_ids(context),
+            tuple(snippet.content for finding in source_findings for snippet in finding.snippets),
         )
         log.info("보고서 생성 완료 sections=%d", len(document.get("sections", ())))
         return document
@@ -130,7 +144,11 @@ class ReportGenerationPipeline:
         return cast(ModelT, result)
 
     def _generate_document(
-        self, prompt: str, request: GenerationRequest, image_ids: tuple[UUID, ...]
+        self,
+        prompt: str,
+        request: GenerationRequest,
+        image_ids: tuple[UUID, ...],
+        source_snippets: tuple[str, ...],
     ) -> dict[str, Any]:
         def validate_response(response: str) -> dict[str, Any]:
             try:
@@ -145,7 +163,9 @@ class ReportGenerationPipeline:
                     ErrorCode.AI_INVALID_RESPONSE,
                     "AI 보고서 응답 형식이 올바르지 않습니다.",
                 )
-            return self._document_validator.validate(document, request.metadata, image_ids)
+            validated = self._document_validator.validate(document, request.metadata, image_ids)
+            self._validate_document_code_evidence(validated, source_snippets)
+            return validated
 
         with stage_log("document"):
             # 계약 스키마는 블록 oneOf를 쓰므로 structured output 대신 프롬프트로 형식을 고정한다.
@@ -173,28 +193,104 @@ class ReportGenerationPipeline:
             raise unknown_evidence()
 
     @staticmethod
-    def _validate_source_references(source: SourceAnalysis, allowed_source_ids: set[str]) -> None:
-        referenced_file_ids = {
-            str(file_id) for finding in source.findings for file_id in finding.evidence_file_ids
-        }
-        if not referenced_file_ids <= allowed_source_ids:
+    def _validate_source_references(
+        source: SourceAnalysis, source_files: dict[str, TextEvidence]
+    ) -> None:
+        finding_ids = [finding.id for finding in source.findings]
+        if len(finding_ids) != len(set(finding_ids)):
             raise unknown_evidence()
+
+        for finding in source.findings:
+            evidence_ids = {str(file_id) for file_id in finding.evidence_file_ids}
+            snippet_ids = {str(snippet.file_id) for snippet in finding.snippets}
+            if evidence_ids != snippet_ids or not evidence_ids <= source_files.keys():
+                raise unknown_evidence()
+            for snippet in finding.snippets:
+                source_file = source_files[str(snippet.file_id)]
+                lines = source_file.content.splitlines()
+                if (
+                    snippet.path != source_file.path
+                    or snippet.source_truncated != source_file.truncated
+                    or snippet.end_line < snippet.start_line
+                    or snippet.end_line > len(lines)
+                ):
+                    raise unknown_evidence()
+                expected = "\n".join(lines[snippet.start_line - 1 : snippet.end_line])
+                if normalize_newlines(snippet.content) != normalize_newlines(expected):
+                    raise unknown_evidence()
 
     @staticmethod
     def _validate_plan_references(
-        plan: ReportPlan, allowed_file_ids: set[str], allowed_image_ids: set[str]
+        plan: ReportPlan,
+        allowed_file_ids: set[str],
+        allowed_image_ids: set[str],
+        source_file_ids: set[str],
+        source: SourceAnalysis,
     ) -> None:
+        findings = {finding.id: finding for finding in source.findings}
         referenced_file_ids = {
             str(file_id) for section in plan.sections for file_id in section.evidence_file_ids
         }
         referenced_image_ids = {
             str(file_id) for section in plan.sections for file_id in section.image_file_ids
         }
-        valid_references = (
-            referenced_file_ids <= allowed_file_ids and referenced_image_ids <= allowed_image_ids
+        selected_finding_ids = {
+            finding_id for section in plan.sections for finding_id in section.source_finding_ids
+        }
+        valid_references = referenced_file_ids <= allowed_file_ids and referenced_image_ids <= (
+            allowed_image_ids
         )
+        valid_references = valid_references and selected_finding_ids <= findings.keys()
         if not valid_references:
             raise unknown_evidence()
+        for section in plan.sections:
+            section_source_ids = {
+                str(file_id) for file_id in section.evidence_file_ids
+            } & source_file_ids
+            selected_source_ids = {
+                str(file_id)
+                for finding_id in section.source_finding_ids
+                for file_id in findings[finding_id].evidence_file_ids
+            }
+            valid_references = valid_references and section_source_ids == selected_source_ids
+        snippet_chars = sum(
+            len(snippet.content)
+            for finding_id in selected_finding_ids
+            for snippet in findings[finding_id].snippets
+        )
+        valid_references = valid_references and snippet_chars <= MAX_REPORT_SOURCE_SNIPPET_CHARS
+        if not valid_references:
+            raise unknown_evidence()
+
+    @staticmethod
+    def _source_findings_for_plan(
+        source: SourceAnalysis, plan: ReportPlan
+    ) -> tuple[SourceFinding, ...]:
+        selected_ids = {
+            finding_id for section in plan.sections for finding_id in section.source_finding_ids
+        }
+        return tuple(finding for finding in source.findings if finding.id in selected_ids)
+
+    @staticmethod
+    def _validate_document_code_evidence(
+        document: dict[str, Any], source_snippets: tuple[str, ...]
+    ) -> None:
+        snippets = tuple(normalize_code(snippet) for snippet in source_snippets)
+        code_blocks = (
+            block
+            for section in document.get("sections", ())
+            for block in section.get("blocks", ())
+            if block.get("type") == "code"
+        )
+        if any(
+            not (code := normalize_code(str(block.get("code", ""))))
+            or not any(code in snippet for snippet in snippets)
+            for block in code_blocks
+        ):
+            raise AIServiceError(
+                ErrorCode.AI_INVALID_RESPONSE,
+                "Gemini 보고서의 코드 인용이 입력 근거와 일치하지 않습니다.",
+            )
 
     @staticmethod
     def _image_ids(context: AnalysisContext) -> tuple[UUID, ...]:
@@ -218,3 +314,11 @@ def unknown_evidence() -> AIServiceError:
         ErrorCode.AI_INVALID_RESPONSE,
         "Gemini 분석 근거가 입력 파일과 일치하지 않습니다.",
     )
+
+
+def normalize_code(value: str) -> str:
+    return normalize_newlines(value).strip()
+
+
+def normalize_newlines(value: str) -> str:
+    return value.replace("\r\n", "\n").replace("\r", "\n")

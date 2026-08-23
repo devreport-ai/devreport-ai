@@ -94,6 +94,11 @@ AI Service는 manifest와 `files`의 개수·순서·파일명·MIME·크기를 
 `ReportDocument`를 생성·검증한다. 상세 계약은
 [`contracts/report-generation.md`](../contracts/report-generation.md)를 따른다.
 
+소스 분석은 finding마다 파일 ID·경로·줄 위치와 4,000자 이하의 원문 snippet을 보존한다.
+계획 단계가 선택한 finding의 snippet만 최종 `report-generation-v4` 프롬프트에 전달하며,
+선택된 snippet 합계는 40,000자를 넘길 수 없다. 최종 코드 블록은 전달된 snippet의 연속된 원문과
+일치해야 한다. 잘린 파일의 전달 범위 밖 내용과 제외된 파일은 구현 근거로 사용할 수 없다.
+
 ### 입력 정규화 규칙
 
 Backend는 확장자로만 소스를 선별하므로 AI Service가 다음을 방어적으로 처리한다.
@@ -127,22 +132,23 @@ Gemini 호출은 PDF가 있으면 요구사항 단계에 PDF를 한 번 첨부�
 ```bash
 uv run python -m app.evaluation \
   --fixtures evals/fixtures \
-  --run gemini-v2=evals/results/gemini-v2 \
-  --run gemini-v3=evals/results/gemini-v3
+  --run baseline-v3=evals/results/baseline-v3 \
+  --run evidence-v4=evals/results/evidence-v4
 ```
 
 결과 파일은 ReportDocument 원문 또는 다음 envelope을 사용할 수 있다.
 
 ```json
 {
-  "run": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "promptVersion": "report-generation-v3"},
+  "run": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "promptVersion": "report-generation-v4"},
   "document": {"metadata": {}, "sections": []}
 }
 ```
 
-평가기는 요구사항 충족도, 근거 일치·허용 이미지 참조, 내용 구체성, 읽기 쉬운 문장 길이,
-ReportDocument Schema 유효성을 정량화한다. 자연어 품질을 자동 합격 처리하지 않으므로 각
-fixture의 `manualReview` 항목을 함께 검토하고, 점수는 동일 입력 간 회귀 비교용으로만 사용한다.
+평가기는 요구사항 충족도, 소스 원문과 코드 인용 일치, 허용 이미지 참조, 내용 구체성,
+읽기 쉬운 문장 길이, ReportDocument Schema 유효성을 정량화한다. 자연어 품질을 자동 합격
+처리하지 않으므로 각 fixture의 `manualReview` 항목을 함께 검토하고, 점수는 동일 입력 간 회귀
+비교용으로만 사용한다.
 
 ### 5. 테스트 및 린트
 

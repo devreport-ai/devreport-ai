@@ -140,6 +140,10 @@ AI Service는 반환 전에 다음을 방어적으로 처리한다.
 - manifest `files`가 비어 있으면 `400 AI_INVALID_REQUEST`로 거부한다.
 - 정규화 후 분석 근거가 하나도 남지 않으면 `422 AI_FILE_PROCESSING_FAILED`로 거부한다.
   근거 없이 지시문만으로 보고서를 만들지 않기 위한 규칙이다.
+- 소스 finding은 파일 ID·경로·줄 위치와 해당 입력 원문에 정확히 일치하는 snippet을 가져야 한다.
+- 계획이 선택한 finding의 snippet만 최종 프롬프트에 전달하며, 합계는 40,000자로 제한한다.
+- 최종 코드 블록은 전달된 snippet의 연속된 원문과 일치해야 한다.
+- 잘린 소스의 전달 범위 밖 내용과 `omittedFiles`의 내용은 구현 사실로 보완하지 않는다.
 
 AI Service가 JSON Schema를 검증한 뒤 반환하고 Backend가 다시 다음을 검증한다.
 
