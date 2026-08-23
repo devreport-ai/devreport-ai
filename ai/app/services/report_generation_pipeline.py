@@ -21,7 +21,7 @@ from app.prompts.report_generation import (
     requirement_analysis_prompt,
     source_analysis_prompt,
 )
-from app.schemas.analysis import AnalysisContext, ImageEvidence
+from app.schemas.analysis import AnalysisContext, ImageEvidence, PdfEvidence
 from app.schemas.generation import GenerationRequest
 from app.schemas.pipeline import (
     ImageAnalysis,
@@ -44,11 +44,15 @@ class ReportGenerationPipeline:
         self._document_validator = ReportDocumentValidator(report_schema_path)
 
     def generate(self, request: GenerationRequest, context: AnalysisContext) -> dict[str, Any]:
-        file_ids = {str(item.file_id) for item in (*context.documents, *context.source_files)}
+        document_ids = {str(item.file_id) for item in context.documents}
+        document_ids.update(str(pdf.file_id) for pdf in context.pdfs)
+        source_ids = {str(item.file_id) for item in context.source_files}
+        file_ids = document_ids | source_ids
         image_ids = {str(image.file_id) for image in context.images}
         log.info(
-            "보고서 생성 시작 documents=%d sourceFiles=%d images=%d omitted=%d",
+            "보고서 생성 시작 documents=%d pdfs=%d sourceFiles=%d images=%d omitted=%d",
             len(context.documents),
+            len(context.pdfs),
             len(context.source_files),
             len(context.images),
             len(context.omitted),
@@ -57,14 +61,15 @@ class ReportGenerationPipeline:
         requirements = self._generate_model(
             "requirements",
             RequirementAnalysis,
-            requirement_analysis_prompt(context.documents, context.omitted),
-            validate=lambda result: self._validate_requirement_references(result, file_ids),
+            requirement_analysis_prompt(context.documents, context.omitted, context.pdfs),
+            validate=lambda result: self._validate_requirement_references(result, document_ids),
+            pdfs=context.pdfs,
         )
         source = self._generate_model(
             "source",
             SourceAnalysis,
             source_analysis_prompt(context.source_files, context.omitted),
-            validate=lambda result: self._validate_source_references(result, file_ids),
+            validate=lambda result: self._validate_source_references(result, source_ids),
         )
         images = tuple(self._analyze_image(image) for image in context.images)
 
@@ -97,6 +102,7 @@ class ReportGenerationPipeline:
         model: type[ModelT],
         prompt: str,
         images: Sequence[ImageEvidence] = (),
+        pdfs: Sequence[PdfEvidence] = (),
         validate: Callable[[ModelT], None] | None = None,
     ) -> ModelT:
         def validate_response(response: str) -> ModelT:
@@ -115,6 +121,7 @@ class ReportGenerationPipeline:
             result = self._gemini.generate_json(
                 prompt,
                 images,
+                pdfs=pdfs,
                 response_schema=response_schema_for(model),
                 response_validator=validate_response,
             )
@@ -149,22 +156,26 @@ class ReportGenerationPipeline:
 
     @staticmethod
     def _validate_requirement_references(
-        requirements: RequirementAnalysis, allowed_file_ids: set[str]
+        requirements: RequirementAnalysis, allowed_document_ids: set[str]
     ) -> None:
+        role_file_ids = {str(document.file_id) for document in requirements.document_roles}
         referenced_file_ids = {
             str(file_id)
             for requirement in requirements.requirements
             for file_id in requirement.evidence_file_ids
         }
-        if not referenced_file_ids <= allowed_file_ids:
+        if (
+            not role_file_ids <= allowed_document_ids
+            or not referenced_file_ids <= allowed_document_ids
+        ):
             raise unknown_evidence()
 
     @staticmethod
-    def _validate_source_references(source: SourceAnalysis, allowed_file_ids: set[str]) -> None:
+    def _validate_source_references(source: SourceAnalysis, allowed_source_ids: set[str]) -> None:
         referenced_file_ids = {
             str(file_id) for finding in source.findings for file_id in finding.evidence_file_ids
         }
-        if not referenced_file_ids <= allowed_file_ids:
+        if not referenced_file_ids <= allowed_source_ids:
             raise unknown_evidence()
 
     @staticmethod

@@ -90,7 +90,7 @@ public class GenerationBundleFactory {
 						sourceContentType(source), parts, manifestFiles);
 				}
 			}
-		} else if (extension.equals("md") || extension.equals("txt")) {
+		} else if (extension.equals("md") || extension.equals("txt") || extension.equals("pdf")) {
 			copy(root, storedPath(file), "documents/" + file.getId() + "/" + file.getOriginalName(), file,
 				file.getContentType(), parts, manifestFiles);
 		} else if (extension.equals("png") || extension.equals("jpg") || extension.equals("jpeg")) {

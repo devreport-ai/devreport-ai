@@ -259,6 +259,85 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/auth/password': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 비밀번호 변경
+     * @description 현재 비밀번호를 확인하고 새 비밀번호를 저장한 뒤 모든 Refresh Token을 폐기한다.
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['PasswordChangeRequest']
+        }
+      }
+      responses: {
+        /** @description 비밀번호 변경 성공. 기존 Refresh Token 쿠키도 삭제한다. */
+        204: {
+          headers: {
+            /** @description 폐기된 Refresh Token 쿠키 (`Max-Age=0`). */
+            'Set-Cookie'?: string
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description 입력값 오류, 현재 비밀번호 불일치 또는 새 비밀번호가 기존 값과 동일함 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 미인증 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 허용되지 않은 Origin 또는 Referer (CSRF_ORIGIN_INVALID) */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+        /** @description 사용자별 비밀번호 변경 요청 한도 초과 (RATE_LIMIT_EXCEEDED) */
+        429: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['ErrorResponse']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/auth/me': {
     parameters: {
       query?: never
@@ -1909,6 +1988,15 @@ export interface components {
       email: string
       /** Format: password */
       password: string
+    }
+    PasswordChangeRequest: {
+      /** Format: password */
+      currentPassword: string
+      /**
+       * Format: password
+       * @description UTF-8 인코딩 기준 최대 72바이트
+       */
+      newPassword: string
     }
     TokenResponse: {
       accessToken: string

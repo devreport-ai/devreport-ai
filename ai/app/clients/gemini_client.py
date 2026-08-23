@@ -10,7 +10,7 @@ import httpx
 
 from app.core.deadline import Deadline
 from app.core.errors import AIServiceError, ErrorCode
-from app.schemas.analysis import ImageEvidence
+from app.schemas.analysis import ImageEvidence, PdfEvidence
 
 ANALYSIS_MAX_OUTPUT_TOKENS = 8192
 # thinking 토큰도 출력 한도에 포함되므로 최종 문서에는 넉넉한 한도가 필요하다.
@@ -62,6 +62,7 @@ class GeminiClient:
         prompt: str,
         images: Sequence[ImageEvidence] = (),
         *,
+        pdfs: Sequence[PdfEvidence] = (),
         max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
         response_schema: Any | None = None,
         response_validator: Callable[[str], ValidatedT] | None = None,
@@ -81,7 +82,7 @@ class GeminiClient:
             # 예산 만료는 호출 전에 판정한다. try 안에서 계산하면 AI_TIMEOUT이
             # 아래 except에 걸려 AI_UNAVAILABLE로 바뀐다.
             call_timeout = self._call_timeout()
-            contents = content_parts(retry_prompt(prompt, rejection), images)
+            contents = content_parts(retry_prompt(prompt, rejection), images, pdfs)
             try:
                 response = self._generate_once(
                     client, contents, max_output_tokens, response_schema, call_timeout
@@ -314,14 +315,17 @@ def is_json_object(value: Any) -> bool:
         return False
 
 
-def content_parts(prompt: str, images: Sequence[ImageEvidence]) -> Any:
-    """텍스트만 있으면 문자열을 유지하고, 이미지는 요청 수명 안의 bytes로만 전달한다."""
-    if not images:
+def content_parts(
+    prompt: str, images: Sequence[ImageEvidence] = (), pdfs: Sequence[PdfEvidence] = ()
+) -> Any:
+    """텍스트만 있으면 문자열을 유지하고, 파일은 요청 수명 안의 bytes로만 전달한다."""
+    if not images and not pdfs:
         return prompt
 
     from google.genai import types
 
     return [
+        *(types.Part.from_bytes(data=pdf.content, mime_type=pdf.mime_type) for pdf in pdfs),
         *(types.Part.from_bytes(data=image.content, mime_type=image.mime_type) for image in images),
         prompt,
     ]

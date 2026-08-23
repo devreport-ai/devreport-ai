@@ -14,6 +14,7 @@ type Schemas = components['schemas']
 
 export type SignupRequest = Schemas['SignupRequest']
 export type LoginRequest = Schemas['LoginRequest']
+export type PasswordChangeRequest = Schemas['PasswordChangeRequest']
 export type TokenResponse = Schemas['TokenResponse']
 export type UserResponse = Schemas['UserResponse']
 
@@ -90,9 +91,7 @@ export function isTerminalStatus(status: GenerationJobResponse['status']): boole
 /**
  * AI 가 실제로 읽는 파일 형식.
  *
- * 업로드 API 는 PDF·DOCX 도 받지만 AI 생성 입력에서는 제외된다
- * (`contracts/report-generation.md`). 올려는 두되 분석 대상으로는 못 고르게 해야
- * "PDF 올렸는데 왜 반영이 안 되지" 를 막을 수 있다.
+ * 업로드 API가 받는 형식 중 AI 생성 입력으로 전달할 형식만 고른다.
  *
  * MIME 을 `text/` 프리픽스로 보면 계약에 없는 `text/html` 까지 통과한다.
  * 계약이 정한 형식만 그대로 나열한다.
@@ -100,11 +99,12 @@ export function isTerminalStatus(status: GenerationJobResponse['status']): boole
 const AI_INPUT_MIME_TYPES = [
   'image/png',
   'image/jpeg',
+  'application/pdf',
   'text/plain',
   'text/markdown',
   'application/zip',
 ]
-const AI_INPUT_EXTENSIONS = ['.zip', '.md', '.txt', '.png', '.jpg', '.jpeg']
+const AI_INPUT_EXTENSIONS = ['.zip', '.pdf', '.md', '.txt', '.png', '.jpg', '.jpeg']
 
 /** 이 파일을 AI 분석 대상으로 고를 수 있는가. */
 export function isAiInputFile(file: Pick<FileResponse, 'contentType' | 'originalName'>): boolean {

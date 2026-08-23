@@ -6,6 +6,7 @@ import { apiFetch, apiFetchNoContent } from '../../lib/api/client'
 import { clearAccessToken, isAuthenticated, setAccessToken } from '../../lib/auth/tokenStore'
 import type {
   LoginRequest,
+  PasswordChangeRequest,
   SignupRequest,
   TokenResponse,
   UserResponse,
@@ -56,6 +57,23 @@ export function useLogout() {
         // 이전 사용자 캐시가 다음 사용자에게 보이지 않게 비운다
         client.clear()
       }
+    },
+  })
+}
+
+/** 비밀번호 변경 성공 시 모든 Refresh Token이 폐기되므로 현재 세션도 정리한다. */
+export function useChangePassword() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PasswordChangeRequest) =>
+      apiFetchNoContent('/api/auth/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      clearAccessToken()
+      client.clear()
     },
   })
 }

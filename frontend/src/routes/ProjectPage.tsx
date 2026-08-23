@@ -36,6 +36,22 @@ export default function ProjectPage() {
   return <ProjectPageContent key={projectId} projectId={projectId} />
 }
 
+function resolveFirstInvalidId(
+  selectable: FileResponse[],
+  selectedIds: string[],
+  title: string,
+  instructions: string,
+  modelReady = true,
+): string {
+  if (selectedIds.length === 0) {
+    return selectable[0] ? `file-${selectable[0].id}` : 'file-selection'
+  }
+  if (title.trim() === '') return 'title'
+  if (!modelReady) return 'generation-model'
+  if (instructions.trim() === '') return 'instructions'
+  return 'policy-agreement'
+}
+
 function ProjectPageContent({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const project = useProject(projectId)
@@ -52,6 +68,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const [date, setDate] = useState(todayLocal)
   const [instructions, setInstructions] = useState('')
   const [policyAgreed, setPolicyAgreed] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
   const recovery = loadGenerationRecovery(projectId)
 
   // 모델 목록은 계정의 키 등록 여부에 따라 달라진다. 선택은 키 문자열로만 들고 있고
@@ -78,6 +95,20 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
   const handleGenerate = (event: React.FormEvent) => {
     event.preventDefault()
+    if (!canSubmit || !policyAgreed) {
+      setShowValidation(true)
+      const firstInvalidId = resolveFirstInvalidId(
+        selectable,
+        selectedIds,
+        title,
+        instructions,
+        modelChoice !== null,
+      )
+      const firstInvalid = document.getElementById(firstInvalidId)
+      firstInvalid?.focus({ preventScroll: true })
+      firstInvalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      return
+    }
     startGeneration.mutate(
       {
         fileIds: selectedIds,
@@ -161,7 +192,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             </p>
           </section>
 
-          <section className="surface-card detail-card detail-card--files">
+          <section
+            id="file-selection"
+            className="surface-card detail-card detail-card--files"
+            tabIndex={-1}
+            aria-describedby={
+              showValidation && selectedIds.length === 0 ? 'file-selection-error' : undefined
+            }
+          >
             <div className="detail-card__header">
               <div>
                 <h2>분석할 파일 선택</h2>
@@ -186,6 +224,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                     key={file.id}
                     file={file}
                     checked={selectedIds.includes(file.id)}
+                    invalid={showValidation && selectedIds.length === 0}
                     onToggle={() => toggle(file.id)}
                     onDelete={() =>
                       deleteFile.mutate(file.id, {
@@ -207,7 +246,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
             {items.length > 0 && selectable.length === 0 && (
               <p className="inline-hint">
-                AI 가 분석할 수 있는 파일이 없습니다. ZIP · MD · TXT · PNG · JPG 를 올려 주세요.
+                AI 가 분석할 수 있는 파일이 없습니다. ZIP · PDF · MD · TXT · PNG · JPG 를 올려
+                주세요.
+              </p>
+            )}
+
+            {showValidation && selectedIds.length === 0 && (
+              <p id="file-selection-error" role="alert" className="inline-alert">
+                분석할 파일을 1개 이상 선택해 주세요.
               </p>
             )}
           </section>
@@ -221,7 +267,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 </div>
               </div>
 
-              <Field id="title" label="제목" required value={title} onChange={setTitle} />
+              <Field
+                id="title"
+                label="제목"
+                required
+                value={title}
+                onChange={setTitle}
+                error={showValidation && title.trim() === '' ? '제목을 입력해 주세요.' : undefined}
+              />
               <Field id="author" label="작성자" value={author} onChange={setAuthor} />
               <Field id="course" label="과목" value={course} onChange={setCourse} />
               <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
@@ -234,6 +287,11 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                   saveModelChoice({ provider: option.provider, model: option.model })
                 }}
                 disabled={startGeneration.isPending}
+                error={
+                  showValidation && modelChoice === null
+                    ? 'AI 모델 목록을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.'
+                    : undefined
+                }
               />
               {models.error && (
                 <p role="alert" className="inline-alert">
@@ -241,7 +299,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 </p>
               )}
 
-              <div>
+              <div className="field-group">
                 <label htmlFor="instructions" className="field-label">
                   작성 지시사항 <span className="text-red-600">*</span>
                 </label>
@@ -249,17 +307,31 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                   id="instructions"
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
+                  aria-invalid={showValidation && instructions.trim() === ''}
+                  aria-describedby={
+                    showValidation && instructions.trim() === '' ? 'instructions-error' : undefined
+                  }
                   rows={4}
                   placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
                   className="field-control"
                 />
+                {showValidation && instructions.trim() === '' && (
+                  <p id="instructions-error" role="alert" className="inline-alert">
+                    작성 지시사항을 입력해 주세요.
+                  </p>
+                )}
               </div>
 
               <label className="generation-form__agreement">
                 <input
+                  id="policy-agreement"
                   type="checkbox"
                   checked={policyAgreed}
                   onChange={(event) => setPolicyAgreed(event.target.checked)}
+                  aria-invalid={showValidation && !policyAgreed}
+                  aria-describedby={
+                    showValidation && !policyAgreed ? 'policy-agreement-error' : undefined
+                  }
                   className="mt-0.5"
                 />
                 <span>
@@ -270,11 +342,13 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 </span>
               </label>
 
-              <button
-                type="submit"
-                disabled={!canSubmit || !policyAgreed || startGeneration.isPending}
-                className="primary-button"
-              >
+              {showValidation && !policyAgreed && (
+                <p id="policy-agreement-error" role="alert" className="inline-alert">
+                  자료 전달 안내를 확인해 주세요.
+                </p>
+              )}
+
+              <button type="submit" disabled={startGeneration.isPending} className="primary-button">
                 {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
               </button>
 
@@ -393,6 +467,7 @@ function Field({
   onChange,
   required,
   type = 'text',
+  error,
 }: {
   id: string
   label: string
@@ -400,6 +475,7 @@ function Field({
   onChange: (value: string) => void
   required?: boolean
   type?: 'text' | 'date'
+  error?: string
 }) {
   return (
     <div className="field-group">
@@ -411,8 +487,15 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error !== undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         className="field-control"
       />
+      {error && (
+        <p id={`${id}-error`} role="alert" className="inline-alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -420,11 +503,13 @@ function Field({
 function FileRow({
   file,
   checked,
+  invalid,
   onToggle,
   onDelete,
 }: {
   file: FileResponse
   checked: boolean
+  invalid: boolean
   onToggle: () => void
   onDelete: () => void
 }) {
@@ -438,6 +523,8 @@ function FileRow({
         checked={checked}
         onChange={onToggle}
         disabled={!usable}
+        aria-invalid={invalid && usable}
+        aria-describedby={invalid && usable ? 'file-selection-error' : undefined}
       />
       <span className="file-row__icon" aria-hidden>
         <Icon name="file-text" size={15} />
@@ -446,7 +533,7 @@ function FileRow({
         <span className="file-row__name">{file.originalName}</span>
         <span className="file-row__meta">
           {file.contentType}
-          {!usable && <span>AI 분석 대상 아님</span>}
+          <span>{usable ? 'AI 분석 대상' : 'AI 분석 대상 아님'}</span>
         </span>
       </label>
       <button
