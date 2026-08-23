@@ -147,10 +147,28 @@ uv run python -m app.evaluation \
 }
 ```
 
-평가기는 요구사항 충족도, 소스 원문과 코드 인용 일치, 허용 이미지 참조, 내용 구체성,
-읽기 쉬운 문장 길이, ReportDocument Schema 유효성을 정량화한다. 자연어 품질을 자동 합격
-처리하지 않으므로 각 fixture의 `manualReview` 항목을 함께 검토하고, 점수는 동일 입력 간 회귀
-비교용으로만 사용한다.
+실제 모델 결과는 로컬 `GEMINI_API_KEY` 또는 전용 `AI Quality Baseline` 수동 workflow에서만
+생성한다. 일반 CI는 API를 호출하지 않는다.
+
+```bash
+uv run python -m app.evaluation_runner --output evals/results/candidate
+```
+
+각 결과의 `manualReview.checks`를 사람이 검토해 `reviewedBy`, `reviewedAt`, `passed`, `notes`를
+기록한다. 평가는 요구사항 키워드뿐 아니라 같은 섹션 안의 구현 근거 연결, 미확인 요구사항의
+단정, 원문에 없는 코드 인용, 허용 이미지 참조, 구체성, 가독성과 Schema 유효성을 출력한다.
+
+저장 결과 회귀 게이트는 다음 명령으로 실행한다. 품질 실패는 Ruff·pytest와 분리된 CI 단계에
+표시된다.
+
+```bash
+uv run python -m app.evaluation --gate evals/quality-gate.json
+```
+
+baseline을 갱신할 때는 후보 디렉터리를 별도로 생성하고 기존 baseline과 비교한다. 수동 검토를
+완료한 뒤 `quality-gate.json`의 `candidate.directory`만 후보로 바꿔 게이트를 실행한다. 회귀가
+없음을 확인한 경우에만 후보 결과를 새 baseline으로 이동하고, 실제 측정값에 맞춰 최소 점수와
+허용 상세 건수를 갱신한다. 생성 결과와 fixture에는 실제 사용자 파일이나 개인정보를 넣지 않는다.
 
 ### 5. 테스트 및 린트
 
