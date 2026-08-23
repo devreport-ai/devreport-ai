@@ -18,6 +18,10 @@ REPORT_DOCUMENT_MAX_OUTPUT_TOKENS = 32_768
 RATE_LIMIT_STATUS = 429
 # 408 Request Timeout과 429 RESOURCE_EXHAUSTED는 무료 티어에서 가장 흔한 일시 오류다.
 RETRYABLE_STATUS_CODES = frozenset({408, RATE_LIMIT_STATUS})
+# Gemini는 잘못된 API Key를 400 INVALID_ARGUMENT(API_KEY_INVALID)로,
+# 권한 문제는 401/403으로 돌려준다.
+CREDENTIAL_STATUS_CODES = frozenset({401, 403})
+CREDENTIAL_ERROR_MARKERS = ("api key", "api_key", "permission_denied", "unauthenticated")
 MAX_TOKENS_FINISH_REASON = "MAX_TOKENS"
 
 log = logging.getLogger(__name__)
@@ -157,6 +161,14 @@ class GeminiClient:
             raise AIServiceError(
                 ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
             ) from exception
+        if is_credential_error(exception):
+            raise AIServiceError(
+                ErrorCode.AI_CREDENTIAL_INVALID, "Gemini API Key가 거부되었습니다."
+            ) from exception
+        if is_rate_limited(exception):
+            raise AIServiceError(
+                ErrorCode.AI_PROVIDER_RATE_LIMITED, "Gemini 사용량 한도를 초과했습니다."
+            ) from exception
         raise AIServiceError(
             ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
         ) from exception
@@ -182,6 +194,48 @@ def status_code(exception: Exception) -> int | None:
 
 def is_rate_limited(exception: Exception) -> bool:
     return status_code(exception) == RATE_LIMIT_STATUS
+
+
+def is_credential_error(exception: Exception) -> bool:
+    status = status_code(exception)
+    if status in CREDENTIAL_STATUS_CODES:
+        return True
+    if status != 400:
+        return False
+    # 예외 메시지는 판별에만 쓰고 밖으로 내보내지 않는다.
+    message = str(exception).lower()
+    return any(marker in message for marker in CREDENTIAL_ERROR_MARKERS)
+
+
+def verify_gemini_api_key(
+    api_key: str,
+    timeout_seconds: float,
+    client_factory: Callable[[str, float], Any] | None = None,
+) -> None:
+    """모델 목록 한 페이지를 조회해 키가 유효한지 확인한다. 실패는 AI 오류 계약으로 변환한다."""
+    factory = client_factory or create_sdk_client
+    try:
+        client = factory(api_key, timeout_seconds)
+        pager = client.models.list(config={"page_size": 1})
+        next(iter(pager), None)
+    except AIServiceError:
+        raise
+    except Exception as exception:
+        if is_timeout(exception):
+            raise AIServiceError(
+                ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
+            ) from exception
+        if is_credential_error(exception):
+            raise AIServiceError(
+                ErrorCode.AI_CREDENTIAL_INVALID, "Gemini API Key가 올바르지 않습니다."
+            ) from exception
+        if is_rate_limited(exception):
+            raise AIServiceError(
+                ErrorCode.AI_PROVIDER_RATE_LIMITED, "Gemini 사용량 한도를 초과했습니다."
+            ) from exception
+        raise AIServiceError(
+            ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
+        ) from exception
 
 
 def is_retryable(exception: Exception) -> bool:

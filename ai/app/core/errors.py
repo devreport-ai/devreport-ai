@@ -23,6 +23,10 @@ class ErrorCode(StrEnum):
     AI_INVALID_RESPONSE = "AI_INVALID_RESPONSE"
     AI_TIMEOUT = "AI_TIMEOUT"
     AI_UNAVAILABLE = "AI_UNAVAILABLE"
+    # provider API Key가 거부되었거나(사용자 키 검증·생성 실행) 허용되지 않은 provider/model 선택
+    AI_CREDENTIAL_INVALID = "AI_CREDENTIAL_INVALID"
+    AI_MODEL_NOT_ALLOWED = "AI_MODEL_NOT_ALLOWED"
+    AI_PROVIDER_RATE_LIMITED = "AI_PROVIDER_RATE_LIMITED"
 
 
 _STATUS_BY_CODE: dict[ErrorCode, int] = {
@@ -33,6 +37,9 @@ _STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.AI_INVALID_RESPONSE: 502,
     ErrorCode.AI_TIMEOUT: 504,
     ErrorCode.AI_UNAVAILABLE: 503,
+    ErrorCode.AI_CREDENTIAL_INVALID: 401,
+    ErrorCode.AI_MODEL_NOT_ALLOWED: 400,
+    ErrorCode.AI_PROVIDER_RATE_LIMITED: 429,
 }
 
 

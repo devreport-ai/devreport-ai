@@ -18,6 +18,9 @@ class GenerationRequest(BaseModel):
     file_ids: list[UUID] = Field(alias="fileIds", min_length=1, max_length=MAX_BUNDLE_FILE_COUNT)
     metadata: ReportMetadata
     instructions: str
+    # Backend가 allowlist로 검증해 채운 provider·model. 둘 다 없으면 서버 기본 모델을 사용한다.
+    provider: Literal["GEMINI", "ANTHROPIC"] | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=100)
 
     @field_validator("file_ids")
     @classmethod
@@ -32,6 +35,12 @@ class GenerationRequest(BaseModel):
         if not value.strip():
             raise ValueError("instructions must not be blank")
         return value
+
+    @model_validator(mode="after")
+    def validate_model_selection(self) -> GenerationRequest:
+        if (self.provider is None) != (self.model is None):
+            raise ValueError("provider and model must be given together")
+        return self
 
 
 class ReportMetadata(BaseModel):

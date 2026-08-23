@@ -10,6 +10,13 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 APP_VERSION = "0.1.0"
 FREE_TIER_GEMINI_MODEL = "gemini-3.5-flash-lite"
+# 사용자 API Key로 선택할 수 있는 Gemini 모델. Backend의 ai.models.allowlist와 같은 값을 유지한다.
+GEMINI_MODEL_ALLOWLIST: tuple[str, ...] = (
+    FREE_TIER_GEMINI_MODEL,
+    "gemini-3.5-flash",
+    "gemini-3.5-pro",
+)
+GEMINI_PROVIDER = "GEMINI"
 AppEnvironment = Literal["local", "test", "prod", "production"]
 
 
@@ -35,10 +42,14 @@ class Settings(BaseSettings):
     # Backend와 AI Service 사이의 내부 요청 인증 Secret.
     ai_internal_token: str | None = None
 
-    # 무료 티어 사용량 제한 안에서 운영할 Flash 모델만 허용한다.
+    # 서버 키로 실행하는 기본 모델. 무료 티어 사용량 제한 안에서 운영할 Flash 모델만 허용한다.
     gemini_model: Literal["gemini-3.5-flash-lite"] = FREE_TIER_GEMINI_MODEL
-    # AI Service 서버 키. 사용자별 키 전달은 MVP 범위가 아니다.
+    # 사용자 API Key(X-Provider-Api-Key)로 선택할 수 있는 모델 allowlist. 임의 모델 ID는 거부한다.
+    gemini_allowed_models: tuple[str, ...] = GEMINI_MODEL_ALLOWLIST
+    # AI Service 서버 키. 사용자 키가 없는 요청은 이 키와 gemini_model로 실행한다.
     gemini_api_key: str | None = None
+    # API Key 검증 호출(모델 목록 조회)의 타임아웃.
+    credential_verify_timeout_seconds: float = Field(default=10.0, gt=0)
     # Gemini 호출 1건의 타임아웃. 생성 1회는 (4 + 이미지 수)번 호출하므로
     # 호출당 값을 크게 잡으면 Backend 응답 타임아웃을 쉽게 넘긴다.
     gemini_timeout_seconds: float = Field(default=90.0, gt=0)
@@ -67,6 +78,14 @@ class Settings(BaseSettings):
             raise ValueError("AI_INTERNAL_TOKEN이 운영 환경에 설정되지 않았습니다.")
         if not self.gemini_api_key or not self.gemini_api_key.strip():
             raise ValueError("GEMINI_API_KEY가 운영 환경에 설정되지 않았습니다.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_model_allowlist(self) -> "Settings":
+        if not self.gemini_allowed_models:
+            raise ValueError("GEMINI_ALLOWED_MODELS는 비어 있을 수 없습니다.")
+        if self.gemini_model not in self.gemini_allowed_models:
+            raise ValueError("GEMINI_MODEL은 GEMINI_ALLOWED_MODELS에 포함되어야 합니다.")
         return self
 
     @model_validator(mode="after")
