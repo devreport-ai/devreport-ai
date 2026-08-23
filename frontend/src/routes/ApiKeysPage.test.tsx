@@ -1,9 +1,9 @@
 /**
- * AI 설정 화면 — 키 등록·삭제 흐름과 "키 원문을 다시 보여주지 않는다"는 규칙을 확인한다.
+ * API Key 관리 화면 — 키 등록·삭제 흐름과 "키 원문을 다시 보여주지 않는다"는 규칙을 확인한다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import SettingsPage from './SettingsPage'
+import ApiKeysPage from './ApiKeysPage'
 import { renderWithProviders } from '../test/renderWithProviders'
 import { clearAccessToken, setAccessToken } from '../lib/auth/tokenStore'
 
@@ -110,9 +110,9 @@ afterEach(() => {
   sessionStorage.clear()
 })
 
-describe('SettingsPage', () => {
+describe('ApiKeysPage', () => {
   it('allowlist 의 provider 별 카드를 보여주고 키를 등록하면 힌트만 표시한다', async () => {
-    renderWithProviders(<SettingsPage />, { route: '/settings' })
+    renderWithProviders(<ApiKeysPage />, { route: '/api-keys' })
 
     expect(await screen.findByRole('heading', { name: 'Google Gemini' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Anthropic Claude' })).not.toBeInTheDocument()
@@ -139,7 +139,7 @@ describe('SettingsPage', () => {
   })
 
   it('서버가 키를 거부하면 오류 문구를 보여주고 등록 상태를 바꾸지 않는다', async () => {
-    renderWithProviders(<SettingsPage />, { route: '/settings' })
+    renderWithProviders(<ApiKeysPage />, { route: '/api-keys' })
 
     fireEvent.change(await screen.findByLabelText('API Key'), {
       target: { value: 'invalid-key-value-0000' },

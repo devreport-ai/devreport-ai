@@ -108,9 +108,9 @@ describe('ProjectPage report list', () => {
     const locked = screen.getByRole('option', { name: /Gemini 3.5 Pro/ }) as HTMLOptionElement
     expect(locked.disabled).toBe(true)
     expect(locked.textContent).toContain('API Key 등록 필요')
-    expect(screen.getByRole('link', { name: '설정에서 API Key 를 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'API 키 추가에서 등록' })).toHaveAttribute(
       'href',
-      '/settings',
+      '/api-keys',
     )
   })
 })

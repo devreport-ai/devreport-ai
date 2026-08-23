@@ -54,8 +54,8 @@ export function ModelSelect({
           <>
             {' '}
             다른 모델을 쓰려면{' '}
-            <Link to="/settings" className="underline">
-              설정에서 API Key 를 등록
+            <Link to="/api-keys" className="underline">
+              API 키 추가에서 등록
             </Link>
             하세요.
           </>

@@ -1,5 +1,5 @@
 /**
- * 계정 설정 — AI provider API Key 등록·교체·삭제 (#116).
+ * API Key 관리 — AI provider API Key 등록·교체·삭제 (#116).
  *
  * 키 원문은 입력란에서 서버로 가는 순간에만 존재한다. 저장이 끝나면 입력란을 비우고,
  * 서버가 돌려주는 마스킹 힌트만 보여준다. 원문 재조회 API 는 없다.
@@ -22,7 +22,7 @@ import {
   type AiProvider,
 } from '../lib/contracts/types'
 
-export default function SettingsPage() {
+export default function ApiKeysPage() {
   const credentials = useAiCredentials()
   const models = useAiModels()
 
@@ -33,8 +33,8 @@ export default function SettingsPage() {
 
   return (
     <div className="app-page">
-      <AppNav screen="설정" />
-      <AppTopBar root="설정" current="AI 설정">
+      <AppNav screen="API 키" />
+      <AppTopBar root="API 키" current="API Key 관리">
         <Link to="/" className="topbar-link">
           프로젝트 목록
         </Link>
@@ -43,8 +43,8 @@ export default function SettingsPage() {
         <header className="project-detail-header">
           <div className="project-detail-heading">
             <div>
-              <p className="eyebrow">ACCOUNT SETTINGS</p>
-              <h1>AI 설정</h1>
+              <p className="eyebrow">API KEYS</p>
+              <h1>API Key 관리</h1>
               <p>
                 본인의 LLM API Key 를 등록하면 더 많은 모델을 선택해 보고서를 생성할 수 있습니다.
               </p>
