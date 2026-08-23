@@ -20,12 +20,16 @@ import ReportPage from './routes/ReportPage'
 import NotFoundPage from './routes/NotFoundPage'
 import PolicyPage from './routes/PolicyPage'
 import SettingsPage from './routes/SettingsPage'
+import { ForgotPasswordPage } from './routes/ForgotPasswordPage'
+import { ResetPasswordPage } from './routes/ResetPasswordPage'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/policies" element={<PolicyPage />} />
 
       {/* 출력 전용(#39). Bearer 대신 render token 인증이라 RequireAuth 를 안 거친다 */}
