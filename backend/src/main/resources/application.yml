@@ -1,0 +1,125 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/devreport}
+    username: ${DATABASE_USERNAME:devreport}
+    password: ${DATABASE_PASSWORD:devreport}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/common,classpath:db/migration/{vendor}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+
+server:
+  port: ${BACKEND_PORT:8080}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
+
+management:
+  endpoint:
+    health:
+      show-components: when-authorized
+
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+    connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3s}
+    response-timeout: ${AI_SERVICE_RESPONSE_TIMEOUT:300s}
+    internal-token: ${AI_INTERNAL_TOKEN:}
+    mock: ${AI_SERVICE_MOCK:false}
+  # 사용자가 선택할 수 있는 provider·model allowlist. 임의 모델 ID는 받지 않는다.
+  # server-default 모델 하나만 서버 키로 실행되고, 나머지는 사용자 API Key가 있어야 선택할 수 있다.
+  # AI Service의 allowlist(ai/app/core/config.py)와 같은 값을 유지한다.
+  models:
+    allowlist:
+      - provider: GEMINI
+        model: gemini-3.5-flash-lite
+        label: Gemini 3.5 Flash-Lite
+        server-default: true
+      - provider: GEMINI
+        model: gemini-3.5-flash
+        label: Gemini 3.5 Flash
+      - provider: GEMINI
+        model: gemini-3.7-flash
+        label: Gemini 3.7 Flash
+      # Claude는 서버 키 없이 사용자 Anthropic API Key로만 실행된다.
+      - provider: ANTHROPIC
+        model: claude-sonnet-5
+        label: Claude Sonnet 5
+
+# 사용자 provider API Key 암호화(AES-256-GCM) 마스터 키. Base64로 인코딩한 32바이트 값이다.
+# 운영에서는 필수이며, 비우면 로컬에서만 임시 키를 생성한다(재시작 시 저장된 키 복호화 불가).
+# rotation: 새 버전 키를 keys에 추가하고 active-key-version을 올리면 이후 저장분은 새 키로 암호화된다.
+ai-credentials:
+  active-key-version: ${AI_CREDENTIAL_KEY_VERSION:1}
+  keys:
+    "1": ${AI_CREDENTIAL_MASTER_KEY:}
+
+auth:
+  jwt-secret: ${JWT_SECRET:}
+  access-token-ttl: 15m
+  refresh-token-ttl: 14d
+  password-reset:
+    token-ttl: ${PASSWORD_RESET_TOKEN_TTL:30m}
+    public-app-url: ${PUBLIC_APP_URL:http://localhost:3000}
+    from: ${PASSWORD_RESET_FROM:}
+    resend-api-url: ${RESEND_API_URL:https://api.resend.com}
+    resend-api-key: ${RESEND_API_KEY:}
+    connect-timeout: ${RESEND_CONNECT_TIMEOUT:3s}
+    response-timeout: ${RESEND_RESPONSE_TIMEOUT:10s}
+  refresh-token-cookie:
+    name: ${AUTH_REFRESH_TOKEN_COOKIE_NAME:refresh_token}
+    path: ${AUTH_REFRESH_TOKEN_COOKIE_PATH:/api/auth}
+    secure: ${AUTH_REFRESH_TOKEN_COOKIE_SECURE:false}
+    same-site: ${AUTH_REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+storage:
+  upload-path: ${UPLOAD_PATH:./uploads}
+  export-path: ${EXPORT_PATH:./generated-reports}
+  export-ttl: ${EXPORT_TTL:24h}
+
+export:
+  print-url: ${EXPORT_PRINT_URL:}
+  render-token-ttl: ${EXPORT_RENDER_TOKEN_TTL:1m}
+  render-timeout: ${EXPORT_RENDER_TIMEOUT:30s}
+
+usage-events:
+  retention: ${USAGE_EVENTS_RETENTION:90d}
+  purge-cron: ${USAGE_EVENTS_PURGE_CRON:0 30 3 * * *}
+  purge-zone: ${USAGE_EVENTS_PURGE_ZONE:Asia/Seoul}
+
+usage-limits:
+  day-zone: ${USAGE_LIMITS_DAY_ZONE:Asia/Seoul}
+  upload:
+    max-total-bytes: ${USAGE_LIMITS_UPLOAD_MAX_TOTAL_BYTES:524288000}
+    max-files: ${USAGE_LIMITS_UPLOAD_MAX_FILES:100}
+  generation:
+    daily-limit: ${USAGE_LIMITS_GENERATION_DAILY_LIMIT:10}
+    concurrent-limit: ${USAGE_LIMITS_GENERATION_CONCURRENT_LIMIT:2}
+  export:
+    daily-limit: ${USAGE_LIMITS_EXPORT_DAILY_LIMIT:20}
+    concurrent-limit: ${USAGE_LIMITS_EXPORT_CONCURRENT_LIMIT:1}
+  rate-limit:
+    window: ${USAGE_LIMITS_RATE_WINDOW:1m}
+    retention: ${USAGE_LIMITS_RATE_RETENTION:1d}
+    cleanup-cron: "${USAGE_LIMITS_RATE_CLEANUP_CRON:0 0 * * * *}"
+    cleanup-zone: ${USAGE_LIMITS_RATE_CLEANUP_ZONE:Asia/Seoul}
+    signup: ${USAGE_LIMITS_RATE_SIGNUP:10}
+    login: ${USAGE_LIMITS_RATE_LOGIN:20}
+    refresh: ${USAGE_LIMITS_RATE_REFRESH:30}
+    password-change: ${USAGE_LIMITS_RATE_PASSWORD_CHANGE:5}
+    password-reset: ${USAGE_LIMITS_RATE_PASSWORD_RESET:5}
+    upload: ${USAGE_LIMITS_RATE_UPLOAD:30}
+    generation: ${USAGE_LIMITS_RATE_GENERATION:10}

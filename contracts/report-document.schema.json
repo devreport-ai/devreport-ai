@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devreport.ai/schemas/report-document.schema.json",
+  "title": "ReportDocument",
+  "description": "Design-independent report content edited as stable sections and blocks.",
+  "type": "object",
+  "required": ["metadata", "sections"],
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/section"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "description": "Stable within the report. Section IDs and block IDs are each unique."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string"
+        },
+        "course": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "additionalProperties": false
+    },
+    "section": {
+      "type": "object",
+      "required": ["id", "title", "blocks"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "block": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/paragraph"
+        },
+        {
+          "$ref": "#/$defs/bulletList"
+        },
+        {
+          "$ref": "#/$defs/code"
+        },
+        {
+          "$ref": "#/$defs/table"
+        },
+        {
+          "$ref": "#/$defs/image"
+        },
+        {
+          "$ref": "#/$defs/callout"
+        },
+        {
+          "$ref": "#/$defs/pageBreak"
+        }
+      ]
+    },
+    "paragraph": {
+      "type": "object",
+      "required": ["id", "type", "content"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "paragraph"
+        },
+        "content": {
+          "type": "string",
+          "description": "Allowed inline Markdown content."
+        }
+      },
+      "additionalProperties": false
+    },
+    "bulletList": {
+      "type": "object",
+      "required": ["id", "type", "items"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "bulletList"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Allowed inline Markdown content."
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "code": {
+      "type": "object",
+      "required": ["id", "type", "code"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "code"
+        },
+        "code": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "table": {
+      "type": "object",
+      "required": ["id", "type", "columns", "rows"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "table"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Allowed inline Markdown content."
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "image": {
+      "type": "object",
+      "required": ["id", "type", "fileId", "alt"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "image"
+        },
+        "fileId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "alt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "callout": {
+      "type": "object",
+      "required": ["id", "type", "content"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "callout"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "description": "Allowed inline Markdown content."
+        }
+      },
+      "additionalProperties": false
+    },
+    "pageBreak": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "const": "pageBreak"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

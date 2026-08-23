@@ -1,0 +1,343 @@
+from __future__ import annotations
+
+import json
+import logging
+from collections.abc import Callable, Sequence
+from time import sleep
+from typing import Any, Protocol, TypeVar
+
+import httpx
+from pydantic import BaseModel
+
+from app.clients.response_schema import response_schema_for
+from app.clients.structured_client import (
+    ANALYSIS_MAX_OUTPUT_TOKENS,
+    REPORT_DOCUMENT_MAX_OUTPUT_TOKENS,
+)
+from app.core.deadline import Deadline
+from app.core.errors import AIServiceError, ErrorCode
+from app.schemas.analysis import ImageEvidence, PdfEvidence
+
+__all__ = [
+    "ANALYSIS_MAX_OUTPUT_TOKENS",
+    "REPORT_DOCUMENT_MAX_OUTPUT_TOKENS",
+    "GeminiClient",
+    "verify_gemini_api_key",
+]
+RATE_LIMIT_STATUS = 429
+# 408 Request Timeout과 429 RESOURCE_EXHAUSTED는 무료 티어에서 가장 흔한 일시 오류다.
+RETRYABLE_STATUS_CODES = frozenset({408, RATE_LIMIT_STATUS})
+# Gemini는 잘못된 API Key를 400 INVALID_ARGUMENT(API_KEY_INVALID)로,
+# 권한 문제는 401/403으로 돌려준다.
+CREDENTIAL_STATUS_CODES = frozenset({401, 403})
+CREDENTIAL_ERROR_MARKERS = ("api key", "api_key", "permission_denied", "unauthenticated")
+MAX_TOKENS_FINISH_REASON = "MAX_TOKENS"
+
+log = logging.getLogger(__name__)
+ValidatedT = TypeVar("ValidatedT")
+
+
+class GeminiModels(Protocol):
+    def generate_content(self, *, model: str, contents: Any, config: Any) -> Any: ...
+
+
+class GeminiSdkClient(Protocol):
+    models: GeminiModels
+
+
+class GeminiClient:
+    """google-genai SDK를 AI 내부 오류 계약 뒤에 감싼 최소 호출 Client."""
+
+    def __init__(
+        self,
+        api_key: str | None,
+        model: str,
+        timeout_seconds: float,
+        max_retries: int,
+        client_factory: Callable[[str, float], GeminiSdkClient] | None = None,
+        sleeper: Callable[[float], None] = sleep,
+        deadline: Deadline | None = None,
+    ) -> None:
+        self._api_key = api_key
+        self._model = model
+        self._timeout_seconds = timeout_seconds
+        self._max_retries = max_retries
+        self._client_factory = client_factory or create_sdk_client
+        self._sleeper = sleeper
+        self._deadline = deadline
+
+    def generate_json(
+        self,
+        prompt: str,
+        images: Sequence[ImageEvidence] = (),
+        *,
+        pdfs: Sequence[PdfEvidence] = (),
+        max_output_tokens: int = ANALYSIS_MAX_OUTPUT_TOKENS,
+        response_schema: Any | None = None,
+        response_model: type[BaseModel] | None = None,
+        response_validator: Callable[[str], ValidatedT] | None = None,
+    ) -> str | ValidatedT:
+        if not self._api_key:
+            raise AIServiceError(ErrorCode.AI_UNAVAILABLE, "Gemini API Key가 설정되지 않았습니다.")
+        if response_schema is None and response_model is not None:
+            response_schema = response_schema_for(response_model)
+
+        try:
+            client = self._client_factory(self._api_key, self._timeout_seconds)
+        except Exception as exception:
+            raise AIServiceError(
+                ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
+            ) from exception
+
+        rejection: str | None = None
+        for attempt in range(self._max_retries + 1):
+            # 예산 만료는 호출 전에 판정한다. try 안에서 계산하면 AI_TIMEOUT이
+            # 아래 except에 걸려 AI_UNAVAILABLE로 바뀐다.
+            call_timeout = self._call_timeout()
+            contents = content_parts(retry_prompt(prompt, rejection), images, pdfs)
+            try:
+                response = self._generate_once(
+                    client, contents, max_output_tokens, response_schema, call_timeout
+                )
+            except Exception as exception:
+                if not is_retryable(exception) or attempt == self._max_retries:
+                    self._raise_generation_error(exception)
+                log.warning(
+                    "Gemini 호출 실패로 재시도한다 attempt=%d status=%s",
+                    attempt + 1,
+                    status_code(exception),
+                )
+                self._wait(retry_delay_seconds(attempt, is_rate_limited(exception)))
+                continue
+
+            if is_truncated(response):
+                # 같은 프롬프트로 다시 물어도 같은 길이에서 잘리므로 재시도하지 않는다.
+                raise AIServiceError(
+                    ErrorCode.AI_INVALID_RESPONSE,
+                    "Gemini 응답이 출력 토큰 한도에서 잘렸습니다.",
+                )
+
+            text = getattr(response, "text", None)
+            if not is_json_object(text):
+                rejection = "JSON 객체가 아닌 응답이었다."
+            elif response_validator is None:
+                return text
+            else:
+                try:
+                    return response_validator(text)
+                except AIServiceError as exception:
+                    if exception.code != ErrorCode.AI_INVALID_RESPONSE:
+                        raise
+                    rejection = exception.message
+                except ValueError as exception:
+                    rejection = str(exception)
+
+            log.warning("Gemini 응답 검증 실패 attempt=%d", attempt + 1)
+            if attempt < self._max_retries:
+                self._wait(retry_delay_seconds(attempt, rate_limited=False))
+
+        raise AIServiceError(ErrorCode.AI_INVALID_RESPONSE, "Gemini 응답 형식이 올바르지 않습니다.")
+
+    def _generate_once(
+        self,
+        client: GeminiSdkClient,
+        contents: Any,
+        max_output_tokens: int,
+        response_schema: Any | None,
+        timeout_seconds: float,
+    ) -> Any:
+        return client.models.generate_content(
+            model=self._model,
+            contents=contents,
+            config=response_config(max_output_tokens, response_schema, timeout_seconds),
+        )
+
+    def _call_timeout(self) -> float:
+        """이번 호출에 허용할 초. 예산이 남지 않았으면 AI_TIMEOUT을 던진다."""
+        # 호출당 타임아웃이 남은 예산보다 길면 호출 하나가 전체 예산을 넘길 수 있다.
+        if self._deadline is None:
+            return self._timeout_seconds
+        self._deadline.ensure_active()
+        return min(self._timeout_seconds, self._deadline.remaining())
+
+    def _wait(self, seconds: float) -> None:
+        # 남은 예산보다 오래 기다리면 어차피 만료되므로 그 전에 멈춘다.
+        if self._deadline is not None:
+            self._deadline.ensure_active()
+            seconds = min(seconds, self._deadline.remaining())
+        if seconds > 0:
+            self._sleeper(seconds)
+
+    @staticmethod
+    def _raise_generation_error(exception: Exception) -> None:
+        if is_timeout(exception):
+            raise AIServiceError(
+                ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
+            ) from exception
+        if is_credential_error(exception):
+            raise AIServiceError(
+                ErrorCode.AI_CREDENTIAL_INVALID, "Gemini API Key가 거부되었습니다."
+            ) from exception
+        if is_rate_limited(exception):
+            raise AIServiceError(
+                ErrorCode.AI_PROVIDER_RATE_LIMITED, "Gemini 사용량 한도를 초과했습니다."
+            ) from exception
+        raise AIServiceError(
+            ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
+        ) from exception
+
+
+def retry_prompt(prompt: str, rejection: str | None) -> str:
+    """직전 응답이 거절된 이유를 알려 같은 실패를 반복하지 않게 한다."""
+    if not rejection:
+        return prompt
+    return (
+        f"{prompt}\n\n"
+        f"직전 응답은 다음 이유로 거절되었다: {rejection}\n"
+        "반환 형식을 정확히 지켜 JSON 객체만 다시 작성한다."
+    )
+
+
+def status_code(exception: Exception) -> int | None:
+    status = getattr(exception, "code", None)
+    if not isinstance(status, int):
+        status = getattr(exception, "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+def is_rate_limited(exception: Exception) -> bool:
+    return status_code(exception) == RATE_LIMIT_STATUS
+
+
+def is_credential_error(exception: Exception) -> bool:
+    status = status_code(exception)
+    if status in CREDENTIAL_STATUS_CODES:
+        return True
+    if status != 400:
+        return False
+    # 예외 메시지는 판별에만 쓰고 밖으로 내보내지 않는다.
+    message = str(exception).lower()
+    return any(marker in message for marker in CREDENTIAL_ERROR_MARKERS)
+
+
+def verify_gemini_api_key(
+    api_key: str,
+    timeout_seconds: float,
+    client_factory: Callable[[str, float], Any] | None = None,
+) -> None:
+    """모델 목록 한 페이지를 조회해 키가 유효한지 확인한다. 실패는 AI 오류 계약으로 변환한다."""
+    factory = client_factory or create_sdk_client
+    try:
+        client = factory(api_key, timeout_seconds)
+        pager = client.models.list(config={"page_size": 1})
+        next(iter(pager), None)
+    except AIServiceError:
+        raise
+    except Exception as exception:
+        if is_timeout(exception):
+            raise AIServiceError(
+                ErrorCode.AI_TIMEOUT, "Gemini 응답 시간이 초과되었습니다."
+            ) from exception
+        if is_credential_error(exception):
+            raise AIServiceError(
+                ErrorCode.AI_CREDENTIAL_INVALID, "Gemini API Key가 올바르지 않습니다."
+            ) from exception
+        if is_rate_limited(exception):
+            raise AIServiceError(
+                ErrorCode.AI_PROVIDER_RATE_LIMITED, "Gemini 사용량 한도를 초과했습니다."
+            ) from exception
+        raise AIServiceError(
+            ErrorCode.AI_UNAVAILABLE, "Gemini 서비스를 사용할 수 없습니다."
+        ) from exception
+
+
+def is_retryable(exception: Exception) -> bool:
+    if is_timeout(exception):
+        return True
+    status = status_code(exception)
+    if status is None:
+        return False
+    return status >= 500 or status in RETRYABLE_STATUS_CODES
+
+
+def is_timeout(exception: Exception) -> bool:
+    return isinstance(exception, (TimeoutError, httpx.TimeoutException))
+
+
+def retry_delay_seconds(attempt: int, rate_limited: bool = False) -> float:
+    # 무료 티어의 분당 한도는 짧은 백오프로는 풀리지 않으므로 더 오래 기다린다.
+    if rate_limited:
+        return min(5.0 * (2**attempt), 30.0)
+    return min(0.25 * (2**attempt), 2.0)
+
+
+def is_truncated(response: Any) -> bool:
+    for candidate in getattr(response, "candidates", None) or ():
+        reason = getattr(candidate, "finish_reason", None)
+        if reason is None:
+            continue
+        if str(getattr(reason, "name", reason)).upper().endswith(MAX_TOKENS_FINISH_REASON):
+            return True
+    return False
+
+
+def create_sdk_client(api_key: str, timeout_seconds: float) -> GeminiSdkClient:
+    from google import genai
+    from google.genai import types
+
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=int(timeout_seconds * 1000)),
+    )
+
+
+def response_config(
+    max_output_tokens: int, response_schema: Any | None = None, timeout_seconds: float | None = None
+) -> Any:
+    from google.genai import types
+
+    # Gemini 3.5 Flash는 기본적으로 medium 수준의 thinking을 사용한다.
+    # 짧은 구조화 분석에는 low가 적절하며, 출력 토큰을 명시해 JSON이 중간에
+    # 잘리는 일을 줄인다. response_schema를 주면 스키마 위반 재시도가 줄어든다.
+    return types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=response_schema,
+        max_output_tokens=max_output_tokens,
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+        http_options=http_timeout_options(timeout_seconds),
+    )
+
+
+def http_timeout_options(timeout_seconds: float | None) -> Any:
+    """호출별 타임아웃을 남은 생성 예산에 맞춘다. SDK timeout 단위는 밀리초다."""
+    if timeout_seconds is None:
+        return None
+
+    from google.genai import types
+
+    return types.HttpOptions(timeout=max(int(timeout_seconds * 1000), 1))
+
+
+def is_json_object(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        return isinstance(json.loads(value), dict)
+    except json.JSONDecodeError:
+        return False
+
+
+def content_parts(
+    prompt: str, images: Sequence[ImageEvidence] = (), pdfs: Sequence[PdfEvidence] = ()
+) -> Any:
+    """텍스트만 있으면 문자열을 유지하고, 파일은 요청 수명 안의 bytes로만 전달한다."""
+    if not images and not pdfs:
+        return prompt
+
+    from google.genai import types
+
+    return [
+        *(types.Part.from_bytes(data=pdf.content, mime_type=pdf.mime_type) for pdf in pdfs),
+        *(types.Part.from_bytes(data=image.content, mime_type=image.mime_type) for image in images),
+        prompt,
+    ]

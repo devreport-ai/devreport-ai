@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 팀 논의가 필요한 항목
+    url: https://github.com/devreport-ai/devreport-ai/discussions
+    about: 구현 전 합의가 필요한 제안은 팀 채널에서 먼저 논의해주세요.

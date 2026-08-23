@@ -1,0 +1,1 @@
+-- Domain tables are introduced by their feature migrations.

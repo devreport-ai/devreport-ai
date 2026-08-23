@@ -1,0 +1,64 @@
+# Frontend 자동 검사 워크플로.
+#
+# backend-ci.yml 의 구조를 그대로 따랐다. 트리거·권한·동시성·체크아웃 방식이
+# 서비스마다 달라지면 나중에 문제가 생겼을 때 비교가 어려워지기 때문이다.
+name: Frontend CI
+
+on:
+  # PR 을 올릴 때와 dev 에 직접 반영될 때 모두 돌린다.
+  # PR 에서 통과했더라도 병합 결과가 깨질 수 있으므로 push 에서도 확인한다.
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [dev, main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+# 이 워크플로는 코드를 읽기만 한다. 기본 권한을 넓게 두지 않는다.
+permissions:
+  contents: read
+
+# 같은 브랜치에 연달아 push 하면 이전 실행은 의미가 없으므로 취소한다.
+# GitHub Actions 실행 시간을 아끼고 결과를 헷갈리지 않게 한다.
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # 모노레포라 명령을 frontend 안에서 실행해야 한다.
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # 체크아웃 후 워크플로에 자격증명을 남기지 않는다.
+          # 이후 스텝이 의도치 않게 저장소에 쓰는 것을 막는다.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          # 버전을 워크플로에 또 적지 않고 .nvmrc 를 읽는다.
+          # 로컬과 CI 의 Node 버전이 어긋나는 사고를 원천 차단한다.
+          node-version-file: frontend/.nvmrc
+          # 의존성 캐시. cache-dependency-path 는 저장소 루트 기준 경로다.
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm install 이 아니라 npm ci 를 쓴다.
+      # lock 파일을 그대로 재현하며, lock 과 package.json 이 어긋나면 실패한다.
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build

@@ -1,0 +1,47 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    password: ${DATABASE_PASSWORD}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+
+ai:
+  service:
+    internal-token: ${AI_INTERNAL_TOKEN}
+    mock: false
+
+auth:
+  jwt-secret: ${JWT_SECRET}
+  password-reset:
+    public-app-url: ${PUBLIC_APP_URL}
+    from: ${PASSWORD_RESET_FROM}
+    resend-api-key: ${RESEND_API_KEY}
+  refresh-token-cookie:
+    secure: true
+
+cors:
+  # Frontend를 같은 Origin으로 제공하면 비워 둔다. 별도 Origin일 때만 명시한다.
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
+export:
+  print-url: ${EXPORT_PRINT_URL}
+
+security:
+  headers:
+    enabled: true

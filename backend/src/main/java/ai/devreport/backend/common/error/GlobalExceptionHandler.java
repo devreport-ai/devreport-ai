@@ -1,0 +1,143 @@
+package ai.devreport.backend.common.error;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
+		return ResponseEntity.badRequest().body(ErrorResponse.of(
+			"VALIDATION_FAILED",
+			"요청 값이 올바르지 않습니다.",
+			validationDetails(exception.getBindingResult())
+		));
+	}
+
+	@ExceptionHandler({
+		HttpMessageNotReadableException.class,
+		MissingServletRequestParameterException.class,
+		MissingServletRequestPartException.class,
+		MethodArgumentTypeMismatchException.class,
+		HandlerMethodValidationException.class
+	})
+	ResponseEntity<ErrorResponse> handleBadRequest(Exception exception) {
+		return ResponseEntity.badRequest().body(ErrorResponse.of(
+			"INVALID_REQUEST",
+			"요청 형식이 올바르지 않습니다.",
+			null
+		));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.auth.application.AuthException.class)
+	ResponseEntity<ErrorResponse> handleAuth(ai.devreport.backend.auth.application.AuthException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.project.application.ProjectNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleProjectNotFound(
+		ai.devreport.backend.project.application.ProjectNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
+			"PROJECT_NOT_FOUND", exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.upload.domain.ProjectFileException.class)
+	ResponseEntity<ErrorResponse> handleProjectFile(
+		ai.devreport.backend.upload.domain.ProjectFileException exception) {
+		if (exception.status().is5xxServerError()) {
+			log.error("Project file error: {}", exception.code(), exception);
+		}
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.integration.ai.AiServiceException.class)
+	ResponseEntity<ErrorResponse> handleAiService(ai.devreport.backend.integration.ai.AiServiceException exception) {
+		log.error("AI service request failed", exception);
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.credential.domain.AiCredentialException.class)
+	ResponseEntity<ErrorResponse> handleAiCredential(
+		ai.devreport.backend.credential.domain.AiCredentialException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.generation.domain.GenerationException.class)
+	ResponseEntity<ErrorResponse> handleGeneration(
+		ai.devreport.backend.generation.domain.GenerationException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.report.domain.ReportException.class)
+	ResponseEntity<ErrorResponse> handleReport(ai.devreport.backend.report.domain.ReportException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), exception.details()));
+	}
+
+	@ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+	ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+		org.springframework.dao.OptimisticLockingFailureException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(
+			"REPORT_VERSION_CONFLICT", "보고서가 다른 변경으로 갱신되었습니다.", null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.export.domain.ReportExportException.class)
+	ResponseEntity<ErrorResponse> handleReportExport(
+		ai.devreport.backend.export.domain.ReportExportException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ai.devreport.backend.usage.domain.UsageLimitException.class)
+	ResponseEntity<ErrorResponse> handleUsageLimit(
+		ai.devreport.backend.usage.domain.UsageLimitException exception) {
+		return ResponseEntity.status(exception.status()).body(ErrorResponse.of(
+			exception.code(), exception.getMessage(), exception.details()));
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ResponseEntity<ErrorResponse> handleFileTooLarge(MaxUploadSizeExceededException exception) {
+		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(ErrorResponse.of(
+			"FILE_TOO_LARGE", "파일 크기는 20 MiB 이하여야 합니다.", null));
+	}
+
+	@ExceptionHandler(Exception.class)
+	ResponseEntity<ErrorResponse> handleUnexpected(Exception exception) {
+		log.error("Unhandled exception", exception);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
+			"INTERNAL_SERVER_ERROR",
+			"서버 오류가 발생했습니다.",
+			null
+		));
+	}
+
+	static Map<String, String> validationDetails(BindingResult bindingResult) {
+		Map<String, String> details = new LinkedHashMap<>();
+		bindingResult.getFieldErrors().forEach(error ->
+			details.putIfAbsent(error.getField(), error.getDefaultMessage()));
+		return details;
+	}
+}

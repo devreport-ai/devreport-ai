@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devreport.ai/schemas/report.schema.json",
+  "title": "Report",
+  "type": "object",
+  "required": [
+    "id",
+    "projectId",
+    "document",
+    "templateId",
+    "templateVersion",
+    "presentationSettings",
+    "version",
+    "updatedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "projectId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "document": {
+      "$ref": "report-document.schema.json"
+    },
+    "templateId": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "templateVersion": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "presentationSettings": {
+      "$ref": "#/$defs/presentationSettings"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "templateId": {
+          "type": "null"
+        },
+        "templateVersion": {
+          "type": "null"
+        }
+      }
+    },
+    {
+      "properties": {
+        "templateId": {
+          "type": "string"
+        },
+        "templateVersion": {
+          "type": "integer"
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "presentationSettings": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  }
+}
