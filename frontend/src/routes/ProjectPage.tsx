@@ -28,6 +28,20 @@ export default function ProjectPage() {
   return <ProjectPageContent key={projectId} projectId={projectId} />
 }
 
+function resolveFirstInvalidId(
+  selectable: FileResponse[],
+  selectedIds: string[],
+  title: string,
+  instructions: string,
+): string {
+  if (selectedIds.length === 0) {
+    return selectable[0] ? `file-${selectable[0].id}` : 'file-selection'
+  }
+  if (title.trim() === '') return 'title'
+  if (instructions.trim() === '') return 'instructions'
+  return 'policy-agreement'
+}
+
 function ProjectPageContent({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const project = useProject(projectId)
@@ -60,16 +74,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
     event.preventDefault()
     if (!canSubmit || !policyAgreed) {
       setShowValidation(true)
-      const firstInvalidId =
-        selectedIds.length === 0
-          ? selectable[0]
-            ? `file-${selectable[0].id}`
-            : 'file-selection'
-          : title.trim() === ''
-            ? 'title'
-            : instructions.trim() === ''
-              ? 'instructions'
-              : 'policy-agreement'
+      const firstInvalidId = resolveFirstInvalidId(selectable, selectedIds, title, instructions)
       const firstInvalid = document.getElementById(firstInvalidId)
       firstInvalid?.focus({ preventScroll: true })
       firstInvalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
@@ -155,7 +160,6 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             id="file-selection"
             className="surface-card detail-card detail-card--files"
             tabIndex={-1}
-            aria-invalid={showValidation && selectedIds.length === 0}
             aria-describedby={
               showValidation && selectedIds.length === 0 ? 'file-selection-error' : undefined
             }

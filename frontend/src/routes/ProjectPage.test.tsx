@@ -126,6 +126,7 @@ describe('ProjectPage report list', () => {
       'aria-describedby',
       'file-selection-error',
     )
+    expect(document.getElementById('file-selection')).not.toHaveAttribute('aria-invalid')
   })
 
   it('파일을 선택하면 제목으로 이동한다', async () => {
