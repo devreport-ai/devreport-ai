@@ -1,0 +1,52 @@
+{
+  "id": "frontend-dashboard",
+  "request": {
+    "metadata": {
+      "title": "React 대시보드 구현 보고서",
+      "author": "평가 fixture"
+    },
+    "instructions": "화면 구성과 접근성·페이지네이션 동작을 구현 근거와 함께 설명해 주세요."
+  },
+  "documents": [
+    {
+      "fileId": "30000000-0000-4000-8000-000000000001",
+      "path": "documents/30000000-0000-4000-8000-000000000001/assignment.md",
+      "mimeType": "text/markdown",
+      "content": "React 대시보드에 카드 목록과 페이지네이션을 구현한다. 키보드 사용자를 위한 접근성 상태를 제공한다."
+    },
+    {
+      "fileId": "30000000-0000-4000-8000-000000000002",
+      "path": "documents/30000000-0000-4000-8000-000000000002/design-notes.md",
+      "mimeType": "text/markdown",
+      "content": "카드는 요약 정보를 먼저 보여주고 상세 화면으로 이동할 수 있다."
+    }
+  ],
+  "sourceFiles": [
+    {
+      "fileId": "30000000-0000-4000-8000-000000000003",
+      "path": "source/30000000-0000-4000-8000-000000000003/Dashboard.tsx",
+      "mimeType": "text/plain",
+      "content": "function Dashboard() { return <nav aria-label=\"페이지네이션\">...</nav> }"
+    }
+  ],
+  "images": [
+    {
+      "fileId": "30000000-0000-4000-8000-000000000004",
+      "path": "images/30000000-0000-4000-8000-000000000004/dashboard.png",
+      "mimeType": "image/png"
+    }
+  ],
+  "expected": {
+    "requiredTerms": ["React", "페이지네이션", "접근성"],
+    "forbiddenTerms": ["결제 시스템", "OAuth 로그인"],
+    "allowedImageFileIds": ["30000000-0000-4000-8000-000000000004"],
+    "minNonEmptyBlocks": 4,
+    "requiredBlockTypes": ["image", "table"],
+    "maxAverageSentenceWords": 35,
+    "manualReview": [
+      "페이지네이션과 aria-label 근거가 실제 구현과 일치하는가",
+      "이미지 블록이 fixture의 이미지 ID만 참조하는가",
+      "화면에 보이지 않는 OAuth 기능을 추측하지 않는가"
+    ]
+  }
+}

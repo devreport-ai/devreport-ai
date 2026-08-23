@@ -1,0 +1,45 @@
+{
+  "id": "rest-api",
+  "request": {
+    "metadata": {
+      "title": "Spring Boot 프로젝트 API 구현 보고서",
+      "author": "평가 fixture"
+    },
+    "instructions": "과제 요구사항을 구현 근거와 API 동작 중심으로 설명해 주세요."
+  },
+  "documents": [
+    {
+      "fileId": "10000000-0000-4000-8000-000000000001",
+      "path": "documents/10000000-0000-4000-8000-000000000001/assignment.md",
+      "mimeType": "text/markdown",
+      "content": "Spring Boot로 프로젝트 CRUD API를 구현한다. JWT 인증을 적용하고 POST /projects 요청을 지원한다."
+    },
+    {
+      "fileId": "10000000-0000-4000-8000-000000000002",
+      "path": "documents/10000000-0000-4000-8000-000000000002/reference.md",
+      "mimeType": "text/markdown",
+      "content": "REST API는 리소스와 HTTP 메서드의 의미를 일관되게 사용해야 한다."
+    }
+  ],
+  "sourceFiles": [
+    {
+      "fileId": "10000000-0000-4000-8000-000000000003",
+      "path": "source/10000000-0000-4000-8000-000000000003/ProjectController.java",
+      "mimeType": "text/plain",
+      "content": "@RestController class ProjectController { @PostMapping(\"/projects\") Project create(...) { ... } }"
+    }
+  ],
+  "expected": {
+    "requiredTerms": ["Spring Boot", "JWT", "/projects"],
+    "forbiddenTerms": ["결제 시스템", "Kubernetes 클러스터"],
+    "allowedImageFileIds": [],
+    "minNonEmptyBlocks": 4,
+    "requiredBlockTypes": ["code", "table"],
+    "maxAverageSentenceWords": 35,
+    "manualReview": [
+      "assignment와 reference를 요구사항으로 혼동하지 않았는가",
+      "POST /projects와 실제 ProjectController 근거가 연결되는가",
+      "JWT 적용 여부를 파일 근거 없이 단정하지 않는가"
+    ]
+  }
+}
