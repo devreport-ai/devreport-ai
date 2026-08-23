@@ -82,13 +82,17 @@ describe('ReportEditor', () => {
         ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
       )
       expect(put).toBeUndefined()
+      // 선택 상자가 빈 칸이 되지 않아야 한다 (리뷰 지적)
+      const select = screen.getByLabelText('템플릿') as HTMLSelectElement
+      expect(select.value).toBe('unknown-template')
+      expect(screen.getByRole('option', { name: '알 수 없는 템플릿' })).toBeDisabled()
     } finally {
       vi.useRealTimers()
     }
   })
 
   it('좁은 화면용 편집·미리보기 탭을 제공한다', () => {
-    renderWithProviders(<ReportEditor report={report()} />)
+    const { container } = renderWithProviders(<ReportEditor report={report()} />)
 
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((t) => t.textContent)).toEqual(['콘텐츠', '미리보기'])
@@ -96,6 +100,9 @@ describe('ReportEditor', () => {
 
     fireEvent.click(tabs[1])
     expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true')
+    // 좁은 화면에서 어느 패널을 보여줄지는 이 클래스가 정한다 (CSS 미디어쿼리와 짝)
+    expect(container.querySelector('.editor-workspace--preview')).not.toBeNull()
+    expect(container.querySelector('.editor-workspace--edit')).toBeNull()
   })
 
   it('툴바 로고로 홈에 갈 수 있다', () => {

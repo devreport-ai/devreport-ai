@@ -441,6 +441,12 @@ function Toolbar({
           onChange={(e) => onTemplate(e.target.value)}
           aria-label="템플릿"
         >
+          {/* 목록에 없는 저장값이면 빈 칸으로 보이므로 자리 옵션을 둔다 (리뷰 지적) */}
+          {state.templateId !== null && findTemplate(state.templateId) === null && (
+            <option value={state.templateId} disabled>
+              알 수 없는 템플릿
+            </option>
+          )}
           {REPORT_TEMPLATES.map((t) => (
             <option key={t.id} value={t.id}>
               {t.galleryName} · HTML
