@@ -5,8 +5,7 @@ import { useSignup } from '../features/auth/api'
 import { POLICY_VERSIONS } from '../features/auth/policyVersions'
 import { emailError, nameError, passwordError } from '../features/auth/validation'
 import { toDisplayMessage } from '../lib/api/errors'
-import { AuthLayout } from '../components/ui'
-import { AuthField } from './LoginPage'
+import { AuthField, AuthLayout } from '../components/ui'
 
 export function SignupPage() {
   const navigate = useNavigate()

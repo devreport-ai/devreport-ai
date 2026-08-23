@@ -23,6 +23,10 @@ export function AppNav({ screen }: { screen?: string }) {
             <Icon name="file-text" />
             보고서
           </span>
+          <NavLink to="/settings" className="app-nav-link">
+            <Icon name="settings" />
+            계정 설정
+          </NavLink>
         </nav>
 
         <div className="app-sidebar__bottom">

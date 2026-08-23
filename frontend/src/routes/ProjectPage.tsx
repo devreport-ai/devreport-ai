@@ -28,6 +28,20 @@ export default function ProjectPage() {
   return <ProjectPageContent key={projectId} projectId={projectId} />
 }
 
+function resolveFirstInvalidId(
+  selectable: FileResponse[],
+  selectedIds: string[],
+  title: string,
+  instructions: string,
+): string {
+  if (selectedIds.length === 0) {
+    return selectable[0] ? `file-${selectable[0].id}` : 'file-selection'
+  }
+  if (title.trim() === '') return 'title'
+  if (instructions.trim() === '') return 'instructions'
+  return 'policy-agreement'
+}
+
 function ProjectPageContent({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const project = useProject(projectId)
@@ -44,6 +58,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
   const [date, setDate] = useState(todayLocal)
   const [instructions, setInstructions] = useState('')
   const [policyAgreed, setPolicyAgreed] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
   const recovery = loadGenerationRecovery(projectId)
 
   const items = files.data?.items ?? []
@@ -57,6 +72,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
 
   const handleGenerate = (event: React.FormEvent) => {
     event.preventDefault()
+    if (!canSubmit || !policyAgreed) {
+      setShowValidation(true)
+      const firstInvalidId = resolveFirstInvalidId(selectable, selectedIds, title, instructions)
+      const firstInvalid = document.getElementById(firstInvalidId)
+      firstInvalid?.focus({ preventScroll: true })
+      firstInvalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      return
+    }
     startGeneration.mutate(
       {
         fileIds: selectedIds,
@@ -133,7 +156,14 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
             </p>
           </section>
 
-          <section className="surface-card detail-card detail-card--files">
+          <section
+            id="file-selection"
+            className="surface-card detail-card detail-card--files"
+            tabIndex={-1}
+            aria-describedby={
+              showValidation && selectedIds.length === 0 ? 'file-selection-error' : undefined
+            }
+          >
             <div className="detail-card__header">
               <div>
                 <h2>분석할 파일 선택</h2>
@@ -158,6 +188,7 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                     key={file.id}
                     file={file}
                     checked={selectedIds.includes(file.id)}
+                    invalid={showValidation && selectedIds.length === 0}
                     onToggle={() => toggle(file.id)}
                     onDelete={() =>
                       deleteFile.mutate(file.id, {
@@ -183,6 +214,12 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 주세요.
               </p>
             )}
+
+            {showValidation && selectedIds.length === 0 && (
+              <p id="file-selection-error" role="alert" className="inline-alert">
+                분석할 파일을 1개 이상 선택해 주세요.
+              </p>
+            )}
           </section>
 
           <section className="surface-card detail-card detail-card--information">
@@ -194,12 +231,19 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 </div>
               </div>
 
-              <Field id="title" label="제목" required value={title} onChange={setTitle} />
+              <Field
+                id="title"
+                label="제목"
+                required
+                value={title}
+                onChange={setTitle}
+                error={showValidation && title.trim() === '' ? '제목을 입력해 주세요.' : undefined}
+              />
               <Field id="author" label="작성자" value={author} onChange={setAuthor} />
               <Field id="course" label="과목" value={course} onChange={setCourse} />
               <Field id="date" label="날짜" type="date" value={date} onChange={setDate} />
 
-              <div>
+              <div className="field-group">
                 <label htmlFor="instructions" className="field-label">
                   작성 지시사항 <span className="text-red-600">*</span>
                 </label>
@@ -207,17 +251,31 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                   id="instructions"
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
+                  aria-invalid={showValidation && instructions.trim() === ''}
+                  aria-describedby={
+                    showValidation && instructions.trim() === '' ? 'instructions-error' : undefined
+                  }
                   rows={4}
                   placeholder="어떤 내용을 강조할지, 어떤 형식으로 쓸지 적어 주세요."
                   className="field-control"
                 />
+                {showValidation && instructions.trim() === '' && (
+                  <p id="instructions-error" role="alert" className="inline-alert">
+                    작성 지시사항을 입력해 주세요.
+                  </p>
+                )}
               </div>
 
               <label className="generation-form__agreement">
                 <input
+                  id="policy-agreement"
                   type="checkbox"
                   checked={policyAgreed}
                   onChange={(event) => setPolicyAgreed(event.target.checked)}
+                  aria-invalid={showValidation && !policyAgreed}
+                  aria-describedby={
+                    showValidation && !policyAgreed ? 'policy-agreement-error' : undefined
+                  }
                   className="mt-0.5"
                 />
                 <span>
@@ -228,11 +286,13 @@ function ProjectPageContent({ projectId }: { projectId: string }) {
                 </span>
               </label>
 
-              <button
-                type="submit"
-                disabled={!canSubmit || !policyAgreed || startGeneration.isPending}
-                className="primary-button"
-              >
+              {showValidation && !policyAgreed && (
+                <p id="policy-agreement-error" role="alert" className="inline-alert">
+                  자료 전달 안내를 확인해 주세요.
+                </p>
+              )}
+
+              <button type="submit" disabled={startGeneration.isPending} className="primary-button">
                 {startGeneration.isPending ? '요청 중…' : '보고서 생성'}
               </button>
 
@@ -351,6 +411,7 @@ function Field({
   onChange,
   required,
   type = 'text',
+  error,
 }: {
   id: string
   label: string
@@ -358,6 +419,7 @@ function Field({
   onChange: (value: string) => void
   required?: boolean
   type?: 'text' | 'date'
+  error?: string
 }) {
   return (
     <div className="field-group">
@@ -369,8 +431,15 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error !== undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         className="field-control"
       />
+      {error && (
+        <p id={`${id}-error`} role="alert" className="inline-alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -378,11 +447,13 @@ function Field({
 function FileRow({
   file,
   checked,
+  invalid,
   onToggle,
   onDelete,
 }: {
   file: FileResponse
   checked: boolean
+  invalid: boolean
   onToggle: () => void
   onDelete: () => void
 }) {
@@ -396,6 +467,8 @@ function FileRow({
         checked={checked}
         onChange={onToggle}
         disabled={!usable}
+        aria-invalid={invalid && usable}
+        aria-describedby={invalid && usable ? 'file-selection-error' : undefined}
       />
       <span className="file-row__icon" aria-hidden>
         <Icon name="file-text" size={15} />
